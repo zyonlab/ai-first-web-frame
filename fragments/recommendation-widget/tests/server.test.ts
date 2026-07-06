@@ -1,7 +1,17 @@
-import { describe, expect, it } from "vitest";
+import {
+  configureTraceExport,
+  type RequestTraceSnapshot,
+  resetTraceExport,
+} from "@mvp/observability";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { recommendationWidgetBudget } from "../src/budget";
 import { validateRecommendationWidgetManifest } from "../src/manifest";
 import { buildServer } from "../src/server";
+
+afterEach(() => {
+  resetTraceExport();
+  vi.restoreAllMocks();
+});
 
 describe("recommendation-widget fragment service", () => {
   it("/ returns a browser-readable service demo", async () => {
@@ -14,10 +24,17 @@ describe("recommendation-widget fragment service", () => {
     expect(response.body).toContain("POST http://localhost:4202/render");
   });
 
-  it("/health returns ok", async () => {
-    const server = buildServer();
+  it("/health returns ok with service and uptime", async () => {
+    let clock = 2000;
+    const server = buildServer({ now: () => clock });
+    clock = 2750;
     const response = await server.inject({ method: "GET", url: "/health" });
-    expect(response.json()).toMatchObject({ status: "ok" });
+    const body = response.json();
+    expect(body).toMatchObject({
+      status: "ok",
+      service: "recommendation-widget",
+    });
+    expect(body.uptimeMs).toBe(750);
   });
 
   it("/manifest passes schema validation", async () => {
@@ -26,7 +43,7 @@ describe("recommendation-widget fragment service", () => {
     expect(validateRecommendationWidgetManifest(response.json())).toBe(true);
   });
 
-  it("/render returns recommendation HTML", async () => {
+  it("/render returns recommendation HTML loaded via @mvp/data", async () => {
     const server = buildServer();
     const response = await server.inject({
       method: "POST",
@@ -34,6 +51,8 @@ describe("recommendation-widget fragment service", () => {
       payload: { ctx: { locale: "en-US" }, props: { scene: "home", limit: 2 } },
     });
     expect(response.json().html).toContain("Recommended for you");
+    // Titles come only from the data source, proving the data plane ran.
+    expect(response.json().html).toContain("Everyday Travel Pack");
   });
 
   it("honors limit", async () => {
@@ -44,6 +63,54 @@ describe("recommendation-widget fragment service", () => {
       payload: { props: { limit: 1 } },
     });
     expect(response.json().html.match(/data-product-id/g)).toHaveLength(1);
+  });
+
+  it("/metrics exposes Prometheus text after traffic", async () => {
+    const server = buildServer();
+    await server.inject({
+      method: "POST",
+      url: "/render",
+      payload: { props: { scene: "home", limit: 2 } },
+    });
+    const response = await server.inject({ method: "GET", url: "/metrics" });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("text/plain");
+    const body = response.body;
+    expect(body).toContain("# TYPE http_requests_total counter");
+    expect(body).toContain('route="/render"');
+    expect(body).toContain("# TYPE fragment_render_duration_seconds histogram");
+    expect(body).toContain("fragment_render_duration_seconds_bucket");
+  });
+
+  it("/metrics and /health do not pollute HTTP request metrics", async () => {
+    const server = buildServer();
+    await server.inject({ method: "GET", url: "/health" });
+    const response = await server.inject({ method: "GET", url: "/metrics" });
+    expect(response.body).not.toContain('route="/health"');
+    expect(response.body).not.toContain('route="/metrics"');
+  });
+
+  it("/render exports a trace with a render span through the pipeline", async () => {
+    const exported: RequestTraceSnapshot[] = [];
+    const server = buildServer();
+    // Override the pipeline installed at build time with a capturing exporter.
+    configureTraceExport({
+      exporters: [{ export: (snapshot) => void exported.push(snapshot) }],
+    });
+    await server.inject({
+      method: "POST",
+      url: "/render",
+      payload: {
+        ctx: { traceId: "trace-recommendation-test" },
+        props: { scene: "home", limit: 2 },
+      },
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(exported).toHaveLength(1);
+    expect(exported[0].traceId).toBe("trace-recommendation-test");
+    const names = exported[0].nodes.map((node) => node.name);
+    expect(names).toContain("request:/render");
+    expect(names).toContain("render:recommendation-widget");
   });
 
   it("declares a fragment budget", () => {

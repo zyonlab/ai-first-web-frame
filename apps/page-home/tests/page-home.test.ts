@@ -58,9 +58,12 @@ describe("page-home", () => {
       headers: new Headers({ "x-trace-id": "trace-home-fragments" }),
     });
 
+    // recommendations (4202) has no dependencies so it runs in the first
+    // level; promotion (4201) is gated behind the shared featured-content data
+    // node and runs in the next level.
     expect(calls).toEqual([
-      "http://localhost:4201/render",
       "http://localhost:4202/render",
+      "http://localhost:4201/render",
     ]);
     expect(slots.staticEditorial).toContain("Static SSG sample");
     expect(slots.promotion).toContain("promotion-banner live");
@@ -68,17 +71,62 @@ describe("page-home", () => {
     expect(slots.diagnostics.staticEditorial).toMatchObject({
       source: "static",
       strategy: "static",
+      status: "ok",
+      required: false,
     });
-    expect(slots.diagnostics.promotion.strategy).toBe("cached-ssr");
-    expect(slots.diagnostics.recommendations.strategy).toBe("dynamic-ssr");
+    expect(slots.diagnostics.promotion).toMatchObject({
+      strategy: "cached-ssr",
+      status: "ok",
+      required: true,
+    });
+    expect(slots.diagnostics.recommendations).toMatchObject({
+      strategy: "dynamic-ssr",
+      required: false,
+    });
     expect(slots.dataDiagnostics.featuredContent).toMatchObject({
       firstRead: "loader",
       secondRead: "pending",
       title: "Featured content",
     });
+    expect(slots.scheduler.health).toBe("ok");
+    expect(Array.isArray(slots.scheduler.hints)).toBe(true);
     expect(slots.traceLog).toContain("data:home-featured-content");
     expect(slots.traceLog).toContain("runtime.fetchFragmentSlots");
     expect(slots.traceLog).toContain("slot:promotion");
+  });
+
+  it("reports degraded health when the optional recommendations slot fails", async () => {
+    const fetchImpl = (async (url: string | URL | Request) => {
+      // Promotion (required, port 4201) succeeds; recommendations (4202) fails.
+      if (String(url).includes("4202")) throw new Error("recommendations down");
+      return new Response(
+        JSON.stringify({
+          html: "<section>promotion-banner live</section>",
+          assets: { js: [], css: [] },
+          cache: { ttl: 60, tags: ["promotion-banner"] },
+          metadata: { name: "promotion-banner", version: "0.1.0" },
+        }),
+      );
+    }) as typeof fetch;
+
+    const slots = await fetchHomeFragmentSlots({ fetchImpl, timeoutMs: 20 });
+
+    expect(slots.scheduler.health).toBe("degraded");
+    expect(slots.diagnostics.promotion.status).toBe("ok");
+    expect(slots.diagnostics.recommendations.status).toBe("fallback");
+    expect(slots.recommendations).toContain("data-fallback");
+  });
+
+  it("reports unhealthy when the required promotion slot fails", async () => {
+    const slots = await fetchHomeFragmentSlots({
+      fetchImpl: (async () => {
+        throw new Error("fragment down");
+      }) as typeof fetch,
+      timeoutMs: 5,
+    });
+
+    expect(slots.scheduler.health).toBe("unhealthy");
+    expect(slots.diagnostics.promotion.status).toBe("fallback");
   });
 
   it("caches cached-ssr promotion while dynamic recommendations refetch", async () => {
@@ -103,9 +151,12 @@ describe("page-home", () => {
 
     expect(second.diagnostics.promotion.source).toBe("cache");
     expect(second.diagnostics.recommendations.source).toBe("network");
+    // First pass: recommendations (level 0) then promotion (level 1, behind
+    // data). Second pass: promotion is served from cache (no call) while
+    // dynamic recommendations refetch.
     expect(calls).toEqual([
-      "http://localhost:4201/render",
       "http://localhost:4202/render",
+      "http://localhost:4201/render",
       "http://localhost:4202/render",
     ]);
   });

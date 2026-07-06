@@ -57,12 +57,19 @@ export function runBoundaryCheck(
       }
       for (const specifier of parseImports(source)) {
         if (isClientOnlyImport(root, file, specifier)) {
-          issues.push({
-            code: "server-imports-client-module",
-            severity: "fail",
-            file: relativeFile,
-            detail: `server file imports ${specifier}`,
-          });
+          // Next.js App Router server components may mount a local "use client"
+          // island; the bundler owns that boundary. Allow local island imports
+          // inside the Next page apps only — fastify fragments/shell still fail.
+          const isLocalIsland =
+            specifier.startsWith(".") && relativeFile.startsWith("apps/page-");
+          if (!isLocalIsland) {
+            issues.push({
+              code: "server-imports-client-module",
+              severity: "fail",
+              file: relativeFile,
+              detail: `server file imports ${specifier}`,
+            });
+          }
         }
       }
     } else if (

@@ -65,6 +65,9 @@ importers:
       '@mvp/data':
         specifier: workspace:*
         version: link:../../packages/data
+      '@mvp/interaction':
+        specifier: workspace:*
+        version: link:../../packages/interaction
       '@mvp/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -107,9 +110,15 @@ importers:
       '@mvp/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
+      '@mvp/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       '@mvp/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@mvp/workers':
+        specifier: workspace:*
+        version: link:../../packages/workers
       next:
         specifier: ^15.3.4
         version: 15.5.20(@playwright/test@1.61.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -147,6 +156,12 @@ importers:
       '@mvp/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@mvp/data':
+        specifier: workspace:*
+        version: link:../../packages/data
+      '@mvp/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@mvp/request-context':
         specifier: workspace:*
         version: link:../../packages/request-context
@@ -166,6 +181,12 @@ importers:
       '@mvp/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@mvp/data':
+        specifier: workspace:*
+        version: link:../../packages/data
+      '@mvp/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@mvp/request-context':
         specifier: workspace:*
         version: link:../../packages/request-context

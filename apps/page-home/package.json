@@ -15,6 +15,7 @@
     "@mvp/assets": "workspace:*",
     "@mvp/contracts": "workspace:*",
     "@mvp/data": "workspace:*",
+    "@mvp/interaction": "workspace:*",
     "@mvp/observability": "workspace:*",
     "@mvp/request-context": "workspace:*",
     "@mvp/runtime": "workspace:*",

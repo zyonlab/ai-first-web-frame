@@ -18,7 +18,9 @@
     "@mvp/observability": "workspace:*",
     "@mvp/request-context": "workspace:*",
     "@mvp/runtime": "workspace:*",
+    "@mvp/storage": "workspace:*",
     "@mvp/ui": "workspace:*",
+    "@mvp/workers": "workspace:*",
     "next": "^15.3.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

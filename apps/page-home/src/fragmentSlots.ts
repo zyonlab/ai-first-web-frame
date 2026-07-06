@@ -1,20 +1,43 @@
-import { createDataClient, defineDataSource } from "@mvp/data";
+import {
+  createDataClient,
+  type DataReadResult,
+  defineDataSource,
+} from "@mvp/data";
 import { createRequestTrace } from "@mvp/observability";
 import { createRequestContext } from "@mvp/request-context";
-import { type FragmentSlotResult, fetchFragmentSlots } from "@mvp/runtime";
+import {
+  executeFragmentSlots,
+  type FragmentSlotResult,
+  type PageHealth,
+  type SchedulerHint,
+} from "@mvp/runtime";
 import { fragmentRegistry } from "../../../platform/fragment-registry/src/registry";
+
+const FEATURED_CONTENT_ID = "home-featured-content";
+
+export type HomeSlotDiagnostic = Pick<
+  FragmentSlotResult,
+  "source" | "strategy"
+> & {
+  status: FragmentSlotResult["status"];
+  required: boolean;
+};
 
 export type HomeFragmentHtml = {
   staticEditorial: string | null;
   promotion: string | null;
   recommendations: string | null;
-  diagnostics: Record<string, Pick<FragmentSlotResult, "source" | "strategy">>;
+  diagnostics: Record<string, HomeSlotDiagnostic>;
   dataDiagnostics: {
     featuredContent: {
       firstRead: string;
       secondRead: string;
       title: string;
     };
+  };
+  scheduler: {
+    health: PageHealth;
+    hints: SchedulerHint[];
   };
   traceLog: string;
 };
@@ -36,9 +59,9 @@ export async function fetchHomeFragmentSlots({
     requestId: ctx.requestId,
   });
   const featuredContent = defineDataSource({
-    id: "home-featured-content",
+    id: FEATURED_CONTENT_ID,
     dependency: {
-      id: "home-featured-content",
+      id: FEATURED_CONTENT_ID,
       owner: "page",
       source: "server-function",
       freshness: "isr",
@@ -60,20 +83,40 @@ export async function fetchHomeFragmentSlots({
     trace,
     sources: [featuredContent],
   });
-  const [firstFeaturedContent, secondFeaturedContent] = await Promise.all([
-    dataClient.readData<{ title: string }>("home-featured-content", {
-      route: "home",
-    }),
-    dataClient.readData<{ title: string }>("home-featured-content", {
-      route: "home",
-    }),
-  ]);
-  const slots = await fetchFragmentSlots({
+
+  // Shared read result for the featured-content data node. The scheduler
+  // exposes it as a single data dependency; both the slot that requires it and
+  // the diagnostics panel below read the same deduped result.
+  const featuredReads: {
+    first: DataReadResult<{ title: string }> | null;
+    second: DataReadResult<{ title: string }> | null;
+  } = { first: null, second: null };
+
+  const execution = await executeFragmentSlots({
     registry: fragmentRegistry,
     ctx,
     fetchImpl,
     timeoutMs,
     trace,
+    onRequiredFailure: "fallback",
+    dataDependencies: [{ id: FEATURED_CONTENT_ID, dependsOn: [] }],
+    resolveData: async (id) => {
+      if (id !== FEATURED_CONTENT_ID)
+        throw new Error(`unknown data dependency "${id}"`);
+      // Two concurrent reads of the same source prove request-level dedupe:
+      // the second read observes the first read's in-flight loader ("pending").
+      const [first, second] = await Promise.all([
+        dataClient.readData<{ title: string }>(FEATURED_CONTENT_ID, {
+          route: "home",
+        }),
+        dataClient.readData<{ title: string }>(FEATURED_CONTENT_ID, {
+          route: "home",
+        }),
+      ]);
+      featuredReads.first = first;
+      featuredReads.second = second;
+      return first.data;
+    },
     slots: [
       {
         name: "staticEditorial",
@@ -88,6 +131,12 @@ export async function fetchHomeFragmentSlots({
         channel: "stable",
         strategy: "cached-ssr",
         timeoutMs,
+        // Required: if the promotion fragment fails the whole page is reported
+        // as unhealthy (a required capability is missing), not merely degraded.
+        required: true,
+        // Depends on the shared featured-content data node, so the scheduler
+        // resolves that data once and gates this slot behind it.
+        dataDependencies: [FEATURED_CONTENT_ID],
         props: { scene: "home", campaignId: "summer" },
         cachePolicy: {
           ttl: 60,
@@ -101,36 +150,48 @@ export async function fetchHomeFragmentSlots({
         channel: "stable",
         strategy: "dynamic-ssr",
         timeoutMs,
+        // Optional: a failure here only degrades the page and renders a
+        // fallback; it never marks the page unhealthy.
+        required: false,
         props: { scene: "home", limit: 3 },
       },
     ],
   });
+
+  const slots = execution.slots;
+  const featuredTitle =
+    featuredReads.first?.data.title ??
+    (ctx.locale.startsWith("zh") ? "精选内容" : "Featured content");
 
   return {
     staticEditorial: slots.staticEditorial.response.html,
     promotion: slots.promotion.response.html,
     recommendations: slots.recommendations.response.html,
     diagnostics: {
-      staticEditorial: {
-        source: slots.staticEditorial.source,
-        strategy: slots.staticEditorial.strategy,
-      },
-      promotion: {
-        source: slots.promotion.source,
-        strategy: slots.promotion.strategy,
-      },
-      recommendations: {
-        source: slots.recommendations.source,
-        strategy: slots.recommendations.strategy,
-      },
+      staticEditorial: toDiagnostic(slots.staticEditorial),
+      promotion: toDiagnostic(slots.promotion),
+      recommendations: toDiagnostic(slots.recommendations),
     },
     dataDiagnostics: {
       featuredContent: {
-        firstRead: firstFeaturedContent.source,
-        secondRead: secondFeaturedContent.source,
-        title: firstFeaturedContent.data.title,
+        firstRead: featuredReads.first?.source ?? "loader",
+        secondRead: featuredReads.second?.source ?? "pending",
+        title: featuredTitle,
       },
     },
+    scheduler: {
+      health: execution.health,
+      hints: execution.hints,
+    },
     traceLog: trace.toDependencyGraphLog(),
+  };
+}
+
+function toDiagnostic(result: FragmentSlotResult): HomeSlotDiagnostic {
+  return {
+    source: result.source,
+    strategy: result.strategy,
+    status: result.status,
+    required: result.slot.required ?? false,
   };
 }

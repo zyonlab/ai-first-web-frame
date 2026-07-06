@@ -1,8 +1,21 @@
-import { createDataClient, defineDataSource } from "@mvp/data";
 import { createRequestTrace } from "@mvp/observability";
 import { createRequestContext } from "@mvp/request-context";
-import { type FragmentSlotResult, fetchFragmentSlots } from "@mvp/runtime";
+import {
+  type DataResolutionResult,
+  executeFragmentSlots,
+  type FragmentSlotResult,
+  type PageHealth,
+  type SchedulerHint,
+} from "@mvp/runtime";
 import { fragmentRegistry } from "../../../platform/fragment-registry/src/registry";
+import {
+  enqueueProductStatsJob,
+  getProductStatsWorker,
+} from "./backgroundJobs";
+import {
+  type RecentlyViewedResult,
+  trackRecentlyViewed,
+} from "./recentlyViewed";
 
 export type ProductFragmentHtml = {
   staticProof: string | null;
@@ -16,6 +29,20 @@ export type ProductFragmentHtml = {
       label: string;
     };
   };
+  /** DAG data-dependency diagnostics from executeFragmentSlots. */
+  dag: {
+    health: PageHealth;
+    hints: SchedulerHint[];
+    /** Number of times each data node's resolver was invoked (dedupe proof). */
+    resolveCounts: Record<string, number>;
+    data: Record<string, DataResolutionResult["status"]>;
+  };
+  recentlyViewed: RecentlyViewedResult;
+  backgroundJobs: {
+    taskId: string;
+    status: string;
+    stats: { queued: number; running: number; deadLetters: number };
+  };
   traceLog: string;
 };
 
@@ -23,57 +50,59 @@ type FetchProductFragmentSlotsOptions = {
   headers?: Headers;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
+  cookieHeader?: string;
+  productId?: string;
+  /** Await the background job before returning (tests/demo determinism). */
+  awaitBackgroundJob?: boolean;
+  now?: () => number;
 };
 
 export async function fetchProductFragmentSlots({
   headers,
   fetchImpl,
   timeoutMs = 200,
+  cookieHeader = headers?.get("cookie") ?? "",
+  productId = "123",
+  awaitBackgroundJob = false,
+  now,
 }: FetchProductFragmentSlotsOptions = {}): Promise<ProductFragmentHtml> {
   const ctx = createRequestContext({ headers });
   const trace = createRequestTrace({
     traceId: ctx.traceId,
     requestId: ctx.requestId,
   });
-  const productSummary = defineDataSource({
-    id: "product-summary",
-    dependency: {
-      id: "product-summary",
-      owner: "page",
-      source: "server-function",
-      freshness: "isr",
-      privacy: "tenant",
-      cachePolicy: {
-        ttl: 300,
-        tags: ["product", "summary"],
-        vary: ["tenant", "locale", "props"],
-      },
-      invalidationTags: ["product:summary"],
-      dependsOn: [],
-    },
-    load: async () => ({
-      label: ctx.locale.startsWith("zh") ? "商品摘要" : "Product summary",
-    }),
-  });
-  const dataClient = createDataClient({
-    ctx,
-    trace,
-    sources: [productSummary],
-  });
-  const [firstProductSummary, secondProductSummary] = await Promise.all([
-    dataClient.readData<{ label: string }>("product-summary", {
-      route: "product",
-    }),
-    dataClient.readData<{ label: string }>("product-summary", {
-      route: "product",
-    }),
-  ]);
-  const slots = await fetchFragmentSlots({
+
+  // --- DAG data dependencies -------------------------------------------------
+  // product-summary is the root; price and promotion data both depend on it.
+  // resolveData is invoked at most once per node, which we assert via counts.
+  const resolveCounts: Record<string, number> = {
+    "product-summary": 0,
+    "product-price": 0,
+    "product-promotion": 0,
+  };
+  const summaryLabel = ctx.locale.startsWith("zh")
+    ? "商品摘要"
+    : "Product summary";
+  const resolveData = async (id: string): Promise<unknown> => {
+    resolveCounts[id] = (resolveCounts[id] ?? 0) + 1;
+    if (id === "product-summary") return { label: summaryLabel, productId };
+    if (id === "product-price") return { price: "$79" };
+    if (id === "product-promotion") return { campaignId: "product-launch" };
+    return undefined;
+  };
+
+  const execution = await executeFragmentSlots({
     registry: fragmentRegistry,
     ctx,
     fetchImpl,
     timeoutMs,
     trace,
+    dataDependencies: [
+      { id: "product-summary", dependsOn: [] },
+      { id: "product-price", dependsOn: ["product-summary"] },
+      { id: "product-promotion", dependsOn: ["product-summary"] },
+    ],
+    resolveData,
     slots: [
       {
         name: "staticProof",
@@ -88,6 +117,7 @@ export async function fetchProductFragmentSlots({
         channel: "stable",
         strategy: "isr",
         timeoutMs,
+        dataDependencies: ["product-promotion"],
         props: { scene: "product", campaignId: "product-launch" },
         cachePolicy: {
           ttl: 300,
@@ -101,10 +131,38 @@ export async function fetchProductFragmentSlots({
         channel: "stable",
         strategy: "dynamic-ssr",
         timeoutMs,
+        dataDependencies: ["product-price"],
         props: { scene: "product", limit: 3 },
       },
     ],
   });
+
+  const slots = execution.slots;
+
+  // --- Signed cookie storage (recently viewed) ------------------------------
+  const recentlyViewed = await trackRecentlyViewed({
+    ctx,
+    productId,
+    cookieHeader,
+  });
+
+  // --- Background worker (recompute stats / warm recommendations) -----------
+  const worker = getProductStatsWorker(now);
+  const job = enqueueProductStatsJob({
+    productId,
+    tenant: ctx.tenant,
+    traceId: ctx.traceId,
+    requestId: ctx.requestId,
+    now,
+  });
+  let jobStatus = "queued";
+  if (awaitBackgroundJob) {
+    const result = await job.completion;
+    jobStatus = result.status;
+  }
+
+  const summaryData = execution.data["product-summary"];
+  const summaryValue = (summaryData?.value ?? {}) as { label?: string };
 
   return {
     staticProof: slots.staticProof.response.html,
@@ -126,10 +184,29 @@ export async function fetchProductFragmentSlots({
     },
     dataDiagnostics: {
       productSummary: {
-        firstRead: firstProductSummary.source,
-        secondRead: secondProductSummary.source,
-        label: firstProductSummary.data.label,
+        // The DAG resolves product-summary exactly once even though two slots
+        // depend on data derived from it.
+        firstRead: summaryData?.status ?? "error",
+        secondRead: `resolved x${resolveCounts["product-summary"]}`,
+        label: summaryValue.label ?? summaryLabel,
       },
+    },
+    dag: {
+      health: execution.health,
+      hints: execution.hints,
+      resolveCounts,
+      data: Object.fromEntries(
+        Object.entries(execution.data).map(([id, result]) => [
+          id,
+          result.status,
+        ]),
+      ),
+    },
+    recentlyViewed,
+    backgroundJobs: {
+      taskId: job.taskId,
+      status: jobStatus,
+      stats: worker.stats(),
     },
     traceLog: trace.toDependencyGraphLog(),
   };

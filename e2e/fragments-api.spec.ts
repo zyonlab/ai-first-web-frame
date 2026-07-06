@@ -30,7 +30,9 @@ for (const service of services) {
     test("GET /health returns ok JSON", async ({ request }) => {
       const response = await request.get(`${service.baseUrl}/health`);
       expect(response.status()).toBe(200);
-      expect(await response.json()).toEqual({
+      // Fragments also expose uptimeMs on /health; match the stable contract
+      // fields without pinning the exact object shape.
+      expect(await response.json()).toMatchObject({
         status: "ok",
         service: service.name,
       });

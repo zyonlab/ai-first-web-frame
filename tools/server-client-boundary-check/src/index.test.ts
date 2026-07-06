@@ -92,6 +92,54 @@ describe("server-client-boundary-check", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
+  it("allows a Next page-app server component to import a local client island", () => {
+    const root = tempRoot("island-ok");
+    write(
+      join(root, "apps/page-home/app/Island.tsx"),
+      '"use client";\nexport function Island() { return null; }\n',
+    );
+    write(
+      join(root, "apps/page-home/app/page.tsx"),
+      'import { Island } from "./Island";\nexport default function Page() { return null; }\n',
+    );
+    const report = runBoundaryCheck({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    expect(
+      report.issues.some((i) => i.code === "server-imports-client-module"),
+    ).toBe(false);
+    expect(report.status).toBe("pass");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("still fails when a fastify fragment imports a local client module", () => {
+    const root = tempRoot("island-fragment");
+    write(
+      join(root, "fragments/promo/src/Island.tsx"),
+      '"use client";\nexport function Island() { return null; }\n',
+    );
+    write(
+      join(root, "fragments/promo/src/server.ts"),
+      'import { Island } from "./Island";\nexport const server = Island;\n',
+    );
+    const report = runBoundaryCheck({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    expect(
+      report.issues.some((i) => i.code === "server-imports-client-module"),
+    ).toBe(true);
+    expect(report.status).toBe("fail");
+    rmSync(root, { recursive: true, force: true });
+  });
+
   it("writes a stable report shape", () => {
     const root = tempRoot("report");
     write(

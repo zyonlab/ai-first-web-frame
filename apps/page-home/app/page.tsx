@@ -1,7 +1,9 @@
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import { fetchHomeFragmentSlots } from "../src/fragmentSlots";
+import { computeRealtimeSnapshot } from "../src/realtimeInsights";
 import { homeSeoCopy } from "../src/render";
+import { RealtimeInsights } from "./RealtimeInsights";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,8 @@ export default async function HomePage() {
   const fragmentHtml = await fetchHomeFragmentSlots({
     headers: await headers(),
   });
+  // Deterministic SSR first paint for the realtime island: readable with no JS.
+  const initialSnapshot = computeRealtimeSnapshot("all", 0);
 
   return (
     <main data-page="home">
@@ -28,6 +32,37 @@ export default async function HomePage() {
         <h1>{homeSeoCopy.title}</h1>
         <p>{homeSeoCopy.description}</p>
         <p>{homeSeoCopy.body}</p>
+      </section>
+      <section data-scheduler-health="home">
+        <h2>Scheduler health &amp; hints</h2>
+        <p>
+          Page health:{" "}
+          <span data-field="health">{fragmentHtml.scheduler.health}</span>
+        </p>
+        <ul data-field="slot-status">
+          {Object.entries(fragmentHtml.diagnostics).map(([name, diag]) => (
+            <li key={name} data-slot={name}>
+              {name}: {diag.status}
+              {diag.required ? " (required)" : " (optional)"}
+            </li>
+          ))}
+        </ul>
+        <div data-field="scheduler-hints">
+          {fragmentHtml.scheduler.hints.length === 0 ? (
+            <p data-hints="empty">No waterfall hints: the plan is optimal.</p>
+          ) : (
+            <ul>
+              {fragmentHtml.scheduler.hints.map((hint) => (
+                <li
+                  key={`${hint.kind}:${hint.slots.join(",")}`}
+                  data-hint={hint.kind}
+                >
+                  {hint.message}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
       <section data-render-strategies="home">
         <h2>Render strategy samples</h2>
@@ -64,6 +99,7 @@ export default async function HomePage() {
           </section>
         }
       />
+      <RealtimeInsights initialSnapshot={initialSnapshot} />
       <section>
         <h2>No-JS readable collection</h2>
         <p>

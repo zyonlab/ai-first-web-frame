@@ -1,5 +1,10 @@
 import { pathToFileURL } from "node:url";
-import Fastify from "fastify";
+import {
+  createRequestTrace,
+  exportTrace as defaultExportTrace,
+  type RequestTrace,
+} from "@mvp/observability";
+import Fastify, { type FastifyRequest } from "fastify";
 import { fragmentRegistry } from "../../../platform/fragment-registry/src/registry";
 import {
   matchRoute,
@@ -7,36 +12,131 @@ import {
 } from "../../../platform/route-registry/src/registry";
 import { createFragmentHeaders, createShellRequestContext } from "./context";
 import { createNotFoundFallback, createShellFallback } from "./fallback";
+import {
+  createContentSecurityPolicy,
+  createNonce,
+  createShellMetrics,
+  ensureTraceExportConfigured,
+  isMeteredRoute,
+  PROMETHEUS_CONTENT_TYPE,
+  type ShellMetrics,
+} from "./observability";
 
-export function buildServer() {
+export type BuildServerOptions = {
+  /** Monotonic clock in milliseconds, injected for deterministic tests. */
+  now?: () => number;
+  /** Shared process-level metrics surface; a fresh one is created by default. */
+  metrics?: ShellMetrics;
+  /** Per-request CSP nonce factory, overridable in tests. */
+  nonceFactory?: () => string;
+  /** Trace export sink; defaults to the globally configured pipeline. */
+  exportTrace?: typeof defaultExportTrace;
+};
+
+/** Per-request observability state carried between hooks. */
+type RequestState = {
+  nonce: string;
+  routeTemplate: string;
+  startedAtMs: number;
+  trace?: RequestTrace;
+};
+
+const requestState = new WeakMap<FastifyRequest, RequestState>();
+
+export function buildServer(options: BuildServerOptions = {}) {
+  const now = options.now ?? (() => performance.now());
+  const metrics = options.metrics ?? createShellMetrics();
+  const nonceFactory = options.nonceFactory ?? createNonce;
+  const exportTrace = options.exportTrace ?? defaultExportTrace;
+  const bootMs = now();
+
   const server = Fastify({ logger: false });
 
-  server.addHook("onRequest", async (_request, reply) => {
+  server.addHook("onRequest", async (request, reply) => {
+    const nonce = nonceFactory();
+    requestState.set(request, {
+      nonce,
+      routeTemplate: request.url,
+      startedAtMs: now(),
+    });
     reply.header("x-content-type-options", "nosniff");
     reply.header("x-frame-options", "DENY");
     reply.header("referrer-policy", "strict-origin-when-cross-origin");
     reply.header("x-shell-cache", "route-registry");
+    reply.header("content-security-policy", createContentSecurityPolicy(nonce));
+  });
+
+  server.addHook("onResponse", async (request, reply) => {
+    const state = requestState.get(request);
+    if (!state) return;
+    const durationMs = now() - state.startedAtMs;
+    if (isMeteredRoute(state.routeTemplate)) {
+      metrics.http.recordRequest({
+        method: request.method,
+        route: state.routeTemplate,
+        statusCode: reply.statusCode,
+        durationMs,
+      });
+    }
+    if (state.trace) {
+      // Fire-and-forget so trace export never blocks the response body.
+      void exportTrace(state.trace).catch(() => {
+        /* exporters own their error reporting */
+      });
+    }
   });
 
   server.get("/health", async () => ({
     status: "ok",
     service: "shell-gateway",
+    uptimeMs: Math.max(0, now() - bootMs),
   }));
+
+  server.get("/metrics", async (_request, reply) => {
+    reply.type(PROMETHEUS_CONTENT_TYPE);
+    return metrics.registry.toPrometheusText();
+  });
+
   server.get("/manifest/routes", async () => routeRegistry);
   server.get("/manifest/fragments", async () => fragmentRegistry);
 
   server.get("/*", async (request, reply) => {
     const ctx = createShellRequestContext(request);
+    const trace = createRequestTrace({
+      traceId: ctx.traceId,
+      requestId: ctx.requestId,
+      now,
+    });
+    const requestSpan = trace.startSpan("shell.compose", "request", {
+      attributes: { method: request.method },
+    });
+
     reply.header("x-trace-id", ctx.traceId);
     reply.header("server-timing", "shell;dur=1");
 
     const pathname = new URL(request.url, "http://shell.local").pathname;
+    const routeSpan = trace.startSpan("shell.route.match", "custom", {
+      parentId: requestSpan,
+      attributes: { pathname },
+    });
     const route = matchRoute(pathname);
+    trace.endSpan(routeSpan, {
+      status: route ? "ok" : "error",
+      attributes: { matched: Boolean(route), page: route?.page },
+    });
+
+    setRequestTrace(request, trace, route?.path ?? "unmatched");
+
     if (!route) {
+      trace.endSpan(requestSpan, { status: "error" });
       reply.code(404).type("text/html");
       return createNotFoundFallback(pathname);
     }
 
+    const upstreamSpan = trace.startSpan("shell.upstream.fetch", "network", {
+      parentId: requestSpan,
+      attributes: { page: route.page, serviceUrl: route.serviceUrl },
+    });
     try {
       const response = await fetch(`${route.serviceUrl}${pathname}`, {
         headers: createFragmentHeaders(ctx),
@@ -45,27 +145,55 @@ export function buildServer() {
       if (!response.ok)
         throw new Error(`page ${route.page} returned ${response.status}`);
 
+      trace.endSpan(upstreamSpan, {
+        status: "ok",
+        attributes: { statusCode: response.status },
+      });
+      trace.endSpan(requestSpan, { status: "ok" });
+
       reply
         .code(response.status)
         .type(response.headers.get("content-type") ?? "text/html");
       const body = await response.text();
-      return decorateShellHtml(body, pathname, route.page);
+      const state = requestState.get(request);
+      return decorateShellHtml(body, pathname, route.page, state?.nonce);
     } catch (error) {
+      const reason =
+        error instanceof Error ? error.message : "page proxy failed";
+      trace.endSpan(upstreamSpan, {
+        status: "error",
+        attributes: { error: reason },
+      });
+      trace.endSpan(requestSpan, { status: "error" });
       reply.code(502).type("text/html");
-      return createShellFallback(
-        pathname,
-        ctx.traceId,
-        error instanceof Error ? error.message : "page proxy failed",
-      );
+      return createShellFallback(pathname, ctx.traceId, reason);
     }
   });
 
   return server;
 }
 
-function decorateShellHtml(html: string, pathname: string, page: string) {
+function setRequestTrace(
+  request: FastifyRequest,
+  trace: RequestTrace,
+  routeTemplate: string,
+) {
+  const state = requestState.get(request);
+  if (state) {
+    state.trace = trace;
+    state.routeTemplate = routeTemplate;
+  }
+}
+
+function decorateShellHtml(
+  html: string,
+  pathname: string,
+  page: string,
+  nonce?: string,
+) {
   if (!html.includes("<body")) return html;
-  const marker = `<div data-shell-gateway="true" style="font-family:system-ui,sans-serif;background:#111;color:#fff;padding:8px 14px;font-size:13px">Shell gateway route: <strong>${escapeHtml(pathname)}</strong> -> ${escapeHtml(page)}</div>`;
+  const nonceAttr = nonce ? ` nonce="${escapeHtml(nonce)}"` : "";
+  const marker = `<div data-shell-gateway="true"${nonceAttr} style="font-family:system-ui,sans-serif;background:#111;color:#fff;padding:8px 14px;font-size:13px">Shell gateway route: <strong>${escapeHtml(pathname)}</strong> -> ${escapeHtml(page)}</div>`;
   return html.replace(/<body([^>]*)>/, `<body$1>${marker}`);
 }
 
@@ -81,6 +209,7 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
+  ensureTraceExportConfigured();
   const port = Number(process.env.PORT ?? 4100);
   const server = buildServer();
   await server.listen({ host: "0.0.0.0", port });

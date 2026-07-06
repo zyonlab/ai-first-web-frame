@@ -228,12 +228,20 @@ function auditSourceImports(
         !hasUseClient(source) &&
         isClientOnlyImport(root, file, specifier, config.clientOnlyPackages)
       ) {
-        issues.push({
-          code: "client-only-dependency-in-server",
-          severity: "fail",
-          file: relativeFile,
-          detail: `server file imports client-only module ${specifier}`,
-        });
+        // Next.js App Router server components may import and render a local
+        // "use client" component — that is the island boundary, and the bundler
+        // serializes props across it. Only allow this for local modules inside
+        // the Next page apps; fragments/shell (fastify) and packages still fail.
+        const isLocalIsland =
+          specifier.startsWith(".") && relativeFile.startsWith("apps/page-");
+        if (!isLocalIsland) {
+          issues.push({
+            code: "client-only-dependency-in-server",
+            severity: "fail",
+            file: relativeFile,
+            detail: `server file imports client-only module ${specifier}`,
+          });
+        }
       }
     }
     const browserCapable = config.browserCapablePackages.some((prefix) =>

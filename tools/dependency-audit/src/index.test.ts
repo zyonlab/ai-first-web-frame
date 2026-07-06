@@ -167,4 +167,37 @@ describe("dependency-audit", () => {
     ).toContain("Dependency Audit Report");
     rmSync(root, { recursive: true, force: true });
   });
+
+  it("allows a Next page-app server component to import a local client island but not a fragment", () => {
+    const root = tempRoot("island");
+    write(
+      join(root, "apps/page-home/app/Island.tsx"),
+      '"use client";\nexport function Island() { return null; }\n',
+    );
+    write(
+      join(root, "apps/page-home/app/page.tsx"),
+      'import { Island } from "./Island";\nexport default function Page() { return null; }\n',
+    );
+    write(
+      join(root, "fragments/promo/src/Island.tsx"),
+      '"use client";\nexport function Island() { return null; }\n',
+    );
+    write(
+      join(root, "fragments/promo/src/server.ts"),
+      'import { Island } from "./Island";\nexport const server = Island;\n',
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    const clientOnly = report.issues.filter(
+      (issue) => issue.code === "client-only-dependency-in-server",
+    );
+    expect(clientOnly).toHaveLength(1);
+    expect(clientOnly[0].file).toBe("fragments/promo/src/server.ts");
+    rmSync(root, { recursive: true, force: true });
+  });
 });

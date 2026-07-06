@@ -1,8 +1,13 @@
+import type { RequestContext } from "@mvp/contracts";
+import type { RequestTrace } from "@mvp/observability";
+import { createRequestContext } from "@mvp/request-context";
+import { loadRecommendations, recommendationCatalogSize } from "./data";
 import { recommendationWidgetManifest } from "./manifest";
 
 export type RecommendationRenderRequest = {
   ctx?: {
     locale?: string;
+    tenant?: string;
     traceId?: string;
   };
   props?: {
@@ -11,29 +16,54 @@ export type RecommendationRenderRequest = {
   };
 };
 
-const products = [
-  { id: "sku-1", title: "Everyday Travel Pack", price: "$79" },
-  { id: "sku-2", title: "Modular Desk Lamp", price: "$48" },
-  { id: "sku-3", title: "Noise Soft Earbuds", price: "$129" },
-  { id: "sku-4", title: "Trail Bottle", price: "$24" },
-];
+export type RecommendationRenderOptions = {
+  /** Active request trace; a render span is recorded when provided. */
+  trace?: RequestTrace;
+};
 
-export function renderRecommendationWidget(
+function toRequestContext(
+  ctx: RecommendationRenderRequest["ctx"],
+): RequestContext {
+  return createRequestContext({
+    headers: {
+      "x-locale": ctx?.locale ?? "en-US",
+      "x-tenant": ctx?.tenant ?? "default",
+      ...(ctx?.traceId ? { "x-trace-id": ctx.traceId } : {}),
+    },
+  });
+}
+
+export async function renderRecommendationWidget(
   request: RecommendationRenderRequest,
+  options: RecommendationRenderOptions = {},
 ) {
+  const { trace } = options;
+  const renderSpan = trace?.startSpan(
+    "render:recommendation-widget",
+    "fragment",
+    { attributes: { fragment: recommendationWidgetManifest.name } },
+  );
+
   try {
+    const ctx = toRequestContext(request.ctx);
     const limit = Math.max(
       1,
-      Math.min(request.props?.limit ?? 3, products.length),
+      Math.min(request.props?.limit ?? 3, recommendationCatalogSize),
     );
     const scene = request.props?.scene ?? "home";
+
+    const products = await loadRecommendations(ctx, { limit, scene }, trace);
     const cards = products
-      .slice(0, limit)
       .map(
         (product) =>
           `<article data-product-id="${product.id}"><h3>${escapeHtml(product.title)}</h3><p>${product.price}</p></article>`,
       )
       .join("");
+
+    trace?.endSpan(renderSpan ?? "", {
+      status: "ok",
+      attributes: { scene, limit, count: products.length, propsValid: true },
+    });
 
     return {
       statusCode: 200,
@@ -51,6 +81,12 @@ export function renderRecommendationWidget(
       },
     };
   } catch (error) {
+    trace?.endSpan(renderSpan ?? "", {
+      status: "error",
+      attributes: {
+        error: error instanceof Error ? error.message : "render failed",
+      },
+    });
     return {
       statusCode: 200,
       body: createRecommendationFallback(
