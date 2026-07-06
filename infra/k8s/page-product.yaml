@@ -7,7 +7,7 @@ metadata:
   name: page-product
   labels:
     app.kubernetes.io/name: page-product
-    app.kubernetes.io/part-of: ai-micro-component-mvp
+    app.kubernetes.io/part-of: ai-first-web-frame
 spec:
   replicas: 2
   selector:

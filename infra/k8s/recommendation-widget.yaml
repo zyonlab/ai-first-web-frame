@@ -7,7 +7,7 @@ metadata:
   name: recommendation-widget
   labels:
     app.kubernetes.io/name: recommendation-widget
-    app.kubernetes.io/part-of: ai-micro-component-mvp
+    app.kubernetes.io/part-of: ai-first-web-frame
 spec:
   replicas: 2
   selector:
