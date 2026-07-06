@@ -19,6 +19,7 @@
     "apps/page-product/app/layout.tsx",
     "apps/page-product/app/page.tsx",
     "apps/page-product/app/product/[id]/page.tsx",
+    "apps/page-product/middleware.ts",
     "apps/page-product/next-env.d.ts",
     "apps/page-product/src/backgroundJobs.ts",
     "apps/page-product/src/budget.ts",

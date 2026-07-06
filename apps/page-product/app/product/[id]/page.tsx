@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import Image from "next/image";
 import { getProduct } from "../../../src/catalog";
 import { fetchProductFragmentSlots } from "../../../src/fragmentSlots";
@@ -39,17 +39,9 @@ export default async function ProductPage({
     productId: id,
   });
 
-  // Persist the signed recently-viewed cookie back onto the response.
-  const cookieStore = await cookies();
-  for (const write of fragmentHtml.recentlyViewed.cookieWrites) {
-    cookieStore.set(write.name, write.value, {
-      maxAge: write.maxAge,
-      httpOnly: write.httpOnly,
-      secure: write.secure,
-      sameSite: write.sameSite,
-      path: write.path,
-    });
-  }
+  // The signed recently-viewed cookie is written in middleware (App Router
+  // forbids cookie mutation during a Server Component render); here we only
+  // read and display the computed list.
 
   return (
     <main data-page="product" data-product-id={product.id}>

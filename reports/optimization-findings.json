@@ -56,8 +56,9 @@
   ],
   "traces": {
     "dir": "reports/traces",
-    "filesRead": 1,
-    "snapshotCount": 1,
-    "skippedLines": 0
+    "filesRead": 0,
+    "snapshotCount": 0,
+    "skippedLines": 0,
+    "note": "no runtime traces found; trace-based rules skipped"
   }
 }

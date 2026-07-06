@@ -2,7 +2,7 @@
 
 Status: warn
 
-Traces: 1 snapshot(s) from reports/traces (1 file(s), 0 malformed line(s) skipped)
+Traces: no runtime traces found; trace-based rules skipped
 
 ## INFO (3)
 
