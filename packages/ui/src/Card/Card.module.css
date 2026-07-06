@@ -1,0 +1,8 @@
+.card {
+  border: 1px solid
+    color-mix(in srgb, var(--mvp-color-ink, #15171a) 16%, transparent);
+  border-radius: var(--mvp-radius-md, 8px);
+  background: var(--mvp-color-paper, #fbfaf7);
+  box-shadow: var(--mvp-shadow-raised, 0 12px 30px rgba(21, 23, 26, 0.14));
+  padding: var(--mvp-spacing-md, 16px);
+}

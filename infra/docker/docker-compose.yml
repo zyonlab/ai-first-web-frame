@@ -1,0 +1,60 @@
+services:
+  shell-gateway:
+    build:
+      context: ../..
+      dockerfile: apps/shell-gateway/Dockerfile
+    ports:
+      - "4100:4100"
+    environment:
+      PORT: "4100"
+      PAGE_HOME_URL: "http://page-home:4101"
+      PAGE_PRODUCT_URL: "http://page-product:4102"
+    depends_on:
+      - page-home
+      - page-product
+
+  page-home:
+    build:
+      context: ../..
+      dockerfile: apps/page-home/Dockerfile
+    ports:
+      - "4101:4101"
+    environment:
+      PORT: "4101"
+      PROMOTION_BANNER_URL: "http://promotion-banner:4201"
+      RECOMMENDATION_WIDGET_URL: "http://recommendation-widget:4202"
+    depends_on:
+      - promotion-banner
+      - recommendation-widget
+
+  page-product:
+    build:
+      context: ../..
+      dockerfile: apps/page-product/Dockerfile
+    ports:
+      - "4102:4102"
+    environment:
+      PORT: "4102"
+      PROMOTION_BANNER_URL: "http://promotion-banner:4201"
+      RECOMMENDATION_WIDGET_URL: "http://recommendation-widget:4202"
+    depends_on:
+      - promotion-banner
+      - recommendation-widget
+
+  promotion-banner:
+    build:
+      context: ../..
+      dockerfile: fragments/promotion-banner/Dockerfile
+    ports:
+      - "4201:4201"
+    environment:
+      PORT: "4201"
+
+  recommendation-widget:
+    build:
+      context: ../..
+      dockerfile: fragments/recommendation-widget/Dockerfile
+    ports:
+      - "4202:4202"
+    environment:
+      PORT: "4202"

@@ -1,0 +1,42 @@
+{
+  "tool": "optimization-audit",
+  "status": "warn",
+  "findings": [
+    {
+      "id": "static-slot-recommendations",
+      "severity": "info",
+      "category": "ssg",
+      "message": "Slot \"recommendations\" has no declared dependencies and may not need dynamic SSR.",
+      "target": "recommendations",
+      "evidence": {
+        "fragment": "recommendation-widget",
+        "props": {}
+      },
+      "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
+    },
+    {
+      "id": "static-slot-recommendations",
+      "severity": "info",
+      "category": "ssg",
+      "message": "Slot \"recommendations\" has no declared dependencies and may not need dynamic SSR.",
+      "target": "recommendations",
+      "evidence": {
+        "fragment": "recommendation-widget",
+        "props": {}
+      },
+      "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
+    },
+    {
+      "id": "static-slot-price-panel",
+      "severity": "info",
+      "category": "ssg",
+      "message": "Slot \"price-panel\" has no declared dependencies and may not need dynamic SSR.",
+      "target": "price-panel",
+      "evidence": {
+        "fragment": "price-panel",
+        "props": {}
+      },
+      "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
+    }
+  ]
+}

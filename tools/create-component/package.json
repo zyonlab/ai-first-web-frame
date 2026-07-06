@@ -1,0 +1,11 @@
+{
+  "name": "@mvp/create-component",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "pnpm -w exec tsx tools/create-component/src/index.ts",
+    "test": "pnpm -w exec vitest run tools/create-component/src/index.test.ts",
+    "test:watch": "pnpm -w exec vitest tools/create-component/src/index.test.ts"
+  }
+}

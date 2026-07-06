@@ -1,0 +1,14 @@
+{
+  "name": "@mvp/optimization-audit",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "pnpm -w exec tsx tools/optimization-audit/src/index.ts",
+    "test": "pnpm -w exec vitest run tools/optimization-audit/src/index.test.ts",
+    "test:watch": "pnpm -w exec vitest tools/optimization-audit/src/index.test.ts"
+  },
+  "dependencies": {
+    "@mvp/optimizer": "workspace:*"
+  }
+}

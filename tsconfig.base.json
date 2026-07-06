@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "types": ["node", "vitest/globals"],
+    "paths": {
+      "@mvp/contracts": ["./packages/contracts/src/index.ts"],
+      "@mvp/assets": ["./packages/assets/src/index.ts"],
+      "@mvp/data": ["./packages/data/src/index.ts"],
+      "@mvp/design-tokens": ["./packages/design-tokens/src/index.ts"],
+      "@mvp/observability": ["./packages/observability/src/index.ts"],
+      "@mvp/optimizer": ["./packages/optimizer/src/index.ts"],
+      "@mvp/request": ["./packages/request/src/index.ts"],
+      "@mvp/request-context": ["./packages/request-context/src/index.ts"],
+      "@mvp/runtime": ["./packages/runtime/src/index.ts"],
+      "@mvp/storage": ["./packages/storage/src/index.ts"],
+      "@mvp/ui": ["./packages/ui/src/index.ts"],
+      "@mvp/ui/*": ["./packages/ui/src/*"],
+      "@mvp/workers": ["./packages/workers/src/index.ts"]
+    }
+  }
+}

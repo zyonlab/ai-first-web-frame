@@ -1,0 +1,15 @@
+.card {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: var(--mvp-spacing-md, 16px);
+  align-items: center;
+}
+.title {
+  margin: 0 0 var(--mvp-spacing-xs, 4px);
+  color: var(--mvp-color-ink, #15171a);
+  font: 700 18px / 1.2 var(--mvp-font-body, ui-serif);
+}
+.price {
+  color: var(--mvp-color-accent, #0f766e);
+  font: 700 16px / 1 var(--mvp-font-control, ui-sans-serif);
+}

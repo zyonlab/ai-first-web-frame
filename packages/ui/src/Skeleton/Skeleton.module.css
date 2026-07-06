@@ -1,0 +1,6 @@
+.skeleton {
+  display: block;
+  min-height: 1rem;
+  border-radius: var(--mvp-radius-sm, 4px);
+  background: linear-gradient(90deg, #e7e2d8, #f4efe4, #e7e2d8);
+}

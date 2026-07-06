@@ -1,0 +1,55 @@
+{
+  "name": "@mvp/ui",
+  "version": "0.1.0",
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./Button": {
+      "types": "./dist/Button/index.d.ts",
+      "import": "./dist/Button/index.js"
+    },
+    "./Card": {
+      "types": "./dist/Card/index.d.ts",
+      "import": "./dist/Card/index.js"
+    },
+    "./Image": {
+      "types": "./dist/Image/index.d.ts",
+      "import": "./dist/Image/index.js"
+    },
+    "./ProductCardBase": {
+      "types": "./dist/ProductCardBase/index.d.ts",
+      "import": "./dist/ProductCardBase/index.js"
+    },
+    "./Section": {
+      "types": "./dist/Section/index.d.ts",
+      "import": "./dist/Section/index.js"
+    },
+    "./Skeleton": {
+      "types": "./dist/Skeleton/index.d.ts",
+      "import": "./dist/Skeleton/index.js"
+    }
+  },
+  "scripts": {
+    "test": "pnpm -w exec vitest run packages/ui/src",
+    "test:watch": "pnpm -w exec vitest packages/ui/src",
+    "build": "tsdown src/index.ts src/Button/index.ts src/Card/index.ts src/Image/index.ts src/ProductCardBase/index.ts src/Section/index.ts src/Skeleton/index.ts --format esm --dts",
+    "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mvp/contracts": "workspace:*",
+    "@mvp/design-tokens": "workspace:*",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "react-dom": "^18.3.1",
+    "tsdown": "^0.11.0"
+  }
+}

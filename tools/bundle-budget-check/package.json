@@ -1,0 +1,11 @@
+{
+  "name": "@mvp/bundle-budget-check",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "pnpm -w exec tsx tools/bundle-budget-check/src/index.ts",
+    "test": "pnpm -w exec vitest run tools/bundle-budget-check/src/index.test.ts",
+    "test:watch": "pnpm -w exec vitest tools/bundle-budget-check/src/index.test.ts"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "@mvp/shell-gateway",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsdown src/server.ts --format esm --platform node --dts",
+    "test": "pnpm -w exec vitest run apps/shell-gateway/tests apps/shell-gateway/src",
+    "test:watch": "pnpm -w exec vitest apps/shell-gateway/tests apps/shell-gateway/src",
+    "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mvp/contracts": "workspace:*",
+    "@mvp/observability": "workspace:*",
+    "@mvp/request-context": "workspace:*",
+    "@mvp/runtime": "workspace:*",
+    "fastify": "^4.28.1"
+  },
+  "devDependencies": {
+    "tsdown": "^0.11.0"
+  }
+}

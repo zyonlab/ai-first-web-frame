@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendation-widget
+  labels:
+    app.kubernetes.io/name: recommendation-widget
+    app.kubernetes.io/part-of: ai-micro-component-mvp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: recommendation-widget
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: recommendation-widget
+    spec:
+      containers:
+        - name: recommendation-widget
+          image: recommendation-widget:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4202
+          env:
+            - name: PORT
+              value: "4202"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4202
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendation-widget
+spec:
+  selector:
+    app.kubernetes.io/name: recommendation-widget
+  ports:
+    - name: http
+      port: 4202
+      targetPort: 4202

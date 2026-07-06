@@ -1,0 +1,8 @@
+.button {
+  border: 1px solid var(--mvp-color-ink, #15171a);
+  border-radius: var(--mvp-radius-sm, 4px);
+  background: var(--mvp-color-ink, #15171a);
+  color: var(--mvp-color-paper, #fbfaf7);
+  font: 600 14px / 1 var(--mvp-font-control, ui-sans-serif);
+  padding: var(--mvp-spacing-sm, 8px) var(--mvp-spacing-md, 16px);
+}

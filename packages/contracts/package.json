@@ -1,0 +1,26 @@
+{
+  "name": "@mvp/contracts",
+  "version": "0.1.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "test": "pnpm -w exec vitest run packages/contracts/src",
+    "test:watch": "pnpm -w exec vitest packages/contracts/src",
+    "build": "tsdown src/index.ts --format esm --dts",
+    "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "tsdown": "^0.11.0"
+  }
+}

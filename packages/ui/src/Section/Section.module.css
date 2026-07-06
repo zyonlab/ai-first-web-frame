@@ -1,0 +1,8 @@
+.section {
+  padding: var(--mvp-spacing-lg, 24px) 0;
+}
+.heading {
+  margin: 0 0 var(--mvp-spacing-md, 16px);
+  color: var(--mvp-color-ink, #15171a);
+  font: 700 28px / 1.1 var(--mvp-font-body, ui-serif);
+}

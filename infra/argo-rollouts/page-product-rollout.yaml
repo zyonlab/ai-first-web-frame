@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: page-product
+spec:
+  replicas: 2
+  strategy:
+    canary:
+      steps:
+        - setWeight: 10
+        - pause: { duration: 60s }
+        - setWeight: 50
+        - pause: { duration: 120s }
+  selector:
+    matchLabels:
+      app: page-product
+  template:
+    metadata:
+      labels:
+        app: page-product
+    spec:
+      containers:
+        - name: page-product
+          image: page-product:latest
+          ports:
+            - containerPort: 4102

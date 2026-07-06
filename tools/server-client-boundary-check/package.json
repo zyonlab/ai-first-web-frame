@@ -1,0 +1,11 @@
+{
+  "name": "@mvp/server-client-boundary-check",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "pnpm -w exec tsx tools/server-client-boundary-check/src/index.ts",
+    "test": "pnpm -w exec vitest run tools/server-client-boundary-check/src/index.test.ts",
+    "test:watch": "pnpm -w exec vitest tools/server-client-boundary-check/src/index.test.ts"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@mvp/page-home",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack -p 4101",
+    "start": "next start -p 4101",
+    "build": "next build",
+    "test": "pnpm -w exec vitest run apps/page-home/tests apps/page-home/src",
+    "test:watch": "pnpm -w exec vitest apps/page-home/tests apps/page-home/src",
+    "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mvp/assets": "workspace:*",
+    "@mvp/contracts": "workspace:*",
+    "@mvp/data": "workspace:*",
+    "@mvp/observability": "workspace:*",
+    "@mvp/request-context": "workspace:*",
+    "@mvp/runtime": "workspace:*",
+    "@mvp/ui": "workspace:*",
+    "next": "^15.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

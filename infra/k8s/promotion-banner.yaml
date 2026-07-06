@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: promotion-banner
+  labels:
+    app.kubernetes.io/name: promotion-banner
+    app.kubernetes.io/part-of: ai-micro-component-mvp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: promotion-banner
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: promotion-banner
+    spec:
+      containers:
+        - name: promotion-banner
+          image: promotion-banner:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4201
+          env:
+            - name: PORT
+              value: "4201"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4201
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: promotion-banner
+spec:
+  selector:
+    app.kubernetes.io/name: promotion-banner
+  ports:
+    - name: http
+      port: 4201
+      targetPort: 4201

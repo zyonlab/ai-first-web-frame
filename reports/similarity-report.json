@@ -1,0 +1,14 @@
+{
+  "tool": "component-similarity-check",
+  "status": "pass",
+  "threshold": 0.82,
+  "checkedFiles": [
+    "packages/ui/src/Button/Button.tsx",
+    "packages/ui/src/Card/Card.tsx",
+    "packages/ui/src/Image/Image.tsx",
+    "packages/ui/src/ProductCardBase/ProductCardBase.tsx",
+    "packages/ui/src/Section/Section.tsx",
+    "packages/ui/src/Skeleton/Skeleton.tsx"
+  ],
+  "matches": []
+}

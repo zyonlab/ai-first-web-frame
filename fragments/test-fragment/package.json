@@ -1,0 +1,1 @@
+{"name":"@mvp/fragment-test-fragment","version":"0.1.0","type":"module","private":true,"scripts":{"test":"vitest run src","build":"tsdown src/server.ts --format esm --platform node --dts","start":"node dist/server.js"},"dependencies":{"@mvp/contracts":"workspace:*","fastify":"^4.28.1"},"devDependencies":{"tsdown":"^0.11.0"}}

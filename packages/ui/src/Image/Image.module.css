@@ -1,0 +1,7 @@
+.image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--mvp-radius-sm, 4px);
+  object-fit: cover;
+}
