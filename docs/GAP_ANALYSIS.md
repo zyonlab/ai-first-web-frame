@@ -146,3 +146,32 @@
 ## 5. 一句话概括
 
 这个框架的"合同"写得很好，"履约"集中在生成和本地验证两段。要达成 AI 原生目标，最缺的不是更多 schema，而是**把注册、发布、观测、优化四段从文档和类型变成可执行的脚本与管道**。
+
+## 6. 修复进展（2026-07-06，两波并行修复后）
+
+第 1–4 节是修复前的点位诊断，保留作为历史记录。以下是两波修复后的实际状态。全程 `pnpm verify` 11 项门禁全绿，并有 fragment 运行时冒烟佐证（`/metrics`、`/health` uptime、trace 落盘）。
+
+### 已闭合
+
+| 环节 | 修复内容 |
+| --- | --- |
+| 生成 | `CLAUDE.md` 生命周期操作手册；`register-fragment` / `mount-slot` / `promote-fragment` / `rollback-fragment` 脚本消除两处手工编辑；registry 与 page manifest slots 数据化 |
+| 验证 | v8 coverage 卡死修复（`pool: "forks"`）；Playwright e2e 套件（shell/product/fragments/no-js 约 20 用例） |
+| 发布 | git-diff affected 检测（传播规则）；CI docker 矩阵构建（secrets 门控推送）；K8s probe/limits + kustomize 镜像参数化；Argo 成功率/P95 分析模板；docker 冒烟 CLI |
+| 观测 | Trace 文件/Console/OTLP 导出器 + 采样；Prometheus metrics 注册表；Web Vitals 入口；shell 与两个 fragment 挂 `/metrics` 并导出 trace |
+| 优化 | 优化器消费真实 trace JSONL；新增瀑布流、缓存命中率规则；跨请求聚合升 severity；finding 带精确 location + trace 证据；audit 融合静态 manifest + trace |
+| 运行时 | `executeFragmentSlots` 落地 required/optional 传播、`data.dependsOn` 进 DAG、瀑布流 hint |
+| 数据/存储/Worker | 可插拔 `CacheAdapter`；轮询式 `subscribeData` + 可插拔 transport；真实 storage 适配器（cookie 签名/TTL/分区）；带重试/死信/优雅停止的后台 worker |
+| 交互 | 新建 `@mvp/interaction`：类型化事件总线 + mutation 失效契约 + BroadcastChannel 桥 |
+| Demo | shell/home/product/fragments 端到端展示上述能力（含真实 `use client` 实时岛、跨容器交互、签名 cookie、后台任务、调度 health/hints） |
+| 审计 | 依赖 + 服务端/客户端边界审计新增对 Next.js RSC 孤岛模式的作用域放行（仅 page 应用），fastify fragment/shell 仍拦截；加回归测试 |
+
+### 仍未闭合（后续工作）
+
+- **90% 覆盖率门禁**：coverage 卡死已解，但全仓 90% 达标未逐包验证——阈值仍为 90%，实际覆盖率差距待补。
+- **实时数据传输**：`subscribeData` 走轮询 + 内存 transport；生产级 WebSocket/SSE transport 仅留接口未实现。demo 实时岛用确定性生成器演示订阅链路，非真实推送源。
+- **CI→集群闭环**：Argo 分析模板引用的 `/metrics` 已存在，但金丝雀自动评估需要在集群里跑 Prometheus；CI 应用 kustomize/rollout 镜像更新因无集群凭据未接线。
+- **优化器执行/验证回路**：finding 已带精确定位，但"自动 codemod 改写 + 改后重采 trace 对比"仍是 advisory，未自动改代码。
+- **存储加密**：cookie 签名已实现；`policy.encrypted` 的值加密未实现。
+- **页面级 SSG/ISR**：渲染策略仍在 slot/数据策略级，页面级构建与 CDN 重验证未做。
+- **PRR 生成器**：`docs/PRODUCTION_READINESS_REVIEW.md` 及其生成器仍缺。
