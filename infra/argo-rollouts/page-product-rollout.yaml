@@ -1,3 +1,16 @@
+# Canary rollout for page-product with metric-based analysis.
+#
+# Trigger chain (see docs/RELEASE_MODEL.md for the full release model):
+#   CI (main push) builds page-product:<git-sha> and pushes it to the
+#   registry -> deployment tooling updates spec.template.spec.containers[0]
+#   .image to the new sha tag (e.g. kubectl argo rollouts set image
+#   page-product page-product=$REGISTRY_URL/page-product:$GIT_SHA)
+#   -> Argo Rollouts shifts traffic 10% -> 50% -> 100%, evaluating the
+#   AnalysisTemplates between steps -> a failed analysis aborts the rollout
+#   and reverts traffic to the stable ReplicaSet automatically.
+#
+# The AnalysisTemplates are skeletons until the services expose /metrics
+# (see infra/argo-rollouts/analysis-templates.yaml).
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
@@ -9,8 +22,22 @@ spec:
       steps:
         - setWeight: 10
         - pause: { duration: 60s }
+        - analysis:
+            templates:
+              - templateName: success-rate
+              - templateName: latency-p95
+            args:
+              - name: service-name
+                value: page-product
         - setWeight: 50
         - pause: { duration: 120s }
+        - analysis:
+            templates:
+              - templateName: success-rate
+              - templateName: latency-p95
+            args:
+              - name: service-name
+                value: page-product
   selector:
     matchLabels:
       app: page-product
@@ -21,6 +48,35 @@ spec:
     spec:
       containers:
         - name: page-product
+          # Placeholder tag; the release pipeline pins an immutable
+          # <git-sha> tag via `kubectl argo rollouts set image`.
           image: page-product:latest
           ports:
             - containerPort: 4102
+          env:
+            - name: PORT
+              value: "4102"
+          # No /health on the Next.js app yet; 3xx from / counts as success.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4102
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4102
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

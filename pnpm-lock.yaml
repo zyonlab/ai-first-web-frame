@@ -215,6 +215,16 @@ importers:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260705.1)(typescript@5.9.3)
 
+  packages/interaction:
+    dependencies:
+      '@mvp/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsdown:
+        specifier: ^0.11.0
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260705.1)(typescript@5.9.3)
+
   packages/observability:
     devDependencies:
       tsdown:
@@ -327,6 +337,8 @@ importers:
       '@mvp/optimizer':
         specifier: workspace:*
         version: link:../../packages/optimizer
+
+  tools/release-tools: {}
 
   tools/server-client-boundary-check: {}
 

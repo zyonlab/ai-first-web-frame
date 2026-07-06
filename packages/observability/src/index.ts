@@ -1,3 +1,6 @@
+export * from "./metrics";
+export * from "./traceExport";
+
 type LogSink = {
   events: Array<{ eventName: string; payload: Record<string, unknown> }>;
   write: (eventName: string, payload: Record<string, unknown>) => void;

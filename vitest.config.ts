@@ -13,6 +13,7 @@ export default defineConfig({
       "@mvp/design-tokens": pathFromRoot(
         "./packages/design-tokens/src/index.ts",
       ),
+      "@mvp/interaction": pathFromRoot("./packages/interaction/src/index.ts"),
       "@mvp/observability": pathFromRoot(
         "./packages/observability/src/index.ts",
       ),
@@ -30,6 +31,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "happy-dom",
+    // v8 coverage is only reliable with process isolation: collecting V8
+    // coverage from worker threads is a known source of hangs, so pin the
+    // forks pool instead of relying on the default.
+    pool: "forks",
     include: [
       "packages/**/*.test.ts",
       "packages/**/*.test.tsx",
@@ -42,6 +47,23 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
+      // Keep report output in one gitignored directory at the repo root.
+      reportsDirectory: "./coverage",
+      // NOTE: do not add an explicit `coverage.include` here. With Vitest 4
+      // the default only remaps files imported during the test run; forcing
+      // include globs makes the provider parse never-imported files (e.g.
+      // scaffold/demo .tsx sources) and the remap step fails with a Rollup
+      // PARSE_ERROR on them.
+      exclude: [
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "e2e/**",
+        "scripts/**",
+        "infra/**",
+        "**/*.config.ts",
+      ],
       thresholds: {
         lines: 90,
         functions: 90,

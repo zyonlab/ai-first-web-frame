@@ -236,6 +236,24 @@ export const ReleaseManifestSchema = z.object({
 });
 export type ReleaseManifest = z.infer<typeof ReleaseManifestSchema>;
 
+export const OptimizationFindingLocationSchema = z.object({
+  filePath: z.string().min(1).optional(),
+  manifestPath: z.string().min(1).optional(),
+  slotName: z.string().min(1).optional(),
+  dataKey: z.string().min(1).optional(),
+  fragmentName: z.string().min(1).optional(),
+});
+export type OptimizationFindingLocation = z.infer<
+  typeof OptimizationFindingLocationSchema
+>;
+
+export const OptimizationEvidenceSchema = z.object({
+  traceId: z.string().min(1),
+  spanIds: z.array(z.string()).default([]),
+  measurements: z.record(z.number()).optional(),
+});
+export type OptimizationEvidence = z.infer<typeof OptimizationEvidenceSchema>;
+
 export const OptimizationFindingSchema = z.object({
   id: z.string().min(1),
   severity: z.enum(["info", "low", "medium", "high", "critical"]),
@@ -252,6 +270,8 @@ export const OptimizationFindingSchema = z.object({
   message: z.string().min(1),
   target: z.string().min(1),
   evidence: z.record(z.unknown()).default({}),
+  location: OptimizationFindingLocationSchema.optional(),
+  traceEvidence: z.array(OptimizationEvidenceSchema).optional(),
   recommendation: z.string().min(1),
 });
 export type OptimizationFinding = z.infer<typeof OptimizationFindingSchema>;

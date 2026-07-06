@@ -1,3 +1,6 @@
+# Image tag is parameterized through kustomization.yaml (images transformer).
+# CI/CD sets the release tag with:
+#   kustomize edit set image page-home=$REGISTRY_URL/page-home:$GIT_SHA
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,6 +27,31 @@ spec:
           env:
             - name: PORT
               value: "4101"
+          # The Next.js page app does not expose /health yet (observability
+          # gap); the rendered root page is the probe until it does.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4101
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4101
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
 ---
 apiVersion: v1
 kind: Service

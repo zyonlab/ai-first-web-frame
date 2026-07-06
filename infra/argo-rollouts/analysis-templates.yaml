@@ -1,0 +1,59 @@
+# Analysis template SKELETONS for canary evaluation.
+#
+# Status: the services do not expose a Prometheus /metrics endpoint yet
+# (observability gap, docs/GAP_ANALYSIS.md 2.4), so these templates reference
+# the target metric names the services are expected to publish once
+# instrumentation lands:
+#   - http_requests_total{app,status}            (counter)
+#   - http_request_duration_seconds_bucket{app}  (histogram)
+# scraped from each pod's /metrics on the service port.
+#
+# Until then, applying these templates will produce Inconclusive/Error runs.
+# They document the rollback criteria and are wired into
+# page-product-rollout.yaml so the trigger chain is complete on paper.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+spec:
+  args:
+    - name: service-name
+    - name: prometheus-address
+      value: http://prometheus.monitoring.svc.cluster.local:9090
+  metrics:
+    - name: success-rate
+      interval: 60s
+      count: 5
+      # Fail the canary (and auto-rollback) when success rate drops below 99%.
+      successCondition: len(result) == 0 || result[0] >= 0.99
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: "{{args.prometheus-address}}"
+          query: >
+            sum(rate(http_requests_total{app="{{args.service-name}}", status!~"5.."}[2m]))
+            /
+            sum(rate(http_requests_total{app="{{args.service-name}}"}[2m]))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: latency-p95
+spec:
+  args:
+    - name: service-name
+    - name: prometheus-address
+      value: http://prometheus.monitoring.svc.cluster.local:9090
+  metrics:
+    - name: latency-p95
+      interval: 60s
+      count: 5
+      # Fail the canary (and auto-rollback) when p95 latency exceeds 500ms.
+      successCondition: len(result) == 0 || result[0] <= 0.5
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: "{{args.prometheus-address}}"
+          query: >
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket{app="{{args.service-name}}"}[2m])) by (le))

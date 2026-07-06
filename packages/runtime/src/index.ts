@@ -12,7 +12,14 @@ import { serializeContext } from "@mvp/request-context";
 type RuntimeTrace = {
   startSpan: (
     name: string,
-    kind?: "scheduler" | "fragment" | "network" | "cache" | "static" | "custom",
+    kind?:
+      | "scheduler"
+      | "fragment"
+      | "network"
+      | "cache"
+      | "static"
+      | "data"
+      | "custom",
     options?: {
       parentId?: string;
       attributes?: Record<string, unknown>;
@@ -46,15 +53,61 @@ export type FragmentSlotDefinition = {
     vary?: Array<"tenant" | "locale" | "experiment" | "device" | "props">;
   };
   dependsOn?: string[];
+  dataDependencies?: string[];
   required?: boolean;
 };
+
+export type FragmentSlotStatus = "ok" | "fallback" | "skipped-dependency";
 
 export type FragmentSlotResult = {
   slot: FragmentSlotDefinition;
   strategy: RenderStrategy;
   source: "static" | "cache" | "network" | "fallback";
+  status: FragmentSlotStatus;
   response: FragmentRenderResponse;
   cacheKey?: string;
+};
+
+export type DataDependencyDefinition = {
+  id: string;
+  dependsOn?: string[];
+};
+
+export type ScheduledNode =
+  | { type: "slot"; key: string; slot: FragmentSlotDefinition }
+  | { type: "data"; key: string; id: string; dependsOn: string[] };
+
+export type SchedulerHintKind =
+  | "long-serial-chain"
+  | "unnecessary-barrier"
+  | "duplicate-data-resolution";
+
+export type SchedulerHint = {
+  kind: SchedulerHintKind;
+  slots: string[];
+  data: string[];
+  message: string;
+};
+
+export type SlotDataExecutionPlan = {
+  levels: ScheduledNode[][];
+  hints: SchedulerHint[];
+};
+
+export type PageHealth = "ok" | "degraded" | "unhealthy";
+
+export type DataResolutionResult = {
+  id: string;
+  status: "ok" | "error" | "skipped-dependency";
+  value?: unknown;
+  error?: string;
+};
+
+export type FragmentSlotsExecution = {
+  slots: Record<string, FragmentSlotResult>;
+  data: Record<string, DataResolutionResult>;
+  health: PageHealth;
+  hints: SchedulerHint[];
 };
 
 export type FragmentCache = Map<
@@ -203,16 +256,7 @@ export async function fetchFragment(
   }
 }
 
-export async function fetchFragmentSlots({
-  slots,
-  registry,
-  ctx,
-  fetchImpl,
-  timeoutMs = 200,
-  cache = defaultFragmentCache,
-  now = Date.now,
-  trace,
-}: {
+export type FetchFragmentSlotsOptions = {
   slots: FragmentSlotDefinition[];
   registry: FragmentRegistry;
   ctx: RequestContext;
@@ -221,8 +265,42 @@ export async function fetchFragmentSlots({
   cache?: FragmentCache;
   now?: () => number;
   trace?: RuntimeTrace;
-}): Promise<Record<string, FragmentSlotResult>> {
-  const executionPlan = createFragmentSlotExecutionPlan(slots);
+  dataDependencies?: DataDependencyDefinition[];
+  resolveData?: (id: string) => Promise<unknown> | unknown;
+  dataTimeoutMs?: number;
+  onRequiredFailure?: "fallback" | "throw";
+  maxSerialLevels?: number;
+};
+
+export async function fetchFragmentSlots(
+  options: FetchFragmentSlotsOptions,
+): Promise<Record<string, FragmentSlotResult>> {
+  const execution = await executeFragmentSlots(options);
+  return execution.slots;
+}
+
+const DATA_TIMEOUT = Symbol("data-timeout");
+
+export async function executeFragmentSlots({
+  slots,
+  registry,
+  ctx,
+  fetchImpl,
+  timeoutMs = 200,
+  cache = defaultFragmentCache,
+  now = Date.now,
+  trace,
+  dataDependencies = [],
+  resolveData,
+  dataTimeoutMs,
+  onRequiredFailure = "fallback",
+  maxSerialLevels,
+}: FetchFragmentSlotsOptions): Promise<FragmentSlotsExecution> {
+  const { levels, hints } = createSlotDataExecutionPlan({
+    slots,
+    dataDependencies,
+    maxSerialLevels,
+  });
   const schedulerSpanId = trace?.startSpan(
     "runtime.fetchFragmentSlots",
     "scheduler",
@@ -230,89 +308,373 @@ export async function fetchFragmentSlots({
       attributes: {
         slotCount: slots.length,
         slots: slots.map((slot) => slot.name),
-        levels: executionPlan.map((level) => level.map((slot) => slot.name)),
+        levels: levels.map((level) => level.map((node) => node.key)),
+        schedulerHints: hints,
       },
     },
   );
 
-  const result: Record<string, FragmentSlotResult> = {};
-  for (const level of executionPlan) {
-    const settled = await Promise.allSettled(
-      level.map((slot) =>
-        fetchFragmentSlot({
-          slot,
-          registry,
-          ctx,
-          fetchImpl,
-          timeoutMs,
-          cache,
-          now,
-          trace,
-          parentSpanId: schedulerSpanId,
-        }),
-      ),
-    );
-    for (const [index, settledResult] of settled.entries()) {
-      const slot = level[index];
-      if (settledResult.status === "fulfilled") {
-        result[slot.name] = settledResult.value;
-      } else {
-        result[slot.name] = {
-          slot,
-          strategy: slot.strategy ?? "dynamic-ssr",
-          source: "fallback",
-          response: createFallbackResponse(slot.fragment, "fallback", "error"),
-        };
-      }
+  const slotResults: Record<string, FragmentSlotResult> = {};
+  const dataResults: Record<string, DataResolutionResult> = {};
+  const propagatedFailures = new Set<string>();
+  const failedRequiredSlots: string[] = [];
+  let degraded = false;
+
+  function recordSlotFailure(slot: FragmentSlotDefinition) {
+    degraded = true;
+    if (slot.required) {
+      failedRequiredSlots.push(slot.name);
+      propagatedFailures.add(`slot:${slot.name}`);
     }
   }
 
-  trace?.endSpan(schedulerSpanId ?? "", { status: "ok" });
-  return result;
-}
-
-export function createFragmentSlotExecutionPlan(
-  slots: FragmentSlotDefinition[],
-): FragmentSlotExecutionPlan {
-  const byName = new Map<string, FragmentSlotDefinition>();
-  for (const slot of slots) {
-    if (byName.has(slot.name))
-      throw new Error(`duplicate fragment slot "${slot.name}"`);
-    byName.set(slot.name, slot);
+  async function runDataNode(node: ScheduledNode & { type: "data" }) {
+    const spanId = trace?.startSpan(`data:${node.id}`, "data", {
+      parentId: schedulerSpanId,
+      attributes: { data: node.id, dependsOn: node.dependsOn },
+    });
+    for (const dependency of node.dependsOn) {
+      if (spanId)
+        trace?.addDependency(`data:${dependency}`, spanId, "depends-on");
+    }
+    try {
+      if (!resolveData)
+        throw new Error(
+          `no resolveData resolver configured for data dependency "${node.id}"`,
+        );
+      const value = await withTimeout<unknown>(
+        Promise.resolve(resolveData(node.id)),
+        dataTimeoutMs ?? timeoutMs,
+        DATA_TIMEOUT,
+      );
+      if (value === DATA_TIMEOUT)
+        throw new Error(`data dependency "${node.id}" timed out`);
+      dataResults[node.id] = { id: node.id, status: "ok", value };
+      trace?.endSpan(spanId ?? "", { status: "ok" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      dataResults[node.id] = { id: node.id, status: "error", error: message };
+      propagatedFailures.add(node.key);
+      degraded = true;
+      trace?.endSpan(spanId ?? "", {
+        status: "error",
+        attributes: { error: message },
+      });
+    }
   }
 
+  async function runSlotNode(node: ScheduledNode & { type: "slot" }) {
+    const slot = node.slot;
+    try {
+      const result = await fetchFragmentSlot({
+        slot,
+        registry,
+        ctx,
+        fetchImpl,
+        timeoutMs,
+        cache,
+        now,
+        trace,
+        parentSpanId: schedulerSpanId,
+      });
+      slotResults[slot.name] = result;
+      if (result.status !== "ok") recordSlotFailure(slot);
+    } catch {
+      slotResults[slot.name] = {
+        slot,
+        strategy: slot.strategy ?? "dynamic-ssr",
+        source: "fallback",
+        status: "fallback",
+        response: createFallbackResponse(slot.fragment, "fallback", "error"),
+      };
+      recordSlotFailure(slot);
+    }
+  }
+
+  function skipNode(node: ScheduledNode, blockedBy: string[]) {
+    degraded = true;
+    if (node.type === "data") {
+      dataResults[node.id] = {
+        id: node.id,
+        status: "skipped-dependency",
+        error: `skipped: dependency failed (${blockedBy.join(", ")})`,
+      };
+      propagatedFailures.add(node.key);
+      const spanId = trace?.startSpan(`data:${node.id}`, "data", {
+        parentId: schedulerSpanId,
+        attributes: { data: node.id, reason: "skipped-dependency", blockedBy },
+      });
+      trace?.endSpan(spanId ?? "", { status: "fallback" });
+      return;
+    }
+    const slot = node.slot;
+    slotResults[slot.name] = {
+      slot,
+      strategy: slot.strategy ?? "dynamic-ssr",
+      source: "fallback",
+      status: "skipped-dependency",
+      response: createFallbackResponse(
+        slot.fragment,
+        "fallback",
+        "skipped-dependency",
+      ),
+    };
+    const spanId = trace?.startSpan(`slot:${slot.name}`, "fragment", {
+      parentId: schedulerSpanId,
+      attributes: {
+        slot: slot.name,
+        fragment: slot.fragment,
+        reason: "skipped-dependency",
+        blockedBy,
+      },
+    });
+    trace?.endSpan(spanId ?? "", { status: "fallback" });
+    if (slot.required) {
+      failedRequiredSlots.push(slot.name);
+      propagatedFailures.add(node.key);
+    }
+  }
+
+  for (const level of levels) {
+    const runnable: ScheduledNode[] = [];
+    for (const node of level) {
+      const blockedBy = directDependencyKeys(node).filter((dependency) =>
+        propagatedFailures.has(dependency),
+      );
+      if (blockedBy.length > 0) skipNode(node, blockedBy);
+      else runnable.push(node);
+    }
+    await Promise.all(
+      runnable.map((node) =>
+        node.type === "data" ? runDataNode(node) : runSlotNode(node),
+      ),
+    );
+  }
+
+  const health: PageHealth =
+    failedRequiredSlots.length > 0 ? "unhealthy" : degraded ? "degraded" : "ok";
+  trace?.endSpan(schedulerSpanId ?? "", {
+    status: health === "unhealthy" ? "fallback" : "ok",
+    attributes: { health, failedRequiredSlots },
+  });
+  if (onRequiredFailure === "throw" && failedRequiredSlots.length > 0) {
+    throw new Error(
+      `required fragment slots failed: ${failedRequiredSlots.join(", ")}`,
+    );
+  }
+  return { slots: slotResults, data: dataResults, health, hints };
+}
+
+function directDependencyKeys(node: ScheduledNode): string[] {
+  if (node.type === "data")
+    return node.dependsOn.map((dependency) => `data:${dependency}`);
+  return [
+    ...(node.slot.dependsOn ?? []).map((dependency) => `slot:${dependency}`),
+    ...(node.slot.dataDependencies ?? []).map(
+      (dependency) => `data:${dependency}`,
+    ),
+  ];
+}
+
+export function createSlotDataExecutionPlan({
+  slots,
+  dataDependencies = [],
+  maxSerialLevels = 3,
+}: {
+  slots: FragmentSlotDefinition[];
+  dataDependencies?: DataDependencyDefinition[];
+  maxSerialLevels?: number;
+}): SlotDataExecutionPlan {
+  const nodes = new Map<string, ScheduledNode>();
+  for (const dependency of dataDependencies) {
+    const key = `data:${dependency.id}`;
+    if (nodes.has(key))
+      throw new Error(`duplicate data dependency "${dependency.id}"`);
+    nodes.set(key, {
+      type: "data",
+      key,
+      id: dependency.id,
+      dependsOn: dependency.dependsOn ?? [],
+    });
+  }
+  for (const slot of slots) {
+    const key = `slot:${slot.name}`;
+    if (nodes.has(key))
+      throw new Error(`duplicate fragment slot "${slot.name}"`);
+    nodes.set(key, { type: "slot", key, slot });
+  }
+  for (const slot of slots) {
+    for (const id of slot.dataDependencies ?? []) {
+      const key = `data:${id}`;
+      if (!nodes.has(key))
+        nodes.set(key, { type: "data", key, id, dependsOn: [] });
+    }
+  }
+
+  for (const dependency of dataDependencies) {
+    for (const parent of dependency.dependsOn ?? []) {
+      if (!nodes.has(`data:${parent}`))
+        throw new Error(
+          `data dependency "${dependency.id}" depends on missing data "${parent}"`,
+        );
+    }
+  }
   for (const slot of slots) {
     for (const dependency of slot.dependsOn ?? []) {
-      if (!byName.has(dependency))
+      if (!nodes.has(`slot:${dependency}`))
         throw new Error(
           `fragment slot "${slot.name}" depends on missing slot "${dependency}"`,
         );
     }
   }
 
-  const remaining = new Set(slots.map((slot) => slot.name));
+  const remaining = new Set(nodes.keys());
   const completed = new Set<string>();
-  const levels: FragmentSlotExecutionPlan = [];
-
+  const levels: ScheduledNode[][] = [];
   while (remaining.size > 0) {
-    const ready = slots.filter(
-      (slot) =>
-        remaining.has(slot.name) &&
-        (slot.dependsOn ?? []).every((dependency) => completed.has(dependency)),
-    );
+    const ready = [...remaining]
+      .map((key) => nodes.get(key) as ScheduledNode)
+      .filter((node) =>
+        directDependencyKeys(node).every((dependency) =>
+          completed.has(dependency),
+        ),
+      );
     if (ready.length === 0) {
       throw new Error(
-        `fragment slot dependency cycle detected: ${[...remaining].join(", ")}`,
+        `dependency cycle detected: ${[...remaining].join(", ")}`,
       );
     }
     levels.push(ready);
-    for (const slot of ready) {
-      remaining.delete(slot.name);
-      completed.add(slot.name);
+    for (const node of ready) {
+      remaining.delete(node.key);
+      completed.add(node.key);
     }
   }
 
-  return levels;
+  return { levels, hints: collectSchedulerHints(levels, maxSerialLevels) };
+}
+
+export function createFragmentSlotExecutionPlan(
+  slots: FragmentSlotDefinition[],
+): FragmentSlotExecutionPlan {
+  const { levels } = createSlotDataExecutionPlan({ slots });
+  return levels
+    .map((level) =>
+      level
+        .filter(
+          (node): node is ScheduledNode & { type: "slot" } =>
+            node.type === "slot",
+        )
+        .map((node) => node.slot),
+    )
+    .filter((level) => level.length > 0);
+}
+
+function collectSchedulerHints(
+  levels: ScheduledNode[][],
+  maxSerialLevels: number,
+): SchedulerHint[] {
+  const hints: SchedulerHint[] = [];
+  const nodeByKey = new Map<string, ScheduledNode>();
+  const levelOf = new Map<string, number>();
+  levels.forEach((level, index) => {
+    for (const node of level) {
+      nodeByKey.set(node.key, node);
+      levelOf.set(node.key, index);
+    }
+  });
+
+  const closures = new Map<string, Set<string>>();
+  function transitiveDependencies(key: string): Set<string> {
+    const cached = closures.get(key);
+    if (cached) return cached;
+    const closure = new Set<string>();
+    closures.set(key, closure);
+    const node = nodeByKey.get(key);
+    if (!node) return closure;
+    for (const dependency of directDependencyKeys(node)) {
+      closure.add(dependency);
+      for (const transitive of transitiveDependencies(dependency))
+        closure.add(transitive);
+    }
+    return closure;
+  }
+
+  const splitNames = (keys: string[]) => ({
+    slots: keys
+      .filter((key) => key.startsWith("slot:"))
+      .map((key) => key.slice("slot:".length)),
+    data: keys
+      .filter((key) => key.startsWith("data:"))
+      .map((key) => key.slice("data:".length)),
+  });
+
+  if (levels.length > maxSerialLevels) {
+    const chain = [levels[levels.length - 1][0].key];
+    for (let level = levels.length - 1; level > 0; level -= 1) {
+      const head = nodeByKey.get(chain[0]) as ScheduledNode;
+      const parent = directDependencyKeys(head).find(
+        (dependency) => levelOf.get(dependency) === level - 1,
+      ) as string;
+      chain.unshift(parent);
+    }
+    const { slots, data } = splitNames(chain);
+    hints.push({
+      kind: "long-serial-chain",
+      slots,
+      data,
+      message: `execution plan has ${levels.length} serial levels (threshold ${maxSerialLevels}); longest chain: ${chain.join(" -> ")}; consider removing or parallelizing dependencies`,
+    });
+  }
+
+  for (let level = 1; level < levels.length; level += 1) {
+    for (const node of levels[level]) {
+      if (node.type !== "slot") continue;
+      const closure = transitiveDependencies(node.key);
+      const unrelated: string[] = [];
+      for (let earlier = 0; earlier < level; earlier += 1) {
+        for (const candidate of levels[earlier]) {
+          if (!closure.has(candidate.key)) unrelated.push(candidate.key);
+        }
+      }
+      if (unrelated.length === 0) continue;
+      const { slots, data } = splitNames(unrelated);
+      hints.push({
+        kind: "unnecessary-barrier",
+        slots: [node.slot.name, ...slots],
+        data,
+        message: `slot "${node.slot.name}" waits behind earlier levels containing unrelated nodes (${unrelated.join(", ")}); the level barrier delays it unnecessarily`,
+      });
+    }
+  }
+
+  const dataUsageLevels = new Map<string, Set<number>>();
+  const dataUsageSlots = new Map<string, string[]>();
+  levels.forEach((level, index) => {
+    for (const node of level) {
+      if (node.type !== "slot") continue;
+      for (const id of node.slot.dataDependencies ?? []) {
+        const usage = dataUsageLevels.get(id) ?? new Set<number>();
+        usage.add(index);
+        dataUsageLevels.set(id, usage);
+        const users = dataUsageSlots.get(id) ?? [];
+        users.push(node.slot.name);
+        dataUsageSlots.set(id, users);
+      }
+    }
+  });
+  for (const [id, usage] of dataUsageLevels) {
+    if (usage.size < 2) continue;
+    const users = dataUsageSlots.get(id) ?? [];
+    hints.push({
+      kind: "duplicate-data-resolution",
+      slots: users,
+      data: [id],
+      message: `data "${id}" is required by slots across ${usage.size} execution levels (${users.join(", ")}); it is resolved once and reused, keep a single shared resolution instead of per-level reads`,
+    });
+  }
+
+  return hints;
 }
 
 export async function fetchFragmentSlot({
@@ -345,11 +707,17 @@ export async function fetchFragmentSlot({
       strategy,
       channel: slot.channel ?? "stable",
       dependsOn: slot.dependsOn ?? [],
+      dataDependencies: slot.dataDependencies ?? [],
+      required: slot.required ?? false,
     },
   });
   for (const dependency of slot.dependsOn ?? []) {
     if (slotSpanId)
       trace?.addDependency(`slot:${dependency}`, slotSpanId, "depends-on");
+  }
+  for (const dependency of slot.dataDependencies ?? []) {
+    if (slotSpanId)
+      trace?.addDependency(`data:${dependency}`, slotSpanId, "depends-on");
   }
   try {
     if (strategy === "static") {
@@ -357,6 +725,7 @@ export async function fetchFragmentSlot({
         slot,
         strategy,
         source: "static",
+        status: "ok",
         response: {
           html:
             slot.staticHtml ??
@@ -383,6 +752,7 @@ export async function fetchFragmentSlot({
         slot,
         strategy,
         source: "fallback",
+        status: "fallback",
         response: createFallbackResponse(
           slot.fragment,
           "missing",
@@ -415,6 +785,7 @@ export async function fetchFragmentSlot({
           slot,
           strategy,
           source: "cache",
+          status: "ok",
           response: entry.response,
           cacheKey,
         };
@@ -440,12 +811,14 @@ export async function fetchFragmentSlot({
         cache.set(cacheKey, { expiresAt: now() + ttl * 1000, response });
     }
 
+    const source = response.html.includes('data-fallback="true"')
+      ? ("fallback" as const)
+      : ("network" as const);
     const result: FragmentSlotResult = {
       slot,
       strategy,
-      source: response.html.includes('data-fallback="true"')
-        ? "fallback"
-        : "network",
+      source,
+      status: source === "fallback" ? "fallback" : "ok",
       response,
       cacheKey,
     };

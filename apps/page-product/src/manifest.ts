@@ -1,4 +1,5 @@
 import { productPageBudget } from "./budget";
+import productPageSlots from "./manifest.slots.json";
 
 export const productPageManifest = {
   name: "page-product",
@@ -12,38 +13,7 @@ export const productPageManifest = {
     title: "Product details",
     description: "Server-rendered product detail page with structured data.",
   },
-  slots: [
-    {
-      name: "staticProof",
-      fragment: "static-product-proof",
-      channel: "stable",
-      strategy: "static",
-      required: false,
-    },
-    {
-      name: "promotion",
-      fragment: "promotion-banner",
-      channel: "stable",
-      strategy: "isr",
-      timeoutMs: 200,
-      required: false,
-    },
-    {
-      name: "recommendations",
-      fragment: "recommendation-widget",
-      channel: "stable",
-      strategy: "dynamic-ssr",
-      timeoutMs: 200,
-      required: false,
-    },
-    {
-      name: "price-panel",
-      fragment: "price-panel",
-      channel: "stable",
-      required: false,
-      reserved: true,
-    },
-  ],
+  slots: productPageSlots,
   budget: productPageBudget,
 } as const;
 

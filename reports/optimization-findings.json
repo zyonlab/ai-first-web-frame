@@ -12,6 +12,11 @@
         "fragment": "recommendation-widget",
         "props": {}
       },
+      "location": {
+        "manifestPath": "apps/page-home/src/manifest.slots.json",
+        "slotName": "recommendations",
+        "fragmentName": "recommendation-widget"
+      },
       "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
     },
     {
@@ -23,6 +28,11 @@
       "evidence": {
         "fragment": "recommendation-widget",
         "props": {}
+      },
+      "location": {
+        "manifestPath": "apps/page-product/src/manifest.slots.json",
+        "slotName": "recommendations",
+        "fragmentName": "recommendation-widget"
       },
       "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
     },
@@ -36,7 +46,19 @@
         "fragment": "price-panel",
         "props": {}
       },
+      "location": {
+        "manifestPath": "apps/page-product/src/manifest.slots.json",
+        "slotName": "price-panel",
+        "fragmentName": "price-panel"
+      },
       "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
     }
-  ]
+  ],
+  "traces": {
+    "dir": "reports/traces",
+    "filesRead": 0,
+    "snapshotCount": 0,
+    "skippedLines": 0,
+    "note": "no runtime traces found; trace-based rules skipped"
+  }
 }

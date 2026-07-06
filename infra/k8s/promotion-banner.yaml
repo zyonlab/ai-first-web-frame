@@ -1,3 +1,6 @@
+# Image tag is parameterized through kustomization.yaml (images transformer).
+# CI/CD sets the release tag with:
+#   kustomize edit set image promotion-banner=$REGISTRY_URL/promotion-banner:$GIT_SHA
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -28,6 +31,25 @@ spec:
             httpGet:
               path: /health
               port: 4201
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4201
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
 ---
 apiVersion: v1
 kind: Service

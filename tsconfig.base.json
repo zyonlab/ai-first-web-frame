@@ -17,6 +17,7 @@
       "@mvp/assets": ["./packages/assets/src/index.ts"],
       "@mvp/data": ["./packages/data/src/index.ts"],
       "@mvp/design-tokens": ["./packages/design-tokens/src/index.ts"],
+      "@mvp/interaction": ["./packages/interaction/src/index.ts"],
       "@mvp/observability": ["./packages/observability/src/index.ts"],
       "@mvp/optimizer": ["./packages/optimizer/src/index.ts"],
       "@mvp/request": ["./packages/request/src/index.ts"],

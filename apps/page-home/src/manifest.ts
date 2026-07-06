@@ -1,4 +1,5 @@
 import { homePageBudget } from "./budget";
+import homePageSlots from "./manifest.slots.json";
 
 export const homePageManifest = {
   name: "page-home",
@@ -12,31 +13,7 @@ export const homePageManifest = {
     description:
       "Discover curated offers and personalized recommendations in the MVP storefront.",
   },
-  slots: [
-    {
-      name: "staticEditorial",
-      fragment: "static-editorial-note",
-      channel: "stable",
-      strategy: "static",
-      required: false,
-    },
-    {
-      name: "promotion",
-      fragment: "promotion-banner",
-      channel: "stable",
-      strategy: "cached-ssr",
-      timeoutMs: 200,
-      required: false,
-    },
-    {
-      name: "recommendations",
-      fragment: "recommendation-widget",
-      channel: "stable",
-      strategy: "dynamic-ssr",
-      timeoutMs: 200,
-      required: false,
-    },
-  ],
+  slots: homePageSlots,
   budget: homePageBudget,
 } as const;
 

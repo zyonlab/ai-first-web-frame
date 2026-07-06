@@ -19,7 +19,11 @@
       "!**/dist",
       "!**/.next",
       "!**/coverage",
-      "!reports/*.json"
+      "!**/test-results",
+      "!**/playwright-report",
+      "!reports/*.json",
+      "!reports/playwright",
+      "!reports/traces"
     ]
   }
 }

@@ -1,11 +1,15 @@
 import type { DataDependency, RequestContext } from "@mvp/contracts";
 import { createRequestTrace } from "@mvp/observability";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  type CacheAdapter,
   createDataClient,
   createDataKey,
+  createMemorySubscriptionTransport,
+  type DataCacheEntry,
   DataDependencyError,
   defineDataSource,
+  MemoryCacheAdapter,
 } from "./index";
 
 const ctx: RequestContext = {
@@ -34,6 +38,27 @@ const productDependency: DataDependency = {
     vary: ["tenant", "locale", "props"],
   },
   invalidationTags: ["product:123"],
+  dependsOn: [],
+};
+
+const tickerDependency: DataDependency = {
+  id: "ticker",
+  owner: "client-island",
+  source: "subscription",
+  freshness: "realtime",
+  privacy: "public",
+  invalidationTags: ["ticker:latest"],
+  dependsOn: [],
+};
+
+const statsDependency: DataDependency = {
+  id: "stats",
+  owner: "client-island",
+  source: "api",
+  freshness: "near-realtime",
+  privacy: "tenant",
+  cachePolicy: { ttl: 60, tags: ["stats"], vary: ["tenant", "props"] },
+  invalidationTags: ["stats:latest"],
   dependsOn: [],
 };
 
@@ -72,6 +97,53 @@ describe("@mvp/data", () => {
     expect(third.data).toEqual({ version: 2 });
   });
 
+  it("keeps the legacy Map cache option readable by callers", async () => {
+    const legacyCache = new Map<string, DataCacheEntry>();
+    const source = defineDataSource({
+      id: "product",
+      dependency: productDependency,
+      load: async () => ({ id: "123" }),
+    });
+    const client = createDataClient({
+      ctx,
+      sources: [source],
+      cache: legacyCache,
+    });
+    const result = await client.readData("product", { id: "123" });
+    expect(legacyCache.get(result.key)?.data).toEqual({ id: "123" });
+    const cached = await client.readData("product", { id: "123" });
+    expect(cached.source).toBe("cache");
+  });
+
+  it("accepts a custom async CacheAdapter", async () => {
+    const store = new Map<string, DataCacheEntry>();
+    const adapter: CacheAdapter = {
+      get: async (key) => store.get(key),
+      set: async (key, entry) => void store.set(key, entry),
+      delete: async (key) => void store.delete(key),
+      invalidateTags: async (tags) => {
+        for (const [key, entry] of store.entries()) {
+          if (entry.tags.some((tag) => tags.includes(tag))) store.delete(key);
+        }
+      },
+      clear: async () => store.clear(),
+    };
+    let version = 0;
+    const source = defineDataSource({
+      id: "product",
+      dependency: productDependency,
+      load: async () => ({ version: ++version }),
+    });
+    const client = createDataClient({ ctx, sources: [source], cache: adapter });
+    await client.readData("product", { id: "123" });
+    const cached = await client.readData("product", { id: "123" });
+    expect(cached.source).toBe("cache");
+    expect(cached.data).toEqual({ version: 1 });
+    await client.mutateData("product:123");
+    const reloaded = await client.readData("product", { id: "123" });
+    expect(reloaded.data).toEqual({ version: 2 });
+  });
+
   it("records data trace spans", async () => {
     const trace = createRequestTrace({ traceId: "trace-data" });
     const source = defineDataSource({
@@ -103,31 +175,192 @@ describe("@mvp/data", () => {
     ).rejects.toThrow("client-local data cannot be read during SSR");
   });
 
-  it("allows subscriptions only for near-realtime and realtime dependencies", () => {
-    const realtime = defineDataSource({
-      id: "ticker",
-      dependency: {
-        id: "ticker",
-        owner: "client-island",
-        source: "subscription",
-        freshness: "realtime",
-        privacy: "public",
-        invalidationTags: [],
-        dependsOn: [],
-      },
-      load: async () => null,
-    });
-    const client = createDataClient({ ctx, sources: [realtime] });
-    const handler = vi.fn();
-    const unsubscribe = client.subscribeData("ticker", handler);
-    expect(handler).toHaveBeenCalledWith({ sourceId: "ticker", ctx });
-    expect(unsubscribe()).toBeUndefined();
-  });
-
   it("creates stable partitioned data keys", () => {
     expect(createDataKey(productDependency, ctx, { b: 2, a: 1 })).toBe(
       createDataKey(productDependency, ctx, { a: 1, b: 2 }),
     );
     expect(createDataKey(productDependency, ctx, {})).toContain("tenant-a");
+  });
+
+  describe("subscribeData", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("allows subscriptions only for near-realtime and realtime dependencies", () => {
+      const source = defineDataSource({
+        id: "product",
+        dependency: productDependency,
+        load: async () => null,
+      });
+      const client = createDataClient({ ctx, sources: [source] });
+      expect(() => client.subscribeData("product", vi.fn())).toThrow(
+        DataDependencyError,
+      );
+      expect(() => client.subscribeData("missing", vi.fn())).toThrow(
+        DataDependencyError,
+      );
+    });
+
+    it("polls near-realtime sources and notifies only on change", async () => {
+      let value = 1;
+      const load = vi.fn(async () => ({ value }));
+      const source = defineDataSource({
+        id: "stats",
+        dependency: statsDependency,
+        load,
+      });
+      const client = createDataClient({ ctx, sources: [source] });
+      const handler = vi.fn();
+      const unsubscribe = client.subscribeData("stats", handler, {
+        intervalMs: 1000,
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          sourceId: "stats",
+          data: { value: 1 },
+          ctx,
+        }),
+      );
+
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      value = 2;
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(handler).toHaveBeenCalledTimes(2);
+      expect(handler).toHaveBeenLastCalledWith(
+        expect.objectContaining({ data: { value: 2 } }),
+      );
+
+      unsubscribe();
+      value = 3;
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(handler).toHaveBeenCalledTimes(2);
+      expect(load).toHaveBeenCalledTimes(3);
+    });
+
+    it("writes polled values into the cache for subsequent reads", async () => {
+      const cache = new MemoryCacheAdapter();
+      let value = 1;
+      const load = vi.fn(async () => ({ value }));
+      const source = defineDataSource({
+        id: "stats",
+        dependency: statsDependency,
+        load,
+      });
+      const client = createDataClient({ ctx, sources: [source], cache });
+      const unsubscribe = client.subscribeData("stats", vi.fn(), {
+        intervalMs: 1000,
+      });
+
+      value = 2;
+      await vi.advanceTimersByTimeAsync(1000);
+      unsubscribe();
+
+      const result = await client.readData("stats");
+      expect(result.source).toBe("cache");
+      expect(result.data).toEqual({ value: 2 });
+      expect(load).toHaveBeenCalledTimes(2);
+    });
+
+    it("keeps polling after a transient load failure", async () => {
+      let shouldFail = true;
+      const trace = createRequestTrace({ traceId: "trace-data" });
+      const source = defineDataSource({
+        id: "stats",
+        dependency: statsDependency,
+        load: async () => {
+          if (shouldFail) throw new Error("boom");
+          return { value: 9 };
+        },
+      });
+      const client = createDataClient({ ctx, sources: [source], trace });
+      const handler = vi.fn();
+      const unsubscribe = client.subscribeData("stats", handler, {
+        intervalMs: 1000,
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(handler).not.toHaveBeenCalled();
+
+      shouldFail = false;
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(trace.toDependencyGraphLog()).toContain("data:stats");
+      unsubscribe();
+    });
+
+    it("delivers realtime transport messages and dedupes repeats", async () => {
+      const trace = createRequestTrace({ traceId: "trace-data" });
+      const transport = createMemorySubscriptionTransport();
+      const source = defineDataSource({
+        id: "ticker",
+        dependency: tickerDependency,
+        load: async () => null,
+      });
+      const client = createDataClient({ ctx, sources: [source], trace });
+      const handler = vi.fn();
+      const unsubscribe = client.subscribeData("ticker", handler, {
+        transport,
+      });
+      expect(transport.connected).toBe(true);
+
+      transport.publish({ price: 1 });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sourceId: "ticker", data: { price: 1 } }),
+      );
+
+      transport.publish({ price: 1 });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      transport.publish({ price: 2 });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(handler).toHaveBeenCalledTimes(2);
+      expect(trace.toDependencyGraphLog()).toContain("data:ticker");
+
+      unsubscribe();
+      expect(transport.connected).toBe(false);
+      transport.publish({ price: 3 });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(handler).toHaveBeenCalledTimes(2);
+    });
+
+    it("invalidates entries sharing the dependency invalidation tags", async () => {
+      const cache = new MemoryCacheAdapter();
+      cache.set("stale-entry", {
+        data: { value: "old" },
+        expiresAt: Number.MAX_SAFE_INTEGER,
+        tags: ["ticker:latest"],
+      });
+      const transport = createMemorySubscriptionTransport();
+      const source = defineDataSource({
+        id: "ticker",
+        dependency: tickerDependency,
+        load: async () => null,
+      });
+      const client = createDataClient({ ctx, sources: [source], cache });
+      const unsubscribe = client.subscribeData("ticker", vi.fn(), {
+        transport,
+      });
+
+      transport.publish({ price: 42 });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(cache.get("stale-entry")).toBeUndefined();
+      // realtime data must never be ttl-cached
+      expect(cache.store.size).toBe(0);
+      unsubscribe();
+    });
   });
 });

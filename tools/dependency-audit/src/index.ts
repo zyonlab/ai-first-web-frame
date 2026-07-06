@@ -43,6 +43,10 @@ const DEFAULT_LARGE_PACKAGES: Record<string, number> = {
   lodash: 70000,
   moment: 65000,
 };
+// Framework packages whose whole purpose is to wrap browser APIs. The
+// server-safe browser-global guard is skipped for files under these prefixes;
+// they gate real access behind runtime capability checks / dependency injection.
+const DEFAULT_BROWSER_CAPABLE = ["packages/storage/"];
 
 export function runDependencyAudit(
   options: CliOptions = parseArgs(process.argv.slice(2)),
@@ -73,6 +77,7 @@ export function runDependencyAudit(
 function readConfig(root: string): {
   forbiddenPackages: string[];
   clientOnlyPackages: string[];
+  browserCapablePackages: string[];
   largePackages: Record<string, number>;
 } {
   const path = join(root, "dependency-audit.json");
@@ -80,6 +85,7 @@ function readConfig(root: string): {
     return {
       forbiddenPackages: [],
       clientOnlyPackages: DEFAULT_CLIENT_ONLY,
+      browserCapablePackages: DEFAULT_BROWSER_CAPABLE,
       largePackages: DEFAULT_LARGE_PACKAGES,
     };
   }
@@ -91,6 +97,9 @@ function readConfig(root: string): {
     clientOnlyPackages: Array.isArray(value.clientOnlyPackages)
       ? value.clientOnlyPackages.map(String)
       : DEFAULT_CLIENT_ONLY,
+    browserCapablePackages: Array.isArray(value.browserCapablePackages)
+      ? value.browserCapablePackages.map(String)
+      : DEFAULT_BROWSER_CAPABLE,
     largePackages:
       typeof value.largePackages === "object" && value.largePackages
         ? (value.largePackages as Record<string, number>)
@@ -227,7 +236,14 @@ function auditSourceImports(
         });
       }
     }
-    if (relativeFile.startsWith("packages/") && !hasUseClient(source)) {
+    const browserCapable = config.browserCapablePackages.some((prefix) =>
+      relativeFile.startsWith(prefix),
+    );
+    if (
+      relativeFile.startsWith("packages/") &&
+      !hasUseClient(source) &&
+      !browserCapable
+    ) {
       const globals = browserGlobals(source);
       if (globals.length > 0) {
         issues.push({

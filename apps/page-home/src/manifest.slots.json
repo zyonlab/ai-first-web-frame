@@ -1,0 +1,25 @@
+[
+  {
+    "name": "staticEditorial",
+    "fragment": "static-editorial-note",
+    "channel": "stable",
+    "strategy": "static",
+    "required": false
+  },
+  {
+    "name": "promotion",
+    "fragment": "promotion-banner",
+    "channel": "stable",
+    "strategy": "cached-ssr",
+    "timeoutMs": 200,
+    "required": false
+  },
+  {
+    "name": "recommendations",
+    "fragment": "recommendation-widget",
+    "channel": "stable",
+    "strategy": "dynamic-ssr",
+    "timeoutMs": 200,
+    "required": false
+  }
+]

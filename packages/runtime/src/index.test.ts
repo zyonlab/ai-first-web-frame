@@ -13,12 +13,15 @@ import {
   createFragmentCacheKey,
   createFragmentHeaders,
   createFragmentSlotExecutionPlan,
+  createSlotDataExecutionPlan,
+  executeFragmentSlots,
   type FragmentSlotDefinition,
   fetchFragment,
   fetchFragmentSlots,
   mergeAssets,
   resolveFragment,
   resolveRoute,
+  type SchedulerHint,
   withTimeout,
 } from "./index";
 
@@ -435,6 +438,489 @@ describe("@mvp/runtime", () => {
     expect(html).toContain("首页标题");
     expect(html).toContain("fragment HTML");
     expect(html).toContain("recommendation-widget");
+  });
+
+  describe("scheduler semantics", () => {
+    const graphRegistry: FragmentRegistry = {
+      fragments: {
+        "hero-fragment": {
+          stable: {
+            version: "0.1.0",
+            serviceUrl: "http://localhost:4301",
+            manifestUrl: "http://localhost:4301/manifest",
+          },
+        },
+        "details-fragment": {
+          stable: {
+            version: "0.1.0",
+            serviceUrl: "http://localhost:4302",
+            manifestUrl: "http://localhost:4302/manifest",
+          },
+        },
+        "promo-fragment": {
+          stable: {
+            version: "0.1.0",
+            serviceUrl: "http://localhost:4303",
+            manifestUrl: "http://localhost:4303/manifest",
+          },
+        },
+      },
+    };
+
+    function createOkFetch(calls: string[] = []) {
+      return vi.fn(async (url: string | URL | Request) => {
+        calls.push(String(url));
+        return Response.json({
+          html: `<section>${String(url)}</section>`,
+          assets: { js: [], css: [] },
+          cache: { ttl: 0, tags: [] },
+          metadata: { name: String(url), version: "0.1.0" },
+        });
+      }) as unknown as typeof fetch;
+    }
+
+    it("reports ok health and per-slot status when everything succeeds", async () => {
+      const execution = await executeFragmentSlots({
+        slots: [
+          { name: "hero", fragment: "hero-fragment", required: true },
+          { name: "promo", fragment: "promo-fragment" },
+        ],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl: createOkFetch(),
+      });
+      expect(execution.health).toBe("ok");
+      expect(execution.slots.hero.status).toBe("ok");
+      expect(execution.slots.promo.status).toBe("ok");
+      expect(execution.hints).toEqual([]);
+    });
+
+    it("marks page unhealthy when a required slot falls back", async () => {
+      const execution = await executeFragmentSlots({
+        slots: [
+          { name: "hero", fragment: "missing-fragment", required: true },
+          { name: "promo", fragment: "promo-fragment" },
+        ],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl: createOkFetch(),
+      });
+      expect(execution.health).toBe("unhealthy");
+      expect(execution.slots.hero.status).toBe("fallback");
+      expect(execution.slots.hero.response.html).toContain(
+        'data-fallback="true"',
+      );
+      expect(execution.slots.promo.status).toBe("ok");
+    });
+
+    it("marks page degraded when an optional slot falls back", async () => {
+      const execution = await executeFragmentSlots({
+        slots: [
+          { name: "hero", fragment: "missing-fragment" },
+          { name: "promo", fragment: "promo-fragment" },
+        ],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl: createOkFetch(),
+      });
+      expect(execution.health).toBe("degraded");
+      expect(execution.slots.hero.status).toBe("fallback");
+      expect(execution.slots.promo.status).toBe("ok");
+    });
+
+    it("skips slots depending on a failed required slot", async () => {
+      const calls: string[] = [];
+      const fetchImpl = createOkFetch(calls);
+      const execution = await executeFragmentSlots({
+        slots: [
+          { name: "hero", fragment: "missing-fragment", required: true },
+          {
+            name: "details",
+            fragment: "details-fragment",
+            dependsOn: ["hero"],
+          },
+        ],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl,
+      });
+      expect(execution.health).toBe("unhealthy");
+      expect(execution.slots.details.status).toBe("skipped-dependency");
+      expect(execution.slots.details.source).toBe("fallback");
+      expect(execution.slots.details.response.html).toContain(
+        'data-fallback="true"',
+      );
+      expect(calls).toEqual([]);
+    });
+
+    it("still executes slots depending on a failed optional slot", async () => {
+      const execution = await executeFragmentSlots({
+        slots: [
+          { name: "hero", fragment: "missing-fragment" },
+          {
+            name: "details",
+            fragment: "details-fragment",
+            dependsOn: ["hero"],
+          },
+        ],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl: createOkFetch(),
+      });
+      expect(execution.health).toBe("degraded");
+      expect(execution.slots.details.status).toBe("ok");
+      expect(execution.slots.details.source).toBe("network");
+    });
+
+    it("throws on required slot failure when policy is throw", async () => {
+      await expect(
+        executeFragmentSlots({
+          slots: [
+            { name: "hero", fragment: "missing-fragment", required: true },
+          ],
+          registry: graphRegistry,
+          ctx,
+          fetchImpl: createOkFetch(),
+          onRequiredFailure: "throw",
+        }),
+      ).rejects.toThrow("required fragment slots failed: hero");
+    });
+
+    it("resolves shared data once before dependent slots run concurrently", async () => {
+      const order: string[] = [];
+      const resolveData = vi.fn(async (id: string) => {
+        order.push(`data:${id}`);
+        return { id };
+      });
+      const fetchImpl = createOkFetch(order);
+      const trace = createRequestTrace({
+        traceId: ctx.traceId,
+        requestId: ctx.requestId,
+      });
+      const execution = await executeFragmentSlots({
+        slots: [
+          {
+            name: "hero",
+            fragment: "hero-fragment",
+            dataDependencies: ["featured"],
+          },
+          {
+            name: "details",
+            fragment: "details-fragment",
+            dataDependencies: ["featured"],
+          },
+        ],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl,
+        resolveData,
+        trace,
+      });
+      expect(resolveData).toHaveBeenCalledTimes(1);
+      expect(order[0]).toBe("data:featured");
+      expect(order).toHaveLength(3);
+      expect(execution.health).toBe("ok");
+      expect(execution.data.featured).toEqual({
+        id: "featured",
+        status: "ok",
+        value: { id: "featured" },
+      });
+      const snapshot = trace.toJSON();
+      expect(
+        snapshot.nodes.some(
+          (node) => node.name === "data:featured" && node.kind === "data",
+        ),
+      ).toBe(true);
+    });
+
+    it("resolves data-to-data dependencies in order", async () => {
+      const order: string[] = [];
+      const resolveData = vi.fn(async (id: string) => {
+        order.push(`data:${id}`);
+        return id;
+      });
+      await executeFragmentSlots({
+        slots: [
+          {
+            name: "hero",
+            fragment: "hero-fragment",
+            dataDependencies: ["derived"],
+          },
+        ],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl: createOkFetch(order),
+        resolveData,
+        dataDependencies: [
+          { id: "base" },
+          { id: "derived", dependsOn: ["base"] },
+        ],
+      });
+      expect(order.indexOf("data:base")).toBeLessThan(
+        order.indexOf("data:derived"),
+      );
+      expect(order.indexOf("data:derived")).toBeLessThan(
+        order.indexOf("http://localhost:4301/render"),
+      );
+    });
+
+    it("skips slots whose data dependency fails and derives health from required flag", async () => {
+      const calls: string[] = [];
+      const failingResolver = vi.fn(async () => {
+        throw new Error("data source down");
+      });
+      const unhealthy = await executeFragmentSlots({
+        slots: [
+          {
+            name: "hero",
+            fragment: "hero-fragment",
+            required: true,
+            dataDependencies: ["featured"],
+          },
+        ],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl: createOkFetch(calls),
+        resolveData: failingResolver,
+      });
+      expect(unhealthy.health).toBe("unhealthy");
+      expect(unhealthy.slots.hero.status).toBe("skipped-dependency");
+      expect(unhealthy.data.featured.status).toBe("error");
+      expect(unhealthy.data.featured.error).toContain("data source down");
+      expect(calls).toEqual([]);
+
+      const degraded = await executeFragmentSlots({
+        slots: [
+          {
+            name: "hero",
+            fragment: "hero-fragment",
+            dataDependencies: ["featured"],
+          },
+        ],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl: createOkFetch(),
+        resolveData: failingResolver,
+      });
+      expect(degraded.health).toBe("degraded");
+      expect(degraded.slots.hero.status).toBe("skipped-dependency");
+    });
+
+    it("fails data nodes when no resolver is configured", async () => {
+      const execution = await executeFragmentSlots({
+        slots: [
+          {
+            name: "hero",
+            fragment: "hero-fragment",
+            dataDependencies: ["featured"],
+          },
+        ],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl: createOkFetch(),
+      });
+      expect(execution.data.featured.status).toBe("error");
+      expect(execution.data.featured.error).toContain("resolveData");
+      expect(execution.slots.hero.status).toBe("skipped-dependency");
+    });
+
+    it("propagates failures through data-to-data dependencies", async () => {
+      const execution = await executeFragmentSlots({
+        slots: [
+          {
+            name: "hero",
+            fragment: "hero-fragment",
+            dataDependencies: ["derived"],
+          },
+        ],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl: createOkFetch(),
+        resolveData: async (id: string) => {
+          if (id === "base") throw new Error("base down");
+          return id;
+        },
+        dataDependencies: [
+          { id: "base" },
+          { id: "derived", dependsOn: ["base"] },
+        ],
+      });
+      expect(execution.data.base.status).toBe("error");
+      expect(execution.data.derived.status).toBe("skipped-dependency");
+      expect(execution.slots.hero.status).toBe("skipped-dependency");
+    });
+
+    it("plans mixed slot and data graphs and detects mixed cycles", () => {
+      const plan = createSlotDataExecutionPlan({
+        slots: [
+          {
+            name: "hero",
+            fragment: "hero-fragment",
+            dataDependencies: ["featured"],
+          },
+          { name: "promo", fragment: "promo-fragment" },
+        ],
+        dataDependencies: [{ id: "featured" }],
+      });
+      expect(
+        plan.levels.map((level) => level.map((node) => node.key).sort()),
+      ).toEqual([["data:featured", "slot:promo"], ["slot:hero"]]);
+
+      expect(() =>
+        createSlotDataExecutionPlan({
+          slots: [],
+          dataDependencies: [
+            { id: "a", dependsOn: ["b"] },
+            { id: "b", dependsOn: ["a"] },
+          ],
+        }),
+      ).toThrow("dependency cycle");
+
+      expect(() =>
+        createSlotDataExecutionPlan({
+          slots: [],
+          dataDependencies: [{ id: "a", dependsOn: ["ghost"] }],
+        }),
+      ).toThrow('missing data "ghost"');
+
+      expect(() =>
+        createSlotDataExecutionPlan({
+          slots: [],
+          dataDependencies: [{ id: "a" }, { id: "a" }],
+        }),
+      ).toThrow('duplicate data dependency "a"');
+    });
+
+    it("emits a long-serial-chain hint only above the level threshold", () => {
+      const chain: FragmentSlotDefinition[] = [
+        { name: "a", fragment: "a" },
+        { name: "b", fragment: "b", dependsOn: ["a"] },
+        { name: "c", fragment: "c", dependsOn: ["b"] },
+        { name: "d", fragment: "d", dependsOn: ["c"] },
+      ];
+      const plan = createSlotDataExecutionPlan({ slots: chain });
+      const hint = plan.hints.find(
+        (candidate) => candidate.kind === "long-serial-chain",
+      );
+      expect(hint).toBeDefined();
+      expect(hint?.slots).toEqual(["a", "b", "c", "d"]);
+      expect(
+        createSlotDataExecutionPlan({ slots: chain, maxSerialLevels: 10 })
+          .hints,
+      ).toEqual([]);
+    });
+
+    it("emits an unnecessary-barrier hint only when a slot waits on unrelated nodes", () => {
+      const plan = createSlotDataExecutionPlan({
+        slots: [
+          { name: "a", fragment: "a" },
+          { name: "b", fragment: "b" },
+          { name: "c", fragment: "c", dependsOn: ["a"] },
+        ],
+      });
+      const hint = plan.hints.find(
+        (candidate) => candidate.kind === "unnecessary-barrier",
+      );
+      expect(hint).toBeDefined();
+      expect(hint?.slots).toContain("c");
+      expect(hint?.slots).toContain("b");
+      expect(hint?.message).toContain('"c"');
+
+      const chainPlan = createSlotDataExecutionPlan({
+        slots: [
+          { name: "a", fragment: "a" },
+          { name: "b", fragment: "b", dependsOn: ["a"] },
+        ],
+      });
+      expect(
+        chainPlan.hints.filter(
+          (candidate) => candidate.kind === "unnecessary-barrier",
+        ),
+      ).toEqual([]);
+    });
+
+    it("emits a duplicate-data-resolution hint when a data key spans levels", () => {
+      const plan = createSlotDataExecutionPlan({
+        slots: [
+          { name: "x", fragment: "x", dataDependencies: ["d"] },
+          {
+            name: "y",
+            fragment: "y",
+            dependsOn: ["x"],
+            dataDependencies: ["d"],
+          },
+        ],
+      });
+      const hint = plan.hints.find(
+        (candidate) => candidate.kind === "duplicate-data-resolution",
+      );
+      expect(hint).toBeDefined();
+      expect(hint?.data).toEqual(["d"]);
+      expect(hint?.slots.sort()).toEqual(["x", "y"]);
+
+      const sameLevelPlan = createSlotDataExecutionPlan({
+        slots: [
+          { name: "x", fragment: "x", dataDependencies: ["d"] },
+          { name: "y", fragment: "y", dataDependencies: ["d"] },
+        ],
+      });
+      expect(
+        sameLevelPlan.hints.filter(
+          (candidate) => candidate.kind === "duplicate-data-resolution",
+        ),
+      ).toEqual([]);
+    });
+
+    it("writes scheduler hints and health into the trace", async () => {
+      const trace = createRequestTrace({
+        traceId: ctx.traceId,
+        requestId: ctx.requestId,
+      });
+      const execution = await executeFragmentSlots({
+        slots: [
+          { name: "hero", fragment: "hero-fragment" },
+          { name: "promo", fragment: "promo-fragment" },
+          {
+            name: "details",
+            fragment: "details-fragment",
+            dependsOn: ["hero"],
+          },
+        ],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl: createOkFetch(),
+        trace,
+      });
+      expect(
+        execution.hints.some(
+          (candidate) => candidate.kind === "unnecessary-barrier",
+        ),
+      ).toBe(true);
+      const snapshot = trace.toJSON();
+      const scheduler = snapshot.nodes.find(
+        (node) => node.name === "runtime.fetchFragmentSlots",
+      );
+      expect(scheduler?.attributes.health).toBe("ok");
+      const tracedHints = scheduler?.attributes.schedulerHints as
+        | SchedulerHint[]
+        | undefined;
+      expect(
+        tracedHints?.some(
+          (candidate) => candidate.kind === "unnecessary-barrier",
+        ),
+      ).toBe(true);
+    });
+
+    it("keeps fetchFragmentSlots backward compatible while exposing status", async () => {
+      const record = await fetchFragmentSlots({
+        slots: [{ name: "promo", fragment: "promo-fragment" }],
+        registry: graphRegistry,
+        ctx,
+        fetchImpl: createOkFetch(),
+      });
+      expect(record.promo.source).toBe("network");
+      expect(record.promo.status).toBe("ok");
+    });
   });
 
   it("creates fragment headers and merges assets", () => {

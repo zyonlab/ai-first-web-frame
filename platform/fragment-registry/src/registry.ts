@@ -1,3 +1,6 @@
+import { FragmentRegistrySchema } from "../../../packages/contracts/src/index";
+import registryData from "./registry.data.json";
+
 export type ReleaseChannel = "stable" | "canary" | "preview";
 
 export type FragmentVersion = {
@@ -6,34 +9,61 @@ export type FragmentVersion = {
   manifestUrl: string;
 };
 
-export type FragmentRegistry = {
-  fragments: Record<string, Partial<Record<ReleaseChannel, FragmentVersion>>>;
+export type FragmentChannels = Partial<
+  Record<ReleaseChannel, FragmentVersion>
+> & {
+  versions?: Record<string, FragmentVersion>;
 };
 
-export const fragmentRegistry: FragmentRegistry = {
-  fragments: {
-    "promotion-banner": {
-      stable: {
-        version: "0.1.0",
-        serviceUrl: process.env.PROMOTION_BANNER_URL ?? "http://localhost:4201",
-        manifestUrl: `${process.env.PROMOTION_BANNER_URL ?? "http://localhost:4201"}/manifest`,
-      },
-      canary: {
-        version: "0.2.0-beta.1",
-        serviceUrl: process.env.PROMOTION_BANNER_URL ?? "http://localhost:4201",
-        manifestUrl: `${process.env.PROMOTION_BANNER_URL ?? "http://localhost:4201"}/manifest`,
-      },
-    },
-    "recommendation-widget": {
-      stable: {
-        version: "0.1.0",
-        serviceUrl:
-          process.env.RECOMMENDATION_WIDGET_URL ?? "http://localhost:4202",
-        manifestUrl: `${process.env.RECOMMENDATION_WIDGET_URL ?? "http://localhost:4202"}/manifest`,
-      },
-    },
-  },
+export type FragmentRegistry = {
+  fragments: Record<string, FragmentChannels>;
 };
+
+const RELEASE_CHANNELS = ["stable", "canary", "preview"] as const;
+
+export function fragmentEnvVarName(name: string): string {
+  return `${name.replace(/[^a-zA-Z0-9]+/g, "_").toUpperCase()}_URL`;
+}
+
+export function buildFragmentRegistry(
+  data: unknown = registryData,
+  env: Record<string, string | undefined> = process.env,
+): FragmentRegistry {
+  const parsed = FragmentRegistrySchema.parse(data);
+  const fragments: FragmentRegistry["fragments"] = {};
+  for (const [name, channels] of Object.entries(parsed.fragments)) {
+    const override = env[fragmentEnvVarName(name)];
+    const entry: FragmentChannels = {};
+    for (const channel of RELEASE_CHANNELS) {
+      const version = channels[channel];
+      if (version) entry[channel] = withOverride(version, override);
+    }
+    if (channels.versions) {
+      entry.versions = Object.fromEntries(
+        Object.entries(channels.versions).map(([key, version]) => [
+          key,
+          withOverride(version, override),
+        ]),
+      );
+    }
+    fragments[name] = entry;
+  }
+  return { fragments };
+}
+
+function withOverride(
+  entry: FragmentVersion,
+  override: string | undefined,
+): FragmentVersion {
+  if (!override) return { ...entry };
+  return {
+    version: entry.version,
+    serviceUrl: override,
+    manifestUrl: `${override}/manifest`,
+  };
+}
+
+export const fragmentRegistry: FragmentRegistry = buildFragmentRegistry();
 
 export function resolveFragment(
   name: string,
@@ -46,27 +76,20 @@ export function resolveFragment(
   if (isReleaseChannel(versionOrChannel))
     return entry[versionOrChannel] ?? null;
 
+  if (entry.versions?.[versionOrChannel])
+    return entry.versions[versionOrChannel];
+
   return (
-    Object.values(entry).find(
+    RELEASE_CHANNELS.map((channel) => entry[channel]).find(
       (candidate) => candidate?.version === versionOrChannel,
     ) ?? null
   );
 }
 
 export function validateFragmentRegistry(registry: FragmentRegistry): boolean {
-  return Object.entries(registry.fragments).every(
-    ([name, channels]) =>
-      name.length > 0 &&
-      Object.entries(channels).every(
-        ([channel, value]) =>
-          isReleaseChannel(channel) &&
-          typeof value?.version === "string" &&
-          value.serviceUrl.startsWith("http") &&
-          value.manifestUrl.startsWith("http"),
-      ),
-  );
+  return FragmentRegistrySchema.safeParse(registry).success;
 }
 
 function isReleaseChannel(value: string): value is ReleaseChannel {
-  return value === "stable" || value === "canary" || value === "preview";
+  return RELEASE_CHANNELS.includes(value as ReleaseChannel);
 }

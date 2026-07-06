@@ -1,0 +1,32 @@
+[
+  {
+    "name": "staticProof",
+    "fragment": "static-product-proof",
+    "channel": "stable",
+    "strategy": "static",
+    "required": false
+  },
+  {
+    "name": "promotion",
+    "fragment": "promotion-banner",
+    "channel": "stable",
+    "strategy": "isr",
+    "timeoutMs": 200,
+    "required": false
+  },
+  {
+    "name": "recommendations",
+    "fragment": "recommendation-widget",
+    "channel": "stable",
+    "strategy": "dynamic-ssr",
+    "timeoutMs": 200,
+    "required": false
+  },
+  {
+    "name": "price-panel",
+    "fragment": "price-panel",
+    "channel": "stable",
+    "required": false,
+    "reserved": true
+  }
+]

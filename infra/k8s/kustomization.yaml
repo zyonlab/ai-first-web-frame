@@ -1,0 +1,32 @@
+# Kustomize entry point for the five deployable units.
+#
+# Image tags are parameterized here instead of being hardcoded in the
+# manifests. The manifests keep the local-dev default tag (:dev); CI/CD
+# retargets a unit to the registry image built for a specific commit with:
+#
+#   cd infra/k8s
+#   kustomize edit set image <unit>=$REGISTRY_URL/<unit>:$GIT_SHA
+#   kubectl apply -k .
+#
+# Validate offline with either of:
+#   kubectl kustomize infra/k8s
+#   kubectl apply --dry-run=client -k infra/k8s   # needs a reachable API server for schema lookups
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - shell-gateway.yaml
+  - page-home.yaml
+  - page-product.yaml
+  - promotion-banner.yaml
+  - recommendation-widget.yaml
+images:
+  - name: shell-gateway
+    newTag: dev
+  - name: page-home
+    newTag: dev
+  - name: page-product
+    newTag: dev
+  - name: promotion-banner
+    newTag: dev
+  - name: recommendation-widget
+    newTag: dev

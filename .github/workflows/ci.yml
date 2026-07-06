@@ -1,3 +1,18 @@
+# CI/CD pipeline for the AI micro component MVP.
+#
+# Flow:
+#   PR / push        -> verify (quality gates) + affected (unit detection)
+#   push to main     -> docker matrix build of affected units, tagged
+#                       <unit>:<git-sha> and <unit>:latest; pushed only when
+#                       registry credentials are configured
+#   main or 'e2e'    -> compose stack + smoke checks + Playwright e2e
+#   PR label
+#
+# Registry configuration (all optional; without them images build but are not pushed):
+#   vars.REGISTRY_URL          e.g. ghcr.io/acme or registry.example.com/mvp
+#   secrets.REGISTRY_USERNAME
+#   secrets.REGISTRY_PASSWORD
+
 name: ci
 
 on:
@@ -20,3 +35,110 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
+
+  affected:
+    runs-on: ubuntu-latest
+    outputs:
+      has_units: ${{ steps.affected.outputs.has_units }}
+      units: ${{ steps.affected.outputs.units }}
+      matrix: ${{ steps.affected.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so merge-base diffs against the base ref work.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Compute affected deployable units
+        id: affected
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+          else
+            # Previous commit of the push; all zeros on force push/new branch,
+            # which the script detects and falls back from.
+            BASE="${{ github.event.before }}"
+          fi
+          pnpm exec tsx scripts/affected.mts --base "$BASE" --github-output "$GITHUB_OUTPUT"
+          pnpm exec tsx scripts/affected.mts --base "$BASE"
+
+  docker:
+    name: docker (${{ matrix.unit }})
+    needs: [verify, affected]
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.affected.outputs.has_units == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.affected.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        # Attestation export is disabled to mirror the documented local
+        # constraint (README: provenance/SBOM export caused snapshot errors).
+        run: >
+          docker buildx build
+          --provenance=false --sbom=false --load
+          -f ${{ matrix.dockerfile }}
+          -t ${{ matrix.unit }}:${{ github.sha }}
+          -t ${{ matrix.unit }}:latest
+          .
+      - name: Log in to registry
+        if: ${{ vars.REGISTRY_URL != '' && secrets.REGISTRY_USERNAME != '' && secrets.REGISTRY_PASSWORD != '' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - name: Push image
+        if: ${{ vars.REGISTRY_URL != '' && secrets.REGISTRY_USERNAME != '' && secrets.REGISTRY_PASSWORD != '' }}
+        run: |
+          for TAG in "${{ github.sha }}" latest; do
+            docker tag "${{ matrix.unit }}:$TAG" "${{ vars.REGISTRY_URL }}/${{ matrix.unit }}:$TAG"
+            docker push "${{ vars.REGISTRY_URL }}/${{ matrix.unit }}:$TAG"
+          done
+
+  e2e:
+    needs: [verify]
+    # Runs on main pushes always; on PRs only when the 'e2e' label is set.
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      contains(github.event.pull_request.labels.*.name, 'e2e')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Build compose stack
+        run: docker compose -f infra/docker/docker-compose.yml build --provenance=false --sbom=false
+      - name: Start compose stack
+        run: docker compose -f infra/docker/docker-compose.yml up -d --no-build
+      - name: Smoke check services
+        run: pnpm exec tsx scripts/docker-smoke.mts --timeout 180
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run e2e tests
+        run: pnpm e2e
+      - name: Collect compose logs on failure
+        if: failure()
+        run: docker compose -f infra/docker/docker-compose.yml logs --no-color | tail -200
+      - name: Stop compose stack
+        if: always()
+        run: docker compose -f infra/docker/docker-compose.yml down -v

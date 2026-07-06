@@ -1,0 +1,10 @@
+{
+  "name": "@mvp/release-tools",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "pnpm -w exec vitest run tools/release-tools/src",
+    "test:watch": "pnpm -w exec vitest tools/release-tools/src"
+  }
+}
