@@ -10,10 +10,14 @@ export default defineConfig({
       "@mvp/assets": pathFromRoot("./packages/assets/src/index.ts"),
       "@mvp/contracts": pathFromRoot("./packages/contracts/src/index.ts"),
       "@mvp/data": pathFromRoot("./packages/data/src/index.ts"),
+      "@mvp/design-system": pathFromRoot(
+        "./packages/design-system/src/index.ts",
+      ),
       "@mvp/design-tokens": pathFromRoot(
         "./packages/design-tokens/src/index.ts",
       ),
       "@mvp/interaction": pathFromRoot("./packages/interaction/src/index.ts"),
+      "@mvp/trade-client": pathFromRoot("./packages/trade-client/src/index.ts"),
       "@mvp/observability": pathFromRoot(
         "./packages/observability/src/index.ts",
       ),

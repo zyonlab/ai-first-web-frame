@@ -230,6 +230,19 @@ importers:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260705.1)(typescript@5.9.3)
 
+  packages/design-system:
+    dependencies:
+      '@mvp/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@mvp/design-tokens':
+        specifier: workspace:*
+        version: link:../design-tokens
+    devDependencies:
+      tsdown:
+        specifier: ^0.11.0
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260705.1)(typescript@5.9.3)
+
   packages/design-tokens:
     devDependencies:
       tsdown:
@@ -310,6 +323,25 @@ importers:
         specifier: workspace:*
         version: link:../contracts
     devDependencies:
+      tsdown:
+        specifier: ^0.11.0
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260705.1)(typescript@5.9.3)
+
+  packages/trade-client:
+    dependencies:
+      '@mvp/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@mvp/interaction':
+        specifier: workspace:*
+        version: link:../interaction
+    devDependencies:
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
       tsdown:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260705.1)(typescript@5.9.3)

@@ -46,7 +46,9 @@ const DEFAULT_LARGE_PACKAGES: Record<string, number> = {
 // Framework packages whose whole purpose is to wrap browser APIs. The
 // server-safe browser-global guard is skipped for files under these prefixes;
 // they gate real access behind runtime capability checks / dependency injection.
-const DEFAULT_BROWSER_CAPABLE = ["packages/storage/"];
+// `trade-client` is the client-side island runtime (React hydration, canvas
+// chart, store client) — window/document are its job, not accidental leakage.
+const DEFAULT_BROWSER_CAPABLE = ["packages/storage/", "packages/trade-client/"];
 
 export function runDependencyAudit(
   options: CliOptions = parseArgs(process.argv.slice(2)),
