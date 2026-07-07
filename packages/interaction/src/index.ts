@@ -498,3 +498,7 @@ export function createBroadcastBridge(
     },
   };
 }
+
+// Trade-demo interaction contracts (C3). Demo-specific additions isolated in
+// ./trade — the generic core above is unchanged.
+export * from "./trade";

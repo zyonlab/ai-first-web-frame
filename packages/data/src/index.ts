@@ -467,6 +467,10 @@ function stableStringify(value: unknown): string {
   return JSON.stringify(value);
 }
 
+// Trade-demo data sources: canonical source-id registry (C5), per-source
+// DataDependency + loader definitions, and the createTradeDataClient helper
+// (C4). Additive layer over the core above (A1-data slot). See `./sources`.
+export * from "./sources";
 // Mock realtime transport, seeded frame generators, and deterministic fixtures
 // (A0-mock slot). See `./transport` for the full surface; this only re-exports.
 export * from "./transport";
