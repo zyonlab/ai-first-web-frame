@@ -35,21 +35,44 @@
     "./Skeleton": {
       "types": "./dist/Skeleton/index.d.ts",
       "import": "./dist/Skeleton/index.js"
-    }
+    },
+    "./shadcn": {
+      "types": "./dist/shadcn/index.d.ts",
+      "import": "./dist/shadcn/index.js"
+    },
+    "./shadcn/globals.css": "./src/shadcn/globals.css",
+    "./tailwind.config": "./tailwind.config.ts"
   },
   "scripts": {
     "test": "pnpm -w exec vitest run packages/ui/src",
     "test:watch": "pnpm -w exec vitest packages/ui/src",
-    "build": "tsdown src/index.ts src/Button/index.ts src/Card/index.ts src/Image/index.ts src/ProductCardBase/index.ts src/Section/index.ts src/Skeleton/index.ts --format esm --dts",
+    "build": "tsdown src/index.ts src/Button/index.ts src/Card/index.ts src/Image/index.ts src/ProductCardBase/index.ts src/Section/index.ts src/Skeleton/index.ts src/shadcn/index.ts --format esm --dts",
     "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@mvp/contracts": "workspace:*",
+    "@mvp/design-system": "workspace:*",
     "@mvp/design-tokens": "workspace:*",
-    "react": "^18.3.1"
+    "@radix-ui/react-dialog": "^1.1.19",
+    "@radix-ui/react-dropdown-menu": "^2.1.20",
+    "@radix-ui/react-select": "^2.3.3",
+    "@radix-ui/react-slider": "^1.4.3",
+    "@radix-ui/react-tabs": "^1.1.17",
+    "@radix-ui/react-toast": "^1.2.19",
+    "@radix-ui/react-tooltip": "^1.2.12",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "tailwind-merge": "^3.6.0"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "tailwindcss": "^4.3.2",
     "tsdown": "^0.11.0"
   }
 }

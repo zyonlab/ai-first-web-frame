@@ -8,7 +8,18 @@
     "packages/ui/src/Image/Image.tsx",
     "packages/ui/src/ProductCardBase/ProductCardBase.tsx",
     "packages/ui/src/Section/Section.tsx",
-    "packages/ui/src/Skeleton/Skeleton.tsx"
+    "packages/ui/src/Skeleton/Skeleton.tsx",
+    "packages/ui/src/shadcn/command.tsx",
+    "packages/ui/src/shadcn/data-table.tsx",
+    "packages/ui/src/shadcn/dialog.tsx",
+    "packages/ui/src/shadcn/dropdown-menu.tsx",
+    "packages/ui/src/shadcn/locale-switcher.tsx",
+    "packages/ui/src/shadcn/select.tsx",
+    "packages/ui/src/shadcn/slider.tsx",
+    "packages/ui/src/shadcn/tabs.tsx",
+    "packages/ui/src/shadcn/theme-toggle.tsx",
+    "packages/ui/src/shadcn/toast.tsx",
+    "packages/ui/src/shadcn/tooltip.tsx"
   ],
   "matches": []
 }

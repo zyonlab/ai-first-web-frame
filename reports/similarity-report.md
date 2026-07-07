@@ -2,7 +2,7 @@
 
 Status: pass
 Threshold: 0.82
-Checked files: 6
+Checked files: 17
 
 | Left | Right | Score |
 | --- | --- | --- |

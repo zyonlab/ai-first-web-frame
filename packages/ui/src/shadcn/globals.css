@@ -1,0 +1,22 @@
+/*
+ * globals.css — the single stylesheet the island bundle ships for the vendored
+ * shadcn primitives (doc 04 §5.2).
+ *
+ * Intentionally minimal:
+ * - `@tailwind components; @tailwind utilities;` only. NO `@tailwind base` /
+ *   Preflight — the reset lives once in `@mvp/design-system` (`baseResetCss`),
+ *   injected by the shell, so it is not duplicated per unit.
+ * - The `--mvp-*` token variables (base scales + light/dark theme color blocks)
+ *   are emitted once by `@mvp/design-system` via `createAllThemeVariables()` and
+ *   injected by the shell / `@mvp/assets` ThemeAsset. This file therefore does
+ *   NOT redeclare any token variable — every utility below resolves its value
+ *   from whichever `[data-theme]` block is in scope at runtime.
+ *
+ * Consumed by the page-app / trade-client island bundle, purged against
+ * `tailwind.config.ts`'s `content` glob.
+ */
+
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind directive, resolved by the Tailwind build. */
+@tailwind components;
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind directive, resolved by the Tailwind build. */
+@tailwind utilities;
