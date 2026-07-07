@@ -53,22 +53,14 @@ export async function renderPnlChart(
     attributes: { fragment: pnlChartManifest.name },
   });
 
-  if (!request.props?.symbol) {
-    trace?.endSpan(renderSpan ?? "", {
-      status: "fallback",
-      attributes: { reason: "missing symbol", propsValid: false },
-    });
-    return {
-      statusCode: 400,
-      body: createPnlChartFallback("missing symbol"),
-    };
-  }
-
   try {
     const ctx = toRequestContext(request.ctx);
-    const symbol = request.props.symbol;
-    const interval = request.props.interval ?? "1m";
-    const range = request.props.range ?? interval;
+    // The PnL chart is account-level (used on the portfolio page, which has no
+    // active symbol), so the symbol is only the seed for the equity-curve
+    // series — default it instead of failing when the host omits it.
+    const symbol = (request.props?.symbol ?? "BTC").trim().toUpperCase();
+    const interval = request.props?.interval ?? "1m";
+    const range = request.props?.range ?? interval;
 
     const snapshot = await loadPnlSnapshot(ctx, symbol, interval, trace);
 

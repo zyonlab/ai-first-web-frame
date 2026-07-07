@@ -75,15 +75,15 @@ describe("pnl-chart fragment service", () => {
     expect(html).toContain("<polyline");
   });
 
-  it("/render returns a safe fallback for missing symbol", async () => {
+  it("/render defaults the symbol when missing (account-level chart)", async () => {
     const server = buildServer();
     const response = await server.inject({
       method: "POST",
       url: "/render",
       payload: { props: {} },
     });
-    expect(response.statusCode).toBe(400);
-    expect(response.json().html).toContain("data-fallback");
+    expect(response.statusCode).toBe(200);
+    expect(response.json().html).toContain("<svg");
   });
 
   it("/metrics exposes Prometheus text after traffic", async () => {

@@ -109,11 +109,15 @@ describe("createPnlChartFallback", () => {
 });
 
 describe("renderPnlChart (SSR entry, reads through C4 client)", () => {
-  it("returns a 400 fallback when symbol is missing", async () => {
+  it("defaults the symbol when missing (account-level portfolio chart)", async () => {
+    // The PnL chart is account-level; a missing symbol defaults instead of
+    // failing, so the portfolio page (which has no active symbol) still gets a
+    // rendered curve rather than a 400 fallback.
     const result = await renderPnlChart({ props: {} });
-    expect(result.statusCode).toBe(400);
+    expect(result.statusCode).toBe(200);
     if (!("html" in result.body)) throw new Error("expected html body");
-    expect(result.body.html).toContain('data-fallback="true"');
+    expect(result.body.html).toContain("<svg");
+    expect(result.body.html).not.toContain('data-fallback="true"');
   });
 
   it("renders a curve synthesized from candle history via createTradeDataClient", async () => {
