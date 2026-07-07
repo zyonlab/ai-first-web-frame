@@ -158,6 +158,34 @@
           "manifestUrl": "http://localhost:4212/manifest"
         }
       }
+    },
+    "portfolio-summary": {
+      "canary": {
+        "version": "0.1.0",
+        "serviceUrl": "http://localhost:4213",
+        "manifestUrl": "http://localhost:4213/manifest"
+      },
+      "versions": {
+        "0.1.0": {
+          "version": "0.1.0",
+          "serviceUrl": "http://localhost:4213",
+          "manifestUrl": "http://localhost:4213/manifest"
+        }
+      }
+    },
+    "pnl-chart": {
+      "canary": {
+        "version": "0.1.0",
+        "serviceUrl": "http://localhost:4214",
+        "manifestUrl": "http://localhost:4214/manifest"
+      },
+      "versions": {
+        "0.1.0": {
+          "version": "0.1.0",
+          "serviceUrl": "http://localhost:4214",
+          "manifestUrl": "http://localhost:4214/manifest"
+        }
+      }
     }
   }
 }

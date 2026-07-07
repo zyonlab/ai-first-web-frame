@@ -42,6 +42,13 @@ export const routeRegistry: RouteRegistry = {
       serviceUrl: process.env.PAGE_MARKETS_URL ?? "http://localhost:4104",
       channel: "stable",
     },
+    {
+      id: "portfolio",
+      path: "/portfolio",
+      page: "@mvp/page-portfolio",
+      serviceUrl: process.env.PAGE_PORTFOLIO_URL ?? "http://localhost:4105",
+      channel: "stable",
+    },
   ],
 };
 

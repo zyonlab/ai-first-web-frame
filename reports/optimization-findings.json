@@ -20,6 +20,23 @@
       "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
     },
     {
+      "id": "static-slot-portfolioSummary",
+      "severity": "info",
+      "category": "ssg",
+      "message": "Slot \"portfolioSummary\" has no declared dependencies and may not need dynamic SSR.",
+      "target": "portfolioSummary",
+      "evidence": {
+        "fragment": "portfolio-summary",
+        "props": {}
+      },
+      "location": {
+        "manifestPath": "apps/page-portfolio/src/manifest.slots.json",
+        "slotName": "portfolioSummary",
+        "fragmentName": "portfolio-summary"
+      },
+      "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
+    },
+    {
       "id": "static-slot-recommendations",
       "severity": "info",
       "category": "ssg",
@@ -159,7 +176,7 @@
   "traces": {
     "dir": "reports/traces",
     "filesRead": 1,
-    "snapshotCount": 11,
+    "snapshotCount": 12,
     "skippedLines": 0
   }
 }

@@ -2,15 +2,23 @@
 
 Status: warn
 
-Traces: 11 snapshot(s) from reports/traces (1 file(s), 0 malformed line(s) skipped)
+Traces: 12 snapshot(s) from reports/traces (1 file(s), 0 malformed line(s) skipped)
 
-## INFO (9)
+## INFO (10)
 
 ### ssg: recommendations
 
 Slot "recommendations" has no declared dependencies and may not need dynamic SSR.
 
 - Location: manifestPath=apps/page-home/src/manifest.slots.json, slotName=recommendations, fragmentName=recommendation-widget
+- Evidence: none
+- Recommendation: Change the slot strategy to static, isr, or cached-ssr if its content is deterministic.
+
+### ssg: portfolioSummary
+
+Slot "portfolioSummary" has no declared dependencies and may not need dynamic SSR.
+
+- Location: manifestPath=apps/page-portfolio/src/manifest.slots.json, slotName=portfolioSummary, fragmentName=portfolio-summary
 - Evidence: none
 - Recommendation: Change the slot strategy to static, isr, or cached-ssr if its content is deterministic.
 
