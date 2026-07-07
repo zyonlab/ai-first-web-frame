@@ -49,6 +49,20 @@ export const routeRegistry: RouteRegistry = {
       serviceUrl: process.env.PAGE_PORTFOLIO_URL ?? "http://localhost:4105",
       channel: "stable",
     },
+    {
+      id: "vaults",
+      path: "/vaults",
+      page: "@mvp/page-vaults",
+      serviceUrl: process.env.PAGE_VAULTS_URL ?? "http://localhost:4106",
+      channel: "stable",
+    },
+    {
+      id: "referrals",
+      path: "/referrals",
+      page: "@mvp/page-referrals",
+      serviceUrl: process.env.PAGE_REFERRALS_URL ?? "http://localhost:4107",
+      channel: "stable",
+    },
   ],
 };
 

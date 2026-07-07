@@ -195,6 +195,24 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
 
+  apps/page-referrals:
+    dependencies:
+      '@mvp/assets':
+        specifier: workspace:*
+        version: link:../../packages/assets
+      '@mvp/design-system':
+        specifier: workspace:*
+        version: link:../../packages/design-system
+      next:
+        specifier: ^15.3.4
+        version: 15.5.20(@playwright/test@1.61.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+
   apps/page-trade:
     dependencies:
       '@mvp/assets':
@@ -239,6 +257,24 @@ importers:
       '@mvp/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      next:
+        specifier: ^15.3.4
+        version: 15.5.20(@playwright/test@1.61.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+
+  apps/page-vaults:
+    dependencies:
+      '@mvp/assets':
+        specifier: workspace:*
+        version: link:../../packages/assets
+      '@mvp/design-system':
+        specifier: workspace:*
+        version: link:../../packages/design-system
       next:
         specifier: ^15.3.4
         version: 15.5.20(@playwright/test@1.61.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

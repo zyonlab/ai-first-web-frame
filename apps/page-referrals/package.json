@@ -1,0 +1,21 @@
+{
+  "name": "@mvp/page-referrals",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack -p 4107",
+    "start": "next start -p 4107",
+    "build": "next build",
+    "test": "pnpm -w exec vitest run apps/page-referrals/tests apps/page-referrals/src",
+    "test:watch": "pnpm -w exec vitest apps/page-referrals/tests apps/page-referrals/src",
+    "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mvp/assets": "workspace:*",
+    "@mvp/design-system": "workspace:*",
+    "next": "^15.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

@@ -12,12 +12,16 @@ services:
       PAGE_TRADE_URL: "http://page-trade:4103"
       PAGE_MARKETS_URL: "http://page-markets:4104"
       PAGE_PORTFOLIO_URL: "http://page-portfolio:4105"
+      PAGE_VAULTS_URL: "http://page-vaults:4106"
+      PAGE_REFERRALS_URL: "http://page-referrals:4107"
     depends_on:
       - page-home
       - page-product
       - page-trade
       - page-markets
       - page-portfolio
+      - page-vaults
+      - page-referrals
 
   page-home:
     build:
@@ -100,6 +104,24 @@ services:
     depends_on:
       - portfolio-summary
       - pnl-chart
+
+  page-vaults:
+    build:
+      context: ../..
+      dockerfile: apps/page-vaults/Dockerfile
+    ports:
+      - "4106:4106"
+    environment:
+      PORT: "4106"
+
+  page-referrals:
+    build:
+      context: ../..
+      dockerfile: apps/page-referrals/Dockerfile
+    ports:
+      - "4107:4107"
+    environment:
+      PORT: "4107"
 
   promotion-banner:
     build:
