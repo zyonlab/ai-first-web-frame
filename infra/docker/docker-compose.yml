@@ -158,3 +158,12 @@ services:
       - "4210:4210"
     environment:
       PORT: "4210"
+
+  chart-panel:
+    build:
+      context: ../..
+      dockerfile: fragments/chart-panel/Dockerfile
+    ports:
+      - "4211:4211"
+    environment:
+      PORT: "4211"

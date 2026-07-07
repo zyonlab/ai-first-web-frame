@@ -25,6 +25,7 @@ const ACCOUNT_DATA_ID = "trade-account";
 /** Slot keys composed on the trade page (one per registered canary fragment). */
 export type TradeSlotKey =
   | "marketHeader"
+  | "chart"
   | "book"
   | "trades"
   | "orderForm"
@@ -159,6 +160,20 @@ export async function fetchTradeFragmentSlots({
         },
       },
       {
+        name: "chart",
+        fragment: "chart-panel",
+        channel: "canary",
+        strategy: "isr",
+        timeoutMs,
+        required: false,
+        props,
+        cachePolicy: {
+          ttl: 60,
+          tags: ["candles", "trade"],
+          vary: ["locale", "props"],
+        },
+      },
+      {
         name: "book",
         fragment: "order-book",
         channel: "canary",
@@ -236,6 +251,7 @@ export async function fetchTradeFragmentSlots({
   const slots = execution.slots;
   const keys: TradeSlotKey[] = [
     "marketHeader",
+    "chart",
     "book",
     "trades",
     "orderForm",

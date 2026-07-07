@@ -12,9 +12,10 @@ import { tradePageManifest, validateTradePageManifest } from "../src/manifest";
 import { metadata } from "../src/metadata";
 import { renderTradeHtml, tradeSeoCopy, usedUiComponents } from "../src/render";
 
-/** The eight registered canary fragments the trade page composes. */
+/** The nine registered canary fragments the trade page composes. */
 const FRAGMENT_PORTS: Record<string, TradeSlotKey> = {
   "4203": "marketHeader",
+  "4211": "chart",
   "4204": "book",
   "4206": "trades",
   "4205": "orderForm",
@@ -26,6 +27,7 @@ const FRAGMENT_PORTS: Record<string, TradeSlotKey> = {
 
 const FRAGMENT_NAME_BY_PORT: Record<string, string> = {
   "4203": "market-header",
+  "4211": "chart-panel",
   "4204": "order-book",
   "4206": "trades-feed",
   "4205": "order-form",
@@ -87,10 +89,11 @@ describe("page-trade", () => {
     expect(html).toContain(`class="${TRADE_GRID_CLASS}"`);
   });
 
-  it("marks the chart-panel area as a P3 follow-up placeholder", () => {
+  it("renders the chart-panel area, falling back readably when absent", () => {
     const html = renderTradeHtml("BTC");
     expect(html).toContain('data-slot="chart"');
-    expect(html).toContain("mount chart-panel fragment in P3 follow-up");
+    // No fragment data present -> readable, no-JS fallback (not a hard blank).
+    expect(html).toContain("Chart for BTC is loading.");
   });
 
   it("metadata includes title and description", () => {
@@ -101,9 +104,9 @@ describe("page-trade", () => {
     expect(tradeSeoCopy.title).toBe(tradePageManifest.seo.title);
   });
 
-  it("page manifest passes validation and lists 8 slots", () => {
+  it("page manifest passes validation and lists 9 slots", () => {
     expect(validateTradePageManifest()).toBe(true);
-    expect(tradePageManifest.slots).toHaveLength(8);
+    expect(tradePageManifest.slots).toHaveLength(9);
     for (const slot of tradePageManifest.slots) {
       expect(slot.channel).toBe("canary");
     }
@@ -133,7 +136,7 @@ describe("page-trade", () => {
     expect(normalizeSymbol(undefined)).toBe("BTC");
   });
 
-  it("composes all 8 canary fragment slots through registry render endpoints", async () => {
+  it("composes all 9 canary fragment slots through registry render endpoints", async () => {
     const calls: string[] = [];
     const fetchImpl = (async (url: string | URL | Request) => {
       calls.push(String(url));
@@ -148,7 +151,7 @@ describe("page-trade", () => {
 
     expect(result.symbol).toBe("ETH");
 
-    // All 8 fragment ports were hit (canary serviceUrls 4203–4210).
+    // All 9 fragment ports were hit (canary serviceUrls 4203–4211).
     const ports = calls.map(portOf).sort();
     expect(ports).toEqual([
       "4203",
@@ -159,6 +162,7 @@ describe("page-trade", () => {
       "4208",
       "4209",
       "4210",
+      "4211",
     ]);
 
     // Each slot resolved to its fragment's live HTML.

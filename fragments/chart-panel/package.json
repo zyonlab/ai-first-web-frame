@@ -1,0 +1,32 @@
+{
+  "name": "@mvp/fragment-chart-panel",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsdown src/server.ts --format esm --platform node --dts",
+    "test": "pnpm -w exec vitest run fragments/chart-panel/tests fragments/chart-panel/src",
+    "test:watch": "pnpm -w exec vitest fragments/chart-panel/tests fragments/chart-panel/src",
+    "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mvp/contracts": "workspace:*",
+    "@mvp/data": "workspace:*",
+    "@mvp/interaction": "workspace:*",
+    "@mvp/observability": "workspace:*",
+    "@mvp/request-context": "workspace:*",
+    "@mvp/trade-client": "workspace:*",
+    "@mvp/ui": "workspace:*",
+    "fastify": "^4.28.1",
+    "zod": "^3.23.8"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "react": "^18.3.1",
+    "tsdown": "^0.11.0"
+  }
+}

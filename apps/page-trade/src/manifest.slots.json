@@ -62,5 +62,13 @@
     "strategy": "cached-ssr",
     "timeoutMs": 200,
     "required": false
+  },
+  {
+    "name": "chart",
+    "fragment": "chart-panel",
+    "channel": "canary",
+    "strategy": "isr",
+    "timeoutMs": 200,
+    "required": false
   }
 ]

@@ -50,6 +50,14 @@
     "fragments/account-bar/src/observability.ts",
     "fragments/account-bar/src/render.ts",
     "fragments/account-bar/src/server.ts",
+    "fragments/chart-panel/src/budget.ts",
+    "fragments/chart-panel/src/data.ts",
+    "fragments/chart-panel/src/island.tsx",
+    "fragments/chart-panel/src/islandLogic.ts",
+    "fragments/chart-panel/src/manifest.ts",
+    "fragments/chart-panel/src/observability.ts",
+    "fragments/chart-panel/src/render.ts",
+    "fragments/chart-panel/src/server.ts",
     "fragments/funding-bar/src/budget.ts",
     "fragments/funding-bar/src/countdown.ts",
     "fragments/funding-bar/src/data.ts",
@@ -158,6 +166,12 @@
     "packages/ui/tailwind.config.ts"
   ],
   "issues": [
+    {
+      "code": "large-client-component",
+      "severity": "warn",
+      "file": "fragments/chart-panel/src/island.tsx",
+      "detail": "client component exceeds size guideline"
+    },
     {
       "code": "large-client-component",
       "severity": "warn",

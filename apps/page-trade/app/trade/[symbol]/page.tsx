@@ -87,15 +87,14 @@ export default async function TradePage({ params }: TradePageProps) {
         </div>
 
         <div data-area="chart" data-slot="chart">
-          {/* chart-panel fragment is not built yet — placeholder keeps the
-              grid area present; mount chart-panel in P3 follow-up. */}
-          <section
-            data-slot="chart"
-            data-fragment="chart-panel"
-            data-fallback="true"
-          >
-            Chart for {symbol} — mount chart-panel fragment in P3 follow-up.
-          </section>
+          <FragmentHtml
+            html={slots.chart}
+            fallback={
+              <PanelFallback fragment="chart-panel">
+                Chart for {symbol} is loading.
+              </PanelFallback>
+            }
+          />
         </div>
 
         <div data-area="book" data-slot="book">

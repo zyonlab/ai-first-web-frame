@@ -46,11 +46,11 @@ export function renderTradeHtml(
   const header =
     fragments.marketHeader ??
     panelFallback("market-header", `Market header for ${upper} is loading.`);
-  // chart-panel fragment is not built yet (P3 follow-up); render a readable
-  // placeholder block so the grid area exists and the page is complete.
+  // chart-panel is a real slot now; fall back to a readable placeholder only
+  // when its fragment render is unavailable (degraded), keeping the grid intact.
   const chart =
     fragments.chart ??
-    `<section data-slot="chart" data-fragment="chart-panel" data-fallback="true">Chart for ${upper} — mount chart-panel fragment in P3 follow-up.</section>`;
+    `<section data-slot="chart" data-fragment="chart-panel" data-fallback="true">Chart for ${upper} is loading.</section>`;
   const book =
     fragments.book ??
     panelFallback("order-book", `Order book for ${upper} is loading.`);
