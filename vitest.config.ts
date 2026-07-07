@@ -18,6 +18,19 @@ export default defineConfig({
       ),
       "@mvp/interaction": pathFromRoot("./packages/interaction/src/index.ts"),
       "@mvp/trade-client": pathFromRoot("./packages/trade-client/src/index.ts"),
+      // Trade-demo island entry points (source `.tsx`, page-trade bundles them).
+      "@mvp/fragment-order-form/island": pathFromRoot(
+        "./fragments/order-form/src/island.tsx",
+      ),
+      "@mvp/fragment-market-header/island": pathFromRoot(
+        "./fragments/market-header/src/island.tsx",
+      ),
+      "@mvp/fragment-account-bar/island": pathFromRoot(
+        "./fragments/account-bar/src/island.tsx",
+      ),
+      "@mvp/fragment-chart-panel/island": pathFromRoot(
+        "./fragments/chart-panel/src/island.tsx",
+      ),
       "@mvp/observability": pathFromRoot(
         "./packages/observability/src/index.ts",
       ),
@@ -28,6 +41,7 @@ export default defineConfig({
       ),
       "@mvp/runtime": pathFromRoot("./packages/runtime/src/index.ts"),
       "@mvp/storage": pathFromRoot("./packages/storage/src/index.ts"),
+      "@mvp/ui/shadcn": pathFromRoot("./packages/ui/src/shadcn/index.ts"),
       "@mvp/ui": pathFromRoot("./packages/ui/src/index.ts"),
       "@mvp/workers": pathFromRoot("./packages/workers/src/index.ts"),
     },
@@ -44,6 +58,7 @@ export default defineConfig({
       "packages/**/*.test.tsx",
       "tools/**/*.test.ts",
       "apps/**/*.test.ts",
+      "apps/**/*.test.tsx",
       "fragments/**/*.test.ts",
       "platform/**/*.test.ts",
       "e2e/unit/**/*.test.ts",

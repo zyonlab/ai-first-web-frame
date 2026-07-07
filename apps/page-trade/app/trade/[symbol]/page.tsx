@@ -6,6 +6,7 @@ import {
   type TradeSlotKey,
 } from "../../../src/fragmentSlots";
 import { TRADE_GRID_CLASS } from "../../../src/gridStyles";
+import { TradeHydrator } from "../../../src/hydrate";
 import { tradeSeoCopy } from "../../../src/render";
 
 export const dynamic = "force-dynamic";
@@ -180,6 +181,11 @@ export default async function TradePage({ params }: TradePageProps) {
           />
         </div>
       </div>
+
+      {/* Client hydration boundary: mounts the four React islands into their
+          SSR `[data-island]` nodes against the page-owned shared store and wires
+          the order-book → order-form price flow. Renders nothing itself. */}
+      <TradeHydrator />
 
       {/* Scheduler health + hints (mirrors page-home diagnostics posture). */}
       <section data-scheduler-health="trade">

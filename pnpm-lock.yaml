@@ -143,6 +143,18 @@ importers:
       '@mvp/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
+      '@mvp/fragment-account-bar':
+        specifier: workspace:*
+        version: link:../../fragments/account-bar
+      '@mvp/fragment-chart-panel':
+        specifier: workspace:*
+        version: link:../../fragments/chart-panel
+      '@mvp/fragment-market-header':
+        specifier: workspace:*
+        version: link:../../fragments/market-header
+      '@mvp/fragment-order-form':
+        specifier: workspace:*
+        version: link:../../fragments/order-form
       '@mvp/interaction':
         specifier: workspace:*
         version: link:../../packages/interaction
