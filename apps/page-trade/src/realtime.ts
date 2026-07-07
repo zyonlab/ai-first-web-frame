@@ -229,6 +229,12 @@ function wireTradesFeed(
   symbol: string,
 ): PanelController {
   let state: TapeState = tapeStateFromDom(node, symbol);
+  // The SSR snapshot and the client mock transport are independent sequence
+  // origins (SSR fixtures rendered up to seq N; the browser transport restarts
+  // at seq 1). `prependPrint` rejects any print with `seq < head.seq` as stale,
+  // so raw live prints would be dropped. Rebase each incoming print onto a
+  // monotonic seq above the SSR baseline so live frames always prepend.
+  let nextSeq = state.prints[0]?.seq ?? 0;
   const stop = client.subscribe<TapePrint | TapePrint[]>(
     client.sourceIds.trades(symbol),
     (event) => {
@@ -236,7 +242,8 @@ function wireTradesFeed(
       if (!data) return;
       const prints = Array.isArray(data) ? data : [data];
       for (const print of prints) {
-        const result = prependPrint(state, print);
+        nextSeq += 1;
+        const result = prependPrint(state, { ...print, seq: nextSeq });
         state = result.state;
         applyTapePatch(node, result.patch);
       }

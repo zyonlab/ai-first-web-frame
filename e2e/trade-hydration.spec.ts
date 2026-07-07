@@ -70,17 +70,6 @@ test.describe("trade terminal island hydration", () => {
       testInfo.project.name === "no-js",
       "realtime feeds require JavaScript",
     );
-    // KNOWN GAP (fixme): the realtime layer is unit-tested (apps/page-trade
-    // realtime.test.tsx, injected scheduler) and its wiring is correct — the
-    // subscribe sugar auto-attaches the mock transport (interval 1000ms) for the
-    // book/trades feeds — but the panels are NOT observed self-driving in the
-    // production browser bundle (no console error; top data-seq stays put). The
-    // data-client subscribe/transport delivery path needs in-browser debugging.
-    // Kept as executable documentation of the target behavior.
-    test.fixme(
-      true,
-      "realtime feeds do not yet self-drive in the browser bundle",
-    );
     await page.goto(TRADE_URL, { waitUntil: "networkidle" });
 
     const topRow = page
