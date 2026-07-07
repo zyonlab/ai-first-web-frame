@@ -4,12 +4,19 @@ import {
   exportTrace as defaultExportTrace,
   type RequestTrace,
 } from "@mvp/observability";
-import Fastify, { type FastifyRequest } from "fastify";
+import {
+  type LocalePreference,
+  type ThemePreference,
+  writeLocalePreference,
+  writeThemePreference,
+} from "@mvp/storage";
+import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import { fragmentRegistry } from "../../../platform/fragment-registry/src/registry";
 import {
   matchRoute,
   routeRegistry,
 } from "../../../platform/route-registry/src/registry";
+import { wrapShellChrome } from "./chrome";
 import { createFragmentHeaders, createShellRequestContext } from "./context";
 import { createNotFoundFallback, createShellFallback } from "./fallback";
 import {
@@ -100,6 +107,23 @@ export function buildServer(options: BuildServerOptions = {}) {
   server.get("/manifest/routes", async () => routeRegistry);
   server.get("/manifest/fragments", async () => fragmentRegistry);
 
+  // Shell-owned theme / locale switch endpoints. No-JS safe: a plain GET link
+  // writes the public preference cookie via `@mvp/storage` and 302s back to the
+  // origin page, so the next SSR render paints the new theme/locale with no flash.
+  server.get("/_shell/theme", async (request, reply) => {
+    const value = normalizeTheme(readQuery(request, "value"));
+    if (!value) return badPref(reply, "theme");
+    const { setCookie } = writeThemePreference(value);
+    return redirectWithCookie(request, reply, setCookie);
+  });
+
+  server.get("/_shell/locale", async (request, reply) => {
+    const value = normalizeLocale(readQuery(request, "value"));
+    if (!value) return badPref(reply, "locale");
+    const { setCookie } = writeLocalePreference(value);
+    return redirectWithCookie(request, reply, setCookie);
+  });
+
   server.get("/*", async (request, reply) => {
     const ctx = createShellRequestContext(request);
     const trace = createRequestTrace({
@@ -156,7 +180,15 @@ export function buildServer(options: BuildServerOptions = {}) {
         .type(response.headers.get("content-type") ?? "text/html");
       const body = await response.text();
       const state = requestState.get(request);
-      return decorateShellHtml(body, pathname, route.page, state?.nonce);
+      return wrapShellChrome({
+        html: body,
+        pathname,
+        page: route.page,
+        theme: ctx.theme,
+        locale: ctx.shellLocale,
+        lastSymbol: ctx.lastSymbol,
+        nonce: state?.nonce,
+      });
     } catch (error) {
       const reason =
         error instanceof Error ? error.message : "page proxy failed";
@@ -185,24 +217,52 @@ function setRequestTrace(
   }
 }
 
-function decorateShellHtml(
-  html: string,
-  pathname: string,
-  page: string,
-  nonce?: string,
-) {
-  if (!html.includes("<body")) return html;
-  const nonceAttr = nonce ? ` nonce="${escapeHtml(nonce)}"` : "";
-  const marker = `<div data-shell-gateway="true"${nonceAttr} style="font-family:system-ui,sans-serif;background:#111;color:#fff;padding:8px 14px;font-size:13px">Shell gateway route: <strong>${escapeHtml(pathname)}</strong> -> ${escapeHtml(page)}</div>`;
-  return html.replace(/<body([^>]*)>/, `<body$1>${marker}`);
+/** Reads a single query-string value from the request URL. */
+function readQuery(request: FastifyRequest, key: string): string | undefined {
+  const url = new URL(request.url, "http://shell.local");
+  return url.searchParams.get(key) ?? undefined;
 }
 
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+function normalizeTheme(
+  value: string | undefined,
+): ThemePreference | undefined {
+  return value === "light" || value === "dark" || value === "system"
+    ? value
+    : undefined;
+}
+
+function normalizeLocale(
+  value: string | undefined,
+): LocalePreference | undefined {
+  return value === "en" || value === "zh" ? value : undefined;
+}
+
+/**
+ * Resolves the safe return target for a preference switch: only same-origin
+ * absolute paths are honored (open-redirect guard); anything else falls back to
+ * `/`. `returnTo` is provided by the nav links.
+ */
+function safeReturnTo(request: FastifyRequest): string {
+  const raw = readQuery(request, "returnTo");
+  if (raw?.startsWith("/") && !raw.startsWith("//")) return raw;
+  return "/";
+}
+
+/** 302 back to the origin page while emitting the preference `Set-Cookie`. */
+function redirectWithCookie(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  setCookie: string,
+) {
+  reply.header("set-cookie", setCookie);
+  reply.header("cache-control", "no-store");
+  reply.redirect(safeReturnTo(request), 302);
+  return reply;
+}
+
+function badPref(reply: FastifyReply, kind: string) {
+  reply.code(400).type("text/plain");
+  return `invalid ${kind} value`;
 }
 
 if (

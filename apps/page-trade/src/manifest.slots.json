@@ -1,0 +1,66 @@
+[
+  {
+    "name": "marketHeader",
+    "fragment": "market-header",
+    "channel": "canary",
+    "strategy": "cached-ssr",
+    "timeoutMs": 200,
+    "required": true
+  },
+  {
+    "name": "book",
+    "fragment": "order-book",
+    "channel": "canary",
+    "strategy": "dynamic-ssr",
+    "timeoutMs": 200,
+    "required": false
+  },
+  {
+    "name": "trades",
+    "fragment": "trades-feed",
+    "channel": "canary",
+    "strategy": "dynamic-ssr",
+    "timeoutMs": 200,
+    "required": false
+  },
+  {
+    "name": "orderForm",
+    "fragment": "order-form",
+    "channel": "canary",
+    "strategy": "dynamic-ssr",
+    "timeoutMs": 200,
+    "required": false
+  },
+  {
+    "name": "positions",
+    "fragment": "positions-table",
+    "channel": "canary",
+    "strategy": "dynamic-ssr",
+    "timeoutMs": 200,
+    "required": false
+  },
+  {
+    "name": "openOrders",
+    "fragment": "open-orders",
+    "channel": "canary",
+    "strategy": "dynamic-ssr",
+    "timeoutMs": 200,
+    "required": false
+  },
+  {
+    "name": "accountBar",
+    "fragment": "account-bar",
+    "channel": "canary",
+    "strategy": "dynamic-ssr",
+    "timeoutMs": 200,
+    "required": false
+  },
+  {
+    "name": "fundingBar",
+    "fragment": "funding-bar",
+    "channel": "canary",
+    "strategy": "cached-ssr",
+    "timeoutMs": 200,
+    "required": false
+  }
+]

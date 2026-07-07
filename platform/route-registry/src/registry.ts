@@ -28,6 +28,13 @@ export const routeRegistry: RouteRegistry = {
       serviceUrl: process.env.PAGE_PRODUCT_URL ?? "http://localhost:4102",
       channel: "stable",
     },
+    {
+      id: "trade",
+      path: "/trade/:symbol",
+      page: "@mvp/page-trade",
+      serviceUrl: process.env.PAGE_TRADE_URL ?? "http://localhost:4103",
+      channel: "stable",
+    },
   ],
 };
 

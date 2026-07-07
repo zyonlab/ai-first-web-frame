@@ -101,6 +101,153 @@ describe("shell-gateway", () => {
   });
 });
 
+describe("shell-gateway chrome + theme/locale", () => {
+  function stubPage() {
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(
+          "<!doctype html><html><head><title>t</title></head><body><main>home page</main></body></html>",
+          { status: 200, headers: { "content-type": "text/html" } },
+        ),
+    ) as typeof fetch;
+  }
+
+  it("renders the global nav with every primary link", async () => {
+    stubPage();
+    const server = buildServer();
+    const response = await server.inject({ method: "GET", url: "/" });
+    expect(response.body).toContain('data-shell-nav="true"');
+    expect(response.body).toContain("MVP Perps");
+    expect(response.body).toContain('href="/trade/BTC"');
+    expect(response.body).toContain('href="/markets"');
+    expect(response.body).toContain('href="/portfolio"');
+    expect(response.body).toContain('href="/vaults"');
+    expect(response.body).toContain('href="/referrals"');
+  });
+
+  it("does not mark any primary link active on a non-nav route", async () => {
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response("<main>product</main>", {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+    ) as typeof fetch;
+    const server = buildServer();
+    const response = await server.inject({ method: "GET", url: "/product/1" });
+    // /product/1 matches no primary nav item -> no aria-current on a navlink.
+    expect(response.body).not.toMatch(
+      /mvp-shell-navlink[^>]*aria-current="page"/,
+    );
+    expect(response.body).toContain('data-shell-nav="true"');
+  });
+
+  it("defaults to data-theme=system + lang en-US with no cookies", async () => {
+    stubPage();
+    const server = buildServer();
+    const response = await server.inject({ method: "GET", url: "/" });
+    expect(response.body).toContain('data-theme="system"');
+    expect(response.body).toContain('lang="en-US"');
+  });
+
+  it("renders data-theme=dark from the mvp_theme cookie", async () => {
+    stubPage();
+    const server = buildServer();
+    const response = await server.inject({
+      method: "GET",
+      url: "/",
+      headers: { cookie: "mvp_theme=dark" },
+    });
+    expect(response.body).toContain('data-theme="dark"');
+  });
+
+  it("renders lang=zh-CN from the mvp_locale cookie", async () => {
+    stubPage();
+    const server = buildServer();
+    const response = await server.inject({
+      method: "GET",
+      url: "/",
+      headers: { cookie: "mvp_locale=zh" },
+    });
+    expect(response.body).toContain('lang="zh-CN"');
+  });
+
+  it("injects the design-system theme variables into <head>", async () => {
+    stubPage();
+    const server = buildServer();
+    const response = await server.inject({ method: "GET", url: "/" });
+    expect(response.body).toContain("--mvp-color-surface-1");
+    expect(response.body).toContain(':where([data-theme="dark"])');
+  });
+
+  it("/_shell/theme writes mvp_theme and 302s back to the origin", async () => {
+    const server = buildServer();
+    const response = await server.inject({
+      method: "GET",
+      url: "/_shell/theme?value=dark&returnTo=%2Fmarkets",
+    });
+    expect(response.statusCode).toBe(302);
+    expect(response.headers.location).toBe("/markets");
+    const setCookie = String(response.headers["set-cookie"]);
+    expect(setCookie).toContain("mvp_theme=dark");
+    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).not.toContain("HttpOnly");
+  });
+
+  it("/_shell/locale writes mvp_locale and 302s back to the origin", async () => {
+    const server = buildServer();
+    const response = await server.inject({
+      method: "GET",
+      url: "/_shell/locale?value=zh&returnTo=%2Fportfolio",
+    });
+    expect(response.statusCode).toBe(302);
+    expect(response.headers.location).toBe("/portfolio");
+    expect(String(response.headers["set-cookie"])).toContain("mvp_locale=zh");
+  });
+
+  it("rejects an invalid theme value with 400", async () => {
+    const server = buildServer();
+    const response = await server.inject({
+      method: "GET",
+      url: "/_shell/theme?value=neon",
+    });
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("guards against open-redirect returnTo targets", async () => {
+    const server = buildServer();
+    const response = await server.inject({
+      method: "GET",
+      url: "/_shell/theme?value=light&returnTo=https://evil.example",
+    });
+    expect(response.statusCode).toBe(302);
+    expect(response.headers.location).toBe("/");
+  });
+
+  it("forwards the resolved theme + locale to the page unit", async () => {
+    const headers: Record<string, string> = {};
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      Object.assign(
+        headers,
+        (init as RequestInit)?.headers as Record<string, string>,
+      );
+      return new Response("<main>ok</main>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    }) as typeof fetch;
+    const server = buildServer();
+    await server.inject({
+      method: "GET",
+      url: "/",
+      headers: { cookie: "mvp_theme=dark; mvp_locale=zh" },
+    });
+    expect(headers["x-theme"]).toBe("dark");
+    expect(headers["x-locale"]).toBe("zh-CN");
+  });
+});
+
 describe("shell-gateway observability", () => {
   it("/health reports service and monotonic uptimeMs from an injected clock", async () => {
     let clock = 1000;

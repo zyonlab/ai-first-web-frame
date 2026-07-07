@@ -52,12 +52,114 @@
         "fragmentName": "price-panel"
       },
       "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
+    },
+    {
+      "id": "static-slot-book",
+      "severity": "info",
+      "category": "ssg",
+      "message": "Slot \"book\" has no declared dependencies and may not need dynamic SSR.",
+      "target": "book",
+      "evidence": {
+        "fragment": "order-book",
+        "props": {}
+      },
+      "location": {
+        "manifestPath": "apps/page-trade/src/manifest.slots.json",
+        "slotName": "book",
+        "fragmentName": "order-book"
+      },
+      "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
+    },
+    {
+      "id": "static-slot-trades",
+      "severity": "info",
+      "category": "ssg",
+      "message": "Slot \"trades\" has no declared dependencies and may not need dynamic SSR.",
+      "target": "trades",
+      "evidence": {
+        "fragment": "trades-feed",
+        "props": {}
+      },
+      "location": {
+        "manifestPath": "apps/page-trade/src/manifest.slots.json",
+        "slotName": "trades",
+        "fragmentName": "trades-feed"
+      },
+      "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
+    },
+    {
+      "id": "static-slot-orderForm",
+      "severity": "info",
+      "category": "ssg",
+      "message": "Slot \"orderForm\" has no declared dependencies and may not need dynamic SSR.",
+      "target": "orderForm",
+      "evidence": {
+        "fragment": "order-form",
+        "props": {}
+      },
+      "location": {
+        "manifestPath": "apps/page-trade/src/manifest.slots.json",
+        "slotName": "orderForm",
+        "fragmentName": "order-form"
+      },
+      "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
+    },
+    {
+      "id": "static-slot-positions",
+      "severity": "info",
+      "category": "ssg",
+      "message": "Slot \"positions\" has no declared dependencies and may not need dynamic SSR.",
+      "target": "positions",
+      "evidence": {
+        "fragment": "positions-table",
+        "props": {}
+      },
+      "location": {
+        "manifestPath": "apps/page-trade/src/manifest.slots.json",
+        "slotName": "positions",
+        "fragmentName": "positions-table"
+      },
+      "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
+    },
+    {
+      "id": "static-slot-openOrders",
+      "severity": "info",
+      "category": "ssg",
+      "message": "Slot \"openOrders\" has no declared dependencies and may not need dynamic SSR.",
+      "target": "openOrders",
+      "evidence": {
+        "fragment": "open-orders",
+        "props": {}
+      },
+      "location": {
+        "manifestPath": "apps/page-trade/src/manifest.slots.json",
+        "slotName": "openOrders",
+        "fragmentName": "open-orders"
+      },
+      "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
+    },
+    {
+      "id": "static-slot-accountBar",
+      "severity": "info",
+      "category": "ssg",
+      "message": "Slot \"accountBar\" has no declared dependencies and may not need dynamic SSR.",
+      "target": "accountBar",
+      "evidence": {
+        "fragment": "account-bar",
+        "props": {}
+      },
+      "location": {
+        "manifestPath": "apps/page-trade/src/manifest.slots.json",
+        "slotName": "accountBar",
+        "fragmentName": "account-bar"
+      },
+      "recommendation": "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic."
     }
   ],
   "traces": {
     "dir": "reports/traces",
     "filesRead": 1,
-    "snapshotCount": 3,
+    "snapshotCount": 4,
     "skippedLines": 0
   }
 }

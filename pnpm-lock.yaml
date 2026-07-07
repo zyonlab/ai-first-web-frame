@@ -129,11 +129,23 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
 
-  apps/shell-gateway:
+  apps/page-trade:
     dependencies:
+      '@mvp/assets':
+        specifier: workspace:*
+        version: link:../../packages/assets
       '@mvp/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@mvp/data':
+        specifier: workspace:*
+        version: link:../../packages/data
+      '@mvp/design-system':
+        specifier: workspace:*
+        version: link:../../packages/design-system
+      '@mvp/interaction':
+        specifier: workspace:*
+        version: link:../../packages/interaction
       '@mvp/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -143,6 +155,42 @@ importers:
       '@mvp/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
+      '@mvp/trade-client':
+        specifier: workspace:*
+        version: link:../../packages/trade-client
+      '@mvp/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      next:
+        specifier: ^15.3.4
+        version: 15.5.20(@playwright/test@1.61.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+
+  apps/shell-gateway:
+    dependencies:
+      '@mvp/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@mvp/design-system':
+        specifier: workspace:*
+        version: link:../../packages/design-system
+      '@mvp/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@mvp/request-context':
+        specifier: workspace:*
+        version: link:../../packages/request-context
+      '@mvp/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      '@mvp/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       fastify:
         specifier: ^4.28.1
         version: 4.29.1

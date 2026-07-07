@@ -9,9 +9,11 @@ services:
       PORT: "4100"
       PAGE_HOME_URL: "http://page-home:4101"
       PAGE_PRODUCT_URL: "http://page-product:4102"
+      PAGE_TRADE_URL: "http://page-trade:4103"
     depends_on:
       - page-home
       - page-product
+      - page-trade
 
   page-home:
     build:
@@ -40,6 +42,32 @@ services:
     depends_on:
       - promotion-banner
       - recommendation-widget
+
+  page-trade:
+    build:
+      context: ../..
+      dockerfile: apps/page-trade/Dockerfile
+    ports:
+      - "4103:4103"
+    environment:
+      PORT: "4103"
+      MARKET_HEADER_URL: "http://market-header:4203"
+      ORDER_BOOK_URL: "http://order-book:4204"
+      ORDER_FORM_URL: "http://order-form:4205"
+      TRADES_FEED_URL: "http://trades-feed:4206"
+      ACCOUNT_BAR_URL: "http://account-bar:4207"
+      POSITIONS_TABLE_URL: "http://positions-table:4208"
+      OPEN_ORDERS_URL: "http://open-orders:4209"
+      FUNDING_BAR_URL: "http://funding-bar:4210"
+    depends_on:
+      - market-header
+      - order-book
+      - order-form
+      - trades-feed
+      - account-bar
+      - positions-table
+      - open-orders
+      - funding-bar
 
   promotion-banner:
     build:

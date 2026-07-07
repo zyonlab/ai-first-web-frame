@@ -2,9 +2,9 @@
 
 Status: warn
 
-Traces: 3 snapshot(s) from reports/traces (1 file(s), 0 malformed line(s) skipped)
+Traces: 4 snapshot(s) from reports/traces (1 file(s), 0 malformed line(s) skipped)
 
-## INFO (3)
+## INFO (9)
 
 ### ssg: recommendations
 
@@ -27,5 +27,53 @@ Slot "recommendations" has no declared dependencies and may not need dynamic SSR
 Slot "price-panel" has no declared dependencies and may not need dynamic SSR.
 
 - Location: manifestPath=apps/page-product/src/manifest.slots.json, slotName=price-panel, fragmentName=price-panel
+- Evidence: none
+- Recommendation: Change the slot strategy to static, isr, or cached-ssr if its content is deterministic.
+
+### ssg: book
+
+Slot "book" has no declared dependencies and may not need dynamic SSR.
+
+- Location: manifestPath=apps/page-trade/src/manifest.slots.json, slotName=book, fragmentName=order-book
+- Evidence: none
+- Recommendation: Change the slot strategy to static, isr, or cached-ssr if its content is deterministic.
+
+### ssg: trades
+
+Slot "trades" has no declared dependencies and may not need dynamic SSR.
+
+- Location: manifestPath=apps/page-trade/src/manifest.slots.json, slotName=trades, fragmentName=trades-feed
+- Evidence: none
+- Recommendation: Change the slot strategy to static, isr, or cached-ssr if its content is deterministic.
+
+### ssg: orderForm
+
+Slot "orderForm" has no declared dependencies and may not need dynamic SSR.
+
+- Location: manifestPath=apps/page-trade/src/manifest.slots.json, slotName=orderForm, fragmentName=order-form
+- Evidence: none
+- Recommendation: Change the slot strategy to static, isr, or cached-ssr if its content is deterministic.
+
+### ssg: positions
+
+Slot "positions" has no declared dependencies and may not need dynamic SSR.
+
+- Location: manifestPath=apps/page-trade/src/manifest.slots.json, slotName=positions, fragmentName=positions-table
+- Evidence: none
+- Recommendation: Change the slot strategy to static, isr, or cached-ssr if its content is deterministic.
+
+### ssg: openOrders
+
+Slot "openOrders" has no declared dependencies and may not need dynamic SSR.
+
+- Location: manifestPath=apps/page-trade/src/manifest.slots.json, slotName=openOrders, fragmentName=open-orders
+- Evidence: none
+- Recommendation: Change the slot strategy to static, isr, or cached-ssr if its content is deterministic.
+
+### ssg: accountBar
+
+Slot "accountBar" has no declared dependencies and may not need dynamic SSR.
+
+- Location: manifestPath=apps/page-trade/src/manifest.slots.json, slotName=accountBar, fragmentName=account-bar
 - Evidence: none
 - Recommendation: Change the slot strategy to static, isr, or cached-ssr if its content is deterministic.
