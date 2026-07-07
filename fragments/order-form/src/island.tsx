@@ -32,7 +32,7 @@ import type { OrderFormIslandProps } from "./render";
  * The `order-form` island (contract C2 mount target).
  *
  * Mounted by `@mvp/trade-client` `mountIsland(el, { props, slice })` on the
- * `data-island="order-form"` node the fragment emits (P3 does the real DOM
+ * `data-island="orderForm"` node the fragment emits (P3 does the real DOM
  * mount; P2 ships the component + pure-logic tests). It:
  *
  *  - subscribes to `trade.order-draft.price` (from an order-book row click) and

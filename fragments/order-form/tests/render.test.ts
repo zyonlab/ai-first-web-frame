@@ -51,12 +51,12 @@ describe("order-form render — first paint", () => {
   it("emits the C2 island mount node with an inline {props,slice} snapshot", async () => {
     const result = await okRender();
     const html = "html" in result.body ? result.body.html : "";
-    expect(html).toContain('<div data-island="order-form">');
+    expect(html).toContain('<div data-island="orderForm">');
     expect(html).toContain(
-      '<script type="application/json" data-island-props="order-form">',
+      '<script type="application/json" data-island-props="orderForm">',
     );
     // Extract + parse the snapshot JSON.
-    const match = html.match(/data-island-props="order-form">(.*?)<\/script>/s);
+    const match = html.match(/data-island-props="orderForm">(.*?)<\/script>/s);
     expect(match).not.toBeNull();
     const json = (match?.[1] ?? "").replaceAll("\\u003c", "<");
     const snapshot = JSON.parse(json) as {

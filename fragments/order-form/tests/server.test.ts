@@ -21,7 +21,7 @@ describe("order-form fragment service", () => {
     expect(response.headers["content-type"]).toContain("text/html");
     expect(response.body).toContain("order-form fragment");
     expect(response.body).toContain("POST http://localhost:4205/render");
-    expect(response.body).toContain('data-island="order-form"');
+    expect(response.body).toContain('data-island="orderForm"');
   });
 
   it("/health returns ok with service and uptime", async () => {
@@ -67,7 +67,7 @@ describe("order-form fragment service", () => {
     expect(response.statusCode).toBe(200);
     const html = response.json().html;
     expect(html).toContain('data-symbol="ETH"');
-    expect(html).toContain('data-island-props="order-form"');
+    expect(html).toContain('data-island-props="orderForm"');
     // request-time account read surfaced into the margin preview
     expect(html).toContain("data-of-equity");
   });

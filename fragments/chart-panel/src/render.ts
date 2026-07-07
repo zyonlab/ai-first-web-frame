@@ -93,6 +93,7 @@ export function renderChartPanelHtml(
   symbol: string,
   interval: ChartInterval,
   series: ChartCandle[],
+  degradedReason?: string,
 ): string {
   const props: ChartPanelIslandProps = { symbol, interval, series };
   const snapshot = JSON.stringify({ props, slice: ISLAND_SLICE });
@@ -106,8 +107,15 @@ export function renderChartPanelHtml(
     );
   }).join("");
 
+  // Even when the SSR history read fails we still emit the island shell (marker +
+  // canvas + snapshot) so the chart mounts and populates live via subscription;
+  // `data-fallback` flags the degraded SSR seed for observability.
+  const sectionAttrs = degradedReason
+    ? ` data-fallback="true" data-degraded-reason="${escapeHtml(degradedReason)}"`
+    : "";
+
   return (
-    `<section data-fragment="chart-panel" class="chart-panel">` +
+    `<section data-fragment="chart-panel" class="chart-panel"${sectionAttrs}>` +
     `<div data-island="${ISLAND_NAME}" class="chart-panel__island">` +
     `<header class="chart-panel__header">` +
     `<span class="chart-panel__pair" data-field="pair">${escapeHtml(symbol)}</span>` +
@@ -235,15 +243,28 @@ export async function renderChartPanel(
       statusCode: 200,
       body: createChartPanelFallback(
         error instanceof Error ? error.message : "render failed",
+        request.props.symbol,
+        (isChartInterval(request.props.interval ?? "")
+          ? request.props.interval
+          : DEFAULT_INTERVAL) as ChartInterval,
       ),
     };
   }
 }
 
-export function createChartPanelFallback(reason: string) {
+export function createChartPanelFallback(
+  reason: string,
+  symbol: string = DEFAULT_SYMBOL,
+  interval: ChartInterval = DEFAULT_INTERVAL,
+) {
+  const safeSymbol = (symbol || DEFAULT_SYMBOL).trim().toUpperCase();
+  const safeInterval = isChartInterval(interval) ? interval : DEFAULT_INTERVAL;
   return {
-    html: `<section data-fragment="chart-panel" data-fallback="true">Chart unavailable: ${escapeHtml(reason)}</section>`,
-    assets: { js: [], css: [] },
+    // Degraded SSR: empty series, but the island marker + canvas survive so the
+    // chart still mounts and can populate live (see renderChartPanelHtml).
+    html: renderChartPanelHtml(safeSymbol, safeInterval, [], reason),
+    // Keep the island/canvas assets so the degraded shell can still hydrate.
+    assets: chartPanelManifest.assets,
     cache: { ttl: 10, tags: ["chart-panel", "fallback"] },
     metadata: {
       name: chartPanelManifest.name,

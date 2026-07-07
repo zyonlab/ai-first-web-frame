@@ -131,10 +131,16 @@ describe("chart-panel render — first paint", () => {
     );
   });
 
-  it("createChartPanelFallback returns a degraded, no-JS-readable section", () => {
+  it("createChartPanelFallback keeps the island marker so the chart can still mount", () => {
     const fallback = createChartPanelFallback("boom");
+    // Degraded, but the island shell survives (marker + canvas + snapshot) so it
+    // hydrates and populates live rather than losing the whole chart region.
     expect(fallback.html).toContain('data-fallback="true"');
-    expect(fallback.html).toContain("Chart unavailable: boom");
+    expect(fallback.html).toContain('data-island="chart"');
+    expect(fallback.html).toContain('data-island-props="chart"');
+    expect(fallback.html).toContain('data-degraded-reason="boom"');
+    // Island/canvas assets are retained so the degraded shell can hydrate.
+    expect(fallback.assets.js.length).toBeGreaterThan(0);
     expect(fallback.cache.ttl).toBe(10);
   });
 

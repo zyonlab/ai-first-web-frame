@@ -12,7 +12,7 @@ import { orderFormBudget } from "./budget";
  * and `@mvp/ui/shadcn` (vendored Radix Slider/Tabs/Select). `@mvp/assets`
  * dedupes these so React/Radix ship exactly once for the whole page (spine
  * §4/§11). The fragment's own JS is only the island glue that hydrates the
- * `data-island="order-form"` mount node.
+ * `data-island="orderForm"` mount node.
  *
  * `dataDependencies` declares the `account` node (request-time margin), shared
  * with account-bar / positions-table so the runtime resolves it once per SSR

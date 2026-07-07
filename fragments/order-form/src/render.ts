@@ -131,7 +131,7 @@ export function renderOrderFormHtml(
   const activeBuy = draft.side === "buy";
   return (
     `<section data-fragment="order-form" data-symbol="${escapeHtml(symbol)}">` +
-    `<div data-island="order-form">` +
+    `<div data-island="orderForm">` +
     // --- SSR first paint (readable, static) ---
     `<form class="of-form" data-of-form>` +
     `<div class="of-side" role="tablist" aria-label="Order side">` +
@@ -166,7 +166,7 @@ export function renderOrderFormHtml(
     `<button type="submit" class="of-submit of-submit-${escapeHtml(draft.side)}" data-of-submit>${activeBuy ? "Buy" : "Sell"} ${escapeHtml(symbol)}</button>` +
     `</form>` +
     // --- C2 inline snapshot ---
-    `<script type="application/json" data-island-props="order-form">${snapshot}</script>` +
+    `<script type="application/json" data-island-props="orderForm">${snapshot}</script>` +
     `</div>` +
     `</section>`
   );
