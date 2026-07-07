@@ -2,15 +2,15 @@
   "tool": "css-budget-check",
   "status": "pass",
   "metrics": {
-    "totalCssBytes": 15886,
-    "unusedCssBytes": 183,
+    "totalCssBytes": 18682,
+    "unusedCssBytes": 239,
     "duplicatedRules": 0,
     "globalSelectors": 0,
     "importantCount": 0,
     "cssModuleUsage": {
       "moduleFiles": 6,
-      "totalFiles": 15,
-      "ratio": 0.4
+      "totalFiles": 16,
+      "ratio": 0.375
     }
   },
   "budget": {},

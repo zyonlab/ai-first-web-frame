@@ -10,10 +10,12 @@ services:
       PAGE_HOME_URL: "http://page-home:4101"
       PAGE_PRODUCT_URL: "http://page-product:4102"
       PAGE_TRADE_URL: "http://page-trade:4103"
+      PAGE_MARKETS_URL: "http://page-markets:4104"
     depends_on:
       - page-home
       - page-product
       - page-trade
+      - page-markets
 
   page-home:
     build:
@@ -70,6 +72,18 @@ services:
       - open-orders
       - funding-bar
       - chart-panel
+
+  page-markets:
+    build:
+      context: ../..
+      dockerfile: apps/page-markets/Dockerfile
+    ports:
+      - "4104:4104"
+    environment:
+      PORT: "4104"
+      MARKETS_TABLE_URL: "http://markets-table:4212"
+    depends_on:
+      - markets-table
 
   promotion-banner:
     build:
@@ -169,3 +183,12 @@ services:
       - "4211:4211"
     environment:
       PORT: "4211"
+
+  markets-table:
+    build:
+      context: ../..
+      dockerfile: fragments/markets-table/Dockerfile
+    ports:
+      - "4212:4212"
+    environment:
+      PORT: "4212"

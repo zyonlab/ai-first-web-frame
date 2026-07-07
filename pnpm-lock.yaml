@@ -90,6 +90,39 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
 
+  apps/page-markets:
+    dependencies:
+      '@mvp/assets':
+        specifier: workspace:*
+        version: link:../../packages/assets
+      '@mvp/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@mvp/data':
+        specifier: workspace:*
+        version: link:../../packages/data
+      '@mvp/design-system':
+        specifier: workspace:*
+        version: link:../../packages/design-system
+      '@mvp/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@mvp/request-context':
+        specifier: workspace:*
+        version: link:../../packages/request-context
+      '@mvp/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      next:
+        specifier: ^15.3.4
+        version: 15.5.20(@playwright/test@1.61.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+
   apps/page-product:
     dependencies:
       '@mvp/assets':
@@ -337,6 +370,31 @@ importers:
       react:
         specifier: ^18.3.1
         version: 18.3.1
+      tsdown:
+        specifier: ^0.11.0
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+
+  fragments/markets-table:
+    dependencies:
+      '@mvp/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@mvp/data':
+        specifier: workspace:*
+        version: link:../../packages/data
+      '@mvp/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@mvp/request-context':
+        specifier: workspace:*
+        version: link:../../packages/request-context
+      fastify:
+        specifier: ^4.28.1
+        version: 4.29.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
       tsdown:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)

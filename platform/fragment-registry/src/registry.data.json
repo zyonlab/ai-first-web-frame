@@ -144,6 +144,20 @@
           "manifestUrl": "http://localhost:4211/manifest"
         }
       }
+    },
+    "markets-table": {
+      "canary": {
+        "version": "0.1.0",
+        "serviceUrl": "http://localhost:4212",
+        "manifestUrl": "http://localhost:4212/manifest"
+      },
+      "versions": {
+        "0.1.0": {
+          "version": "0.1.0",
+          "serviceUrl": "http://localhost:4212",
+          "manifestUrl": "http://localhost:4212/manifest"
+        }
+      }
     }
   }
 }

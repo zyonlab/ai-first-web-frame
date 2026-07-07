@@ -1,0 +1,10 @@
+[
+  {
+    "name": "marketsTable",
+    "fragment": "markets-table",
+    "channel": "canary",
+    "strategy": "cached-ssr",
+    "timeoutMs": 200,
+    "required": true
+  }
+]

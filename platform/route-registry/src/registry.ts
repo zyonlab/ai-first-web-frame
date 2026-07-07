@@ -35,6 +35,13 @@ export const routeRegistry: RouteRegistry = {
       serviceUrl: process.env.PAGE_TRADE_URL ?? "http://localhost:4103",
       channel: "stable",
     },
+    {
+      id: "markets",
+      path: "/markets",
+      page: "@mvp/page-markets",
+      serviceUrl: process.env.PAGE_MARKETS_URL ?? "http://localhost:4104",
+      channel: "stable",
+    },
   ],
 };
 

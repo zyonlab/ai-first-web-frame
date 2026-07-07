@@ -1,0 +1,26 @@
+{
+  "name": "@mvp/page-markets",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack -p 4104",
+    "start": "next start -p 4104",
+    "build": "next build",
+    "test": "pnpm -w exec vitest run apps/page-markets/tests apps/page-markets/src",
+    "test:watch": "pnpm -w exec vitest apps/page-markets/tests apps/page-markets/src",
+    "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mvp/assets": "workspace:*",
+    "@mvp/contracts": "workspace:*",
+    "@mvp/data": "workspace:*",
+    "@mvp/design-system": "workspace:*",
+    "@mvp/observability": "workspace:*",
+    "@mvp/request-context": "workspace:*",
+    "@mvp/runtime": "workspace:*",
+    "next": "^15.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
