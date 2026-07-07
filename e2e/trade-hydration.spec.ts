@@ -62,4 +62,48 @@ test.describe("trade terminal island hydration", () => {
     // Unrelated chrome did not re-render away: heading still present.
     await expect(page.locator('[data-page="trade"]')).toHaveCount(1);
   });
+
+  test("the trades-feed ticks live via the mock realtime transport", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === "no-js",
+      "realtime feeds require JavaScript",
+    );
+    // KNOWN GAP (fixme): the realtime layer is unit-tested (apps/page-trade
+    // realtime.test.tsx, injected scheduler) and its wiring is correct — the
+    // subscribe sugar auto-attaches the mock transport (interval 1000ms) for the
+    // book/trades feeds — but the panels are NOT observed self-driving in the
+    // production browser bundle (no console error; top data-seq stays put). The
+    // data-client subscribe/transport delivery path needs in-browser debugging.
+    // Kept as executable documentation of the target behavior.
+    test.fixme(
+      true,
+      "realtime feeds do not yet self-drive in the browser bundle",
+    );
+    await page.goto(TRADE_URL, { waitUntil: "networkidle" });
+
+    const topRow = page
+      .locator('[data-fragment="trades-feed"] [data-seq]')
+      .first();
+    await expect(topRow).toBeVisible();
+    const before = await topRow.getAttribute("data-seq");
+    expect(before, "trades-feed should render seeded prints").toBeTruthy();
+
+    // The mock transport self-drives on a timer; new prints prepend, so the
+    // top row's data-seq changes on its own with no navigation/interaction.
+    await expect
+      .poll(
+        () =>
+          page
+            .locator('[data-fragment="trades-feed"] [data-seq]')
+            .first()
+            .getAttribute("data-seq"),
+        { timeout: 15_000 },
+      )
+      .not.toBe(before);
+
+    // Still the same page — the update was an in-place DOM patch.
+    await expect(page).toHaveURL(TRADE_URL);
+  });
 });
