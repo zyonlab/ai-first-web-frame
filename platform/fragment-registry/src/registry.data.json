@@ -18,6 +18,62 @@
         "serviceUrl": "http://localhost:4202",
         "manifestUrl": "http://localhost:4202/manifest"
       }
+    },
+    "market-header": {
+      "canary": {
+        "version": "0.1.0",
+        "serviceUrl": "http://localhost:4203",
+        "manifestUrl": "http://localhost:4203/manifest"
+      },
+      "versions": {
+        "0.1.0": {
+          "version": "0.1.0",
+          "serviceUrl": "http://localhost:4203",
+          "manifestUrl": "http://localhost:4203/manifest"
+        }
+      }
+    },
+    "order-book": {
+      "canary": {
+        "version": "0.1.0",
+        "serviceUrl": "http://localhost:4204",
+        "manifestUrl": "http://localhost:4204/manifest"
+      },
+      "versions": {
+        "0.1.0": {
+          "version": "0.1.0",
+          "serviceUrl": "http://localhost:4204",
+          "manifestUrl": "http://localhost:4204/manifest"
+        }
+      }
+    },
+    "order-form": {
+      "canary": {
+        "version": "0.1.0",
+        "serviceUrl": "http://localhost:4205",
+        "manifestUrl": "http://localhost:4205/manifest"
+      },
+      "versions": {
+        "0.1.0": {
+          "version": "0.1.0",
+          "serviceUrl": "http://localhost:4205",
+          "manifestUrl": "http://localhost:4205/manifest"
+        }
+      }
+    },
+    "trades-feed": {
+      "canary": {
+        "version": "0.1.0",
+        "serviceUrl": "http://localhost:4206",
+        "manifestUrl": "http://localhost:4206/manifest"
+      },
+      "versions": {
+        "0.1.0": {
+          "version": "0.1.0",
+          "serviceUrl": "http://localhost:4206",
+          "manifestUrl": "http://localhost:4206/manifest"
+        }
+      }
     }
   }
 }

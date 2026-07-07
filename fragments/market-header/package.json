@@ -1,0 +1,31 @@
+{
+  "name": "@mvp/fragment-market-header",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsdown src/server.ts --format esm --platform node --dts",
+    "test": "pnpm -w exec vitest run fragments/market-header/tests fragments/market-header/src",
+    "test:watch": "pnpm -w exec vitest fragments/market-header/tests fragments/market-header/src",
+    "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mvp/contracts": "workspace:*",
+    "@mvp/data": "workspace:*",
+    "@mvp/interaction": "workspace:*",
+    "@mvp/observability": "workspace:*",
+    "@mvp/request-context": "workspace:*",
+    "@mvp/trade-client": "workspace:*",
+    "fastify": "^4.28.1",
+    "zod": "^3.23.8"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "react": "^18.3.1",
+    "tsdown": "^0.11.0"
+  }
+}

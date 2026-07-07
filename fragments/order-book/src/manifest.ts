@@ -1,0 +1,51 @@
+import { orderBookBudget } from "./budget";
+
+/**
+ * order-book fragment manifest — literal shape from
+ * docs/trade-demo/02-component-architecture.md §3.1.
+ *
+ * - `renderMode: ssr`, `renderStrategy: dynamic-ssr` (realtime ladder).
+ * - `cachePolicy.ttl: 0` — realtime, never cached at the fragment layer.
+ * - `assets.js` declares the shared `@mvp/trade-client` chunk (D3 shared
+ *   dependency, deduped by `@mvp/assets`, NOT re-bundled) plus the fragment's
+ *   own vanilla patch client. No React ships from this fragment.
+ * - `dataDependencies` references the C5 book source id template `book.l2.<symbol>`.
+ */
+export const orderBookManifest = {
+  name: "order-book",
+  owner: "trading-core",
+  version: "0.1.0",
+  renderMode: "ssr",
+  renderStrategy: "dynamic-ssr",
+  cachePolicy: { ttl: 0, tags: ["book"], vary: ["locale", "props"] },
+  endpoint: "/render",
+  fallback:
+    '<section data-fragment="order-book" data-fallback="true">Order book unavailable</section>',
+  assets: {
+    js: ["@mvp/trade-client", "/assets/order-book.client.js"],
+    css: ["/assets/order-book.css"],
+  },
+  // dependsOn / dataDependencies use the C5 symbol-scoped book id template.
+  dependsOn: [],
+  dataDependencies: ["book.l2.<symbol>"],
+  budget: orderBookBudget,
+  metadata: {
+    category: "trading",
+    description: "Realtime L2 order book ladder with depth bars",
+  },
+} as const;
+
+export function validateOrderBookManifest(
+  manifest = orderBookManifest,
+): boolean {
+  return Boolean(
+    manifest.name &&
+      manifest.owner &&
+      manifest.version &&
+      manifest.renderMode &&
+      manifest.renderStrategy &&
+      manifest.fallback &&
+      manifest.assets &&
+      manifest.budget,
+  );
+}

@@ -58,3 +58,39 @@ services:
       - "4202:4202"
     environment:
       PORT: "4202"
+
+  market-header:
+    build:
+      context: ../..
+      dockerfile: fragments/market-header/Dockerfile
+    ports:
+      - "4203:4203"
+    environment:
+      PORT: "4203"
+
+  order-book:
+    build:
+      context: ../..
+      dockerfile: fragments/order-book/Dockerfile
+    ports:
+      - "4204:4204"
+    environment:
+      PORT: "4204"
+
+  order-form:
+    build:
+      context: ../..
+      dockerfile: fragments/order-form/Dockerfile
+    ports:
+      - "4205:4205"
+    environment:
+      PORT: "4205"
+
+  trades-feed:
+    build:
+      context: ../..
+      dockerfile: fragments/trades-feed/Dockerfile
+    ports:
+      - "4206:4206"
+    environment:
+      PORT: "4206"

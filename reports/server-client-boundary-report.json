@@ -1,6 +1,6 @@
 {
   "tool": "server-client-boundary-check",
-  "status": "pass",
+  "status": "warn",
   "checkedFiles": [
     "apps/page-home/app/RealtimeInsights.tsx",
     "apps/page-home/app/api/rum/route.ts",
@@ -32,6 +32,30 @@
     "apps/shell-gateway/src/fallback.ts",
     "apps/shell-gateway/src/observability.ts",
     "apps/shell-gateway/src/server.ts",
+    "fragments/market-header/src/budget.ts",
+    "fragments/market-header/src/data.ts",
+    "fragments/market-header/src/island.tsx",
+    "fragments/market-header/src/manifest.ts",
+    "fragments/market-header/src/observability.ts",
+    "fragments/market-header/src/render.ts",
+    "fragments/market-header/src/server.ts",
+    "fragments/order-book/src/budget.ts",
+    "fragments/order-book/src/client.ts",
+    "fragments/order-book/src/data.ts",
+    "fragments/order-book/src/ladder.ts",
+    "fragments/order-book/src/manifest.ts",
+    "fragments/order-book/src/observability.ts",
+    "fragments/order-book/src/render.ts",
+    "fragments/order-book/src/server.ts",
+    "fragments/order-form/src/budget.ts",
+    "fragments/order-form/src/data.ts",
+    "fragments/order-form/src/island.tsx",
+    "fragments/order-form/src/islandLogic.ts",
+    "fragments/order-form/src/manifest.ts",
+    "fragments/order-form/src/observability.ts",
+    "fragments/order-form/src/placeOrderFlow.ts",
+    "fragments/order-form/src/render.ts",
+    "fragments/order-form/src/server.ts",
     "fragments/promotion-banner/src/budget.ts",
     "fragments/promotion-banner/src/data.ts",
     "fragments/promotion-banner/src/manifest.ts",
@@ -44,6 +68,13 @@
     "fragments/recommendation-widget/src/observability.ts",
     "fragments/recommendation-widget/src/render.ts",
     "fragments/recommendation-widget/src/server.ts",
+    "fragments/trades-feed/src/budget.ts",
+    "fragments/trades-feed/src/data.ts",
+    "fragments/trades-feed/src/manifest.ts",
+    "fragments/trades-feed/src/observability.ts",
+    "fragments/trades-feed/src/patch.ts",
+    "fragments/trades-feed/src/render.ts",
+    "fragments/trades-feed/src/server.ts",
     "packages/ui/src/Button/Button.tsx",
     "packages/ui/src/Button/fixtures.ts",
     "packages/ui/src/Button/index.ts",
@@ -87,5 +118,18 @@
     "packages/ui/src/shadcn/tooltip.tsx",
     "packages/ui/tailwind.config.ts"
   ],
-  "issues": []
+  "issues": [
+    {
+      "code": "large-client-component",
+      "severity": "warn",
+      "file": "fragments/market-header/src/island.tsx",
+      "detail": "client component exceeds size guideline"
+    },
+    {
+      "code": "large-client-component",
+      "severity": "warn",
+      "file": "fragments/order-form/src/island.tsx",
+      "detail": "client component exceeds size guideline"
+    }
+  ]
 }
