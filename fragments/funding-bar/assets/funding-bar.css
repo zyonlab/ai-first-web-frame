@@ -1,0 +1,95 @@
+/**
+ * funding-bar scoped styles.
+ *
+ * Pure SSR, no island: semantic up/down funding colors come from design tokens
+ * (`--mvp-color-up` / `--mvp-color-down`); no hard-coded hexes beyond token
+ * fallbacks. A CSS-only pulse hints that the countdown is live even before the
+ * optional vanilla tick runs. All selectors are scoped under
+ * `[data-fragment="funding-bar"]`.
+ */
+
+[data-fragment="funding-bar"] {
+  display: flex;
+  align-items: center;
+  gap: var(--mvp-spacing-md, 16px);
+  padding: var(--mvp-spacing-sm, 8px) var(--mvp-spacing-md, 16px);
+  border: 1px solid var(--trade-panel-border, rgba(128, 128, 128, 0.24));
+  border-radius: var(--mvp-radius-sm, 4px);
+  background: var(--mvp-color-surface, transparent);
+  font-family: var(
+    --trade-font-mono,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace
+  );
+  font-size: var(--mvp-font-size-sm, 13px);
+}
+
+[data-fragment="funding-bar"] .funding-bar__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+[data-fragment="funding-bar"] .funding-bar__label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--mvp-font-size-xs, 11px);
+  color: var(--mvp-color-muted, rgba(128, 128, 128, 0.9));
+}
+
+[data-fragment="funding-bar"] .funding-bar__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--mvp-color-text, inherit);
+}
+
+[data-fragment="funding-bar"] .funding-bar__rate--up .funding-bar__value {
+  color: var(--mvp-color-up, #12a150);
+}
+
+[data-fragment="funding-bar"] .funding-bar__rate--down .funding-bar__value {
+  color: var(--mvp-color-down, #d1363f);
+}
+
+[data-fragment="funding-bar"] .funding-bar__rate--flat .funding-bar__value {
+  color: var(--mvp-color-muted, rgba(128, 128, 128, 0.9));
+}
+
+[data-fragment="funding-bar"] .funding-bar__countdown > time {
+  position: relative;
+}
+
+[data-fragment="funding-bar"] .funding-bar__countdown > time::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -10px;
+  width: 5px;
+  height: 5px;
+  margin-top: -2px;
+  border-radius: 50%;
+  background: var(--mvp-color-up, #12a150);
+  animation: funding-bar-pulse 2s ease-in-out infinite;
+}
+
+[data-fragment="funding-bar"][data-fallback="true"] {
+  color: var(--mvp-color-muted, rgba(128, 128, 128, 0.9));
+}
+
+@keyframes funding-bar-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-fragment="funding-bar"] .funding-bar__countdown > time::after {
+    animation: none;
+  }
+}

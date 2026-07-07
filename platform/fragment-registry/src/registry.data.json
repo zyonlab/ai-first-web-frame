@@ -74,6 +74,62 @@
           "manifestUrl": "http://localhost:4206/manifest"
         }
       }
+    },
+    "account-bar": {
+      "canary": {
+        "version": "0.1.0",
+        "serviceUrl": "http://localhost:4207",
+        "manifestUrl": "http://localhost:4207/manifest"
+      },
+      "versions": {
+        "0.1.0": {
+          "version": "0.1.0",
+          "serviceUrl": "http://localhost:4207",
+          "manifestUrl": "http://localhost:4207/manifest"
+        }
+      }
+    },
+    "positions-table": {
+      "canary": {
+        "version": "0.1.0",
+        "serviceUrl": "http://localhost:4208",
+        "manifestUrl": "http://localhost:4208/manifest"
+      },
+      "versions": {
+        "0.1.0": {
+          "version": "0.1.0",
+          "serviceUrl": "http://localhost:4208",
+          "manifestUrl": "http://localhost:4208/manifest"
+        }
+      }
+    },
+    "open-orders": {
+      "canary": {
+        "version": "0.1.0",
+        "serviceUrl": "http://localhost:4209",
+        "manifestUrl": "http://localhost:4209/manifest"
+      },
+      "versions": {
+        "0.1.0": {
+          "version": "0.1.0",
+          "serviceUrl": "http://localhost:4209",
+          "manifestUrl": "http://localhost:4209/manifest"
+        }
+      }
+    },
+    "funding-bar": {
+      "canary": {
+        "version": "0.1.0",
+        "serviceUrl": "http://localhost:4210",
+        "manifestUrl": "http://localhost:4210/manifest"
+      },
+      "versions": {
+        "0.1.0": {
+          "version": "0.1.0",
+          "serviceUrl": "http://localhost:4210",
+          "manifestUrl": "http://localhost:4210/manifest"
+        }
+      }
     }
   }
 }

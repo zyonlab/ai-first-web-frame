@@ -3,6 +3,7 @@
   "status": "pass",
   "threshold": 0.82,
   "checkedFiles": [
+    "fragments/account-bar/src/island.tsx",
     "fragments/market-header/src/island.tsx",
     "fragments/order-form/src/island.tsx",
     "packages/ui/src/Button/Button.tsx",

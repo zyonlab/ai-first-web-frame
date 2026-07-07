@@ -94,3 +94,39 @@ services:
       - "4206:4206"
     environment:
       PORT: "4206"
+
+  account-bar:
+    build:
+      context: ../..
+      dockerfile: fragments/account-bar/Dockerfile
+    ports:
+      - "4207:4207"
+    environment:
+      PORT: "4207"
+
+  positions-table:
+    build:
+      context: ../..
+      dockerfile: fragments/positions-table/Dockerfile
+    ports:
+      - "4208:4208"
+    environment:
+      PORT: "4208"
+
+  open-orders:
+    build:
+      context: ../..
+      dockerfile: fragments/open-orders/Dockerfile
+    ports:
+      - "4209:4209"
+    environment:
+      PORT: "4209"
+
+  funding-bar:
+    build:
+      context: ../..
+      dockerfile: fragments/funding-bar/Dockerfile
+    ports:
+      - "4210:4210"
+    environment:
+      PORT: "4210"

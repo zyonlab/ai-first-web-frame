@@ -1,91 +1,119 @@
 {
   "tool": "tsgo",
-  "generatedAt": "2026-07-07T03:47:21.497Z",
-  "projectCount": 31,
-  "passed": 31,
+  "generatedAt": "2026-07-07T04:40:15.588Z",
+  "projectCount": 35,
+  "passed": 35,
   "failed": 0,
   "results": [
     {
       "config": "apps/page-home/tsconfig.json",
       "status": "passed",
-      "durationMs": 325,
+      "durationMs": 335,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "apps/page-product/tsconfig.json",
       "status": "passed",
-      "durationMs": 290,
+      "durationMs": 298,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "apps/shell-gateway/tsconfig.json",
       "status": "passed",
-      "durationMs": 398,
+      "durationMs": 397,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/account-bar/tsconfig.json",
+      "status": "passed",
+      "durationMs": 380,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/funding-bar/tsconfig.json",
+      "status": "passed",
+      "durationMs": 365,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "fragments/market-header/tsconfig.json",
       "status": "passed",
-      "durationMs": 364,
+      "durationMs": 361,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/open-orders/tsconfig.json",
+      "status": "passed",
+      "durationMs": 422,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "fragments/order-book/tsconfig.json",
       "status": "passed",
-      "durationMs": 364,
+      "durationMs": 386,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "fragments/order-form/tsconfig.json",
       "status": "passed",
-      "durationMs": 588,
+      "durationMs": 587,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/positions-table/tsconfig.json",
+      "status": "passed",
+      "durationMs": 398,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "fragments/promotion-banner/tsconfig.json",
       "status": "passed",
-      "durationMs": 389,
+      "durationMs": 367,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "fragments/recommendation-widget/tsconfig.json",
       "status": "passed",
-      "durationMs": 360,
+      "durationMs": 364,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "fragments/trades-feed/tsconfig.json",
       "status": "passed",
-      "durationMs": 403,
+      "durationMs": 402,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/assets/tsconfig.json",
       "status": "passed",
-      "durationMs": 259,
+      "durationMs": 257,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/contracts/tsconfig.json",
       "status": "passed",
-      "durationMs": 332,
+      "durationMs": 321,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/data/tsconfig.json",
       "status": "passed",
-      "durationMs": 336,
+      "durationMs": 341,
       "stdout": "",
       "stderr": ""
     },
@@ -99,126 +127,126 @@
     {
       "config": "packages/design-tokens/tsconfig.json",
       "status": "passed",
-      "durationMs": 252,
+      "durationMs": 259,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/interaction/tsconfig.json",
       "status": "passed",
-      "durationMs": 332,
+      "durationMs": 341,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/observability/tsconfig.json",
       "status": "passed",
-      "durationMs": 264,
+      "durationMs": 261,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/optimizer/tsconfig.json",
       "status": "passed",
-      "durationMs": 329,
+      "durationMs": 323,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/request/tsconfig.json",
       "status": "passed",
-      "durationMs": 327,
+      "durationMs": 335,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/request-context/tsconfig.json",
       "status": "passed",
-      "durationMs": 326,
+      "durationMs": 372,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/runtime/tsconfig.json",
       "status": "passed",
-      "durationMs": 326,
+      "durationMs": 328,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/storage/tsconfig.json",
       "status": "passed",
-      "durationMs": 330,
+      "durationMs": 346,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/trade-client/tsconfig.json",
       "status": "passed",
-      "durationMs": 347,
+      "durationMs": 354,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/ui/tsconfig.json",
       "status": "passed",
-      "durationMs": 550,
+      "durationMs": 560,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "packages/workers/tsconfig.json",
       "status": "passed",
-      "durationMs": 329,
+      "durationMs": 333,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "tools/bundle-budget-check/tsconfig.json",
       "status": "passed",
-      "durationMs": 260,
+      "durationMs": 258,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "tools/component-similarity-check/tsconfig.json",
       "status": "passed",
-      "durationMs": 256,
+      "durationMs": 263,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "tools/create-component/tsconfig.json",
       "status": "passed",
-      "durationMs": 255,
+      "durationMs": 261,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "tools/css-budget-check/tsconfig.json",
       "status": "passed",
-      "durationMs": 254,
+      "durationMs": 256,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "tools/dependency-audit/tsconfig.json",
       "status": "passed",
-      "durationMs": 257,
+      "durationMs": 260,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "tools/release-tools/tsconfig.json",
       "status": "passed",
-      "durationMs": 255,
+      "durationMs": 269,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "tools/server-client-boundary-check/tsconfig.json",
       "status": "passed",
-      "durationMs": 258,
+      "durationMs": 257,
       "stdout": "",
       "stderr": ""
     }
