@@ -18,6 +18,17 @@ export default defineConfig({
       ),
       "@mvp/interaction": pathFromRoot("./packages/interaction/src/index.ts"),
       "@mvp/trade-client": pathFromRoot("./packages/trade-client/src/index.ts"),
+      // Trade-demo patch-only fragment entry points (pure DOM-patch functions,
+      // page-trade bundles them into the realtime hydration layer).
+      "@mvp/fragment-order-book/patch": pathFromRoot(
+        "./fragments/order-book/src/ladder.ts",
+      ),
+      "@mvp/fragment-trades-feed/patch": pathFromRoot(
+        "./fragments/trades-feed/src/patch.ts",
+      ),
+      "@mvp/fragment-positions-table/patch": pathFromRoot(
+        "./fragments/positions-table/src/patch.ts",
+      ),
       // Trade-demo island entry points (source `.tsx`, page-trade bundles them).
       "@mvp/fragment-order-form/island": pathFromRoot(
         "./fragments/order-form/src/island.tsx",

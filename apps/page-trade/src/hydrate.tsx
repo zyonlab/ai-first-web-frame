@@ -16,6 +16,7 @@ import {
   registerIsland,
 } from "@mvp/trade-client";
 import { createElement, useEffect } from "react";
+import { startTradeRealtime } from "./realtime";
 import { getTradeStore } from "./tradeStore";
 
 /**
@@ -131,7 +132,14 @@ export function TradeHydrator() {
   useEffect(() => {
     const store = getTradeStore();
     const { teardown } = hydrateTrade(document, store);
-    return teardown;
+    // Bring the patch-only panels (order-book / trades-feed / positions-table)
+    // to life: subscribe each to its realtime source and apply frames to the
+    // SSR DOM in place. The mock transport self-drives on a timer in the browser.
+    const stopRealtime = startTradeRealtime(document, store);
+    return () => {
+      stopRealtime();
+      teardown();
+    };
   }, []);
   return null;
 }

@@ -236,9 +236,18 @@ importers:
       '@mvp/fragment-market-header':
         specifier: workspace:*
         version: link:../../fragments/market-header
+      '@mvp/fragment-order-book':
+        specifier: workspace:*
+        version: link:../../fragments/order-book
       '@mvp/fragment-order-form':
         specifier: workspace:*
         version: link:../../fragments/order-form
+      '@mvp/fragment-positions-table':
+        specifier: workspace:*
+        version: link:../../fragments/positions-table
+      '@mvp/fragment-trades-feed':
+        specifier: workspace:*
+        version: link:../../fragments/trades-feed
       '@mvp/interaction':
         specifier: workspace:*
         version: link:../../packages/interaction

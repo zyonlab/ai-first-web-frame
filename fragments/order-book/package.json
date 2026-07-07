@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "exports": {
+    "./patch": "./src/ladder.ts"
+  },
   "scripts": {
     "dev": "tsx src/server.ts",
     "start": "node dist/server.js",

@@ -65,6 +65,7 @@
     "apps/page-trade/src/hydrate.tsx",
     "apps/page-trade/src/manifest.ts",
     "apps/page-trade/src/metadata.ts",
+    "apps/page-trade/src/realtime.ts",
     "apps/page-trade/src/render.ts",
     "apps/page-trade/src/tradeStore.ts",
     "apps/page-vaults/app/health/route.ts",
@@ -223,6 +224,12 @@
     "packages/ui/tailwind.config.ts"
   ],
   "issues": [
+    {
+      "code": "large-client-component",
+      "severity": "warn",
+      "file": "apps/page-trade/src/realtime.ts",
+      "detail": "client component exceeds size guideline"
+    },
     {
       "code": "large-client-component",
       "severity": "warn",
