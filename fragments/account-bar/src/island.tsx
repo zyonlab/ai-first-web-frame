@@ -132,17 +132,24 @@ export function AccountBarIsland(props: AccountBarIslandProps) {
   // the request-time `account` source (no mock transport), so this is inert
   // until a transport is wired — the SSR snapshot remains the source of truth.
   useEffect(() => {
-    const unsubscribe = client.subscribe<AccountMargin>(
-      client.sourceIds.account,
-      (event) => dispatch({ type: "account", account: event.data }),
-    );
-    return unsubscribe;
+    // `account` is a request-time source (not subscribable); attempting to
+    // subscribe throws. Guard it so the island degrades to the SSR snapshot
+    // until P3 wires a live margin transport, instead of erroring on mount.
+    try {
+      const unsubscribe = client.subscribe<AccountMargin>(
+        client.sourceIds.account,
+        (event) => dispatch({ type: "account", account: event.data }),
+      );
+      return unsubscribe;
+    } catch {
+      return undefined;
+    }
   }, [client]);
 
   const { view, preview } = state;
 
   return (
-    <div className="account-bar__row" data-island="accountBar">
+    <div className="account-bar__row">
       <span className="account-bar__stat" data-field="equity">
         <small className="account-bar__caption">Equity</small>
         <b data-value="equity">{view.equity}</b>

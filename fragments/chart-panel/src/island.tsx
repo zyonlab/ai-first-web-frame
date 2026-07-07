@@ -194,7 +194,7 @@ export function ChartPanelIsland(props: ChartPanelIslandProps) {
   const summary = summarizeSeries(state.series);
 
   return (
-    <div className="chart-panel__island" data-island="chart">
+    <div className="chart-panel__island">
       <header className="chart-panel__header">
         <span className="chart-panel__pair" data-field="pair">
           {state.symbol}

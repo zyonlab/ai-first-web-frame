@@ -59,6 +59,7 @@ services:
       POSITIONS_TABLE_URL: "http://positions-table:4208"
       OPEN_ORDERS_URL: "http://open-orders:4209"
       FUNDING_BAR_URL: "http://funding-bar:4210"
+      CHART_PANEL_URL: "http://chart-panel:4211"
     depends_on:
       - market-header
       - order-book
@@ -68,6 +69,7 @@ services:
       - positions-table
       - open-orders
       - funding-bar
+      - chart-panel
 
   promotion-banner:
     build:

@@ -75,10 +75,13 @@ async function publishDraft(
   store: TradeStore<TradeSlices>,
   draft: OrderFormDraft,
 ): Promise<void> {
+  // Optional numeric fields must be omitted (not sent as `undefined`) when
+  // empty: the C3 payload schema types `price`/`size` as numbers, so a present
+  // `undefined` key fails validation.
   await store.set(TRADE_ORDER_DRAFT, {
     side: draft.side,
-    price: draft.price,
-    size: draft.size,
+    ...(typeof draft.price === "number" ? { price: draft.price } : {}),
+    ...(typeof draft.size === "number" ? { size: draft.size } : {}),
     leverage: draft.leverage,
     reduceOnly: draft.reduceOnly,
   });

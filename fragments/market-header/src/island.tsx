@@ -190,7 +190,7 @@ export function MarketHeaderIsland(props: MarketHeaderIslandProps) {
         : "market-header__change--flat";
 
   return (
-    <div className="market-header__row" data-island="marketHeader">
+    <div className="market-header__row">
       <span className="market-header__pair" data-field="pair">
         {view.symbol}
       </span>
