@@ -4,8 +4,8 @@ Status: pass
 
 | Metric | Actual | Budget |
 | --- | --- | --- |
-| totalCssBytes | 25302 | - |
-| unusedCssBytes | 350 | - |
+| totalCssBytes | 26428 | - |
+| unusedCssBytes | 0 | - |
 | duplicatedRules | 0 | - |
 | globalSelectors | 0 | - |
 | importantCount | 0 | - |

@@ -4,17 +4,19 @@ import { expect, test } from "@playwright/test";
 // Assertions target stable SSR contracts: shell marker, fragment slots
 // (real content or fallback), and the request trace section.
 test.describe("shell-gateway composed home page", () => {
-  test("responds 200 and carries the shell gateway marker", async ({
+  test("responds 200 and transparently proxies the home page", async ({
     page,
   }) => {
     const response = await page.goto("/");
     expect(response, "shell home should respond").toBeTruthy();
     expect(response?.status()).toBe(200);
 
-    const marker = page.locator('[data-shell-gateway="true"]');
-    await expect(marker).toHaveCount(1);
-    await expect(marker).toContainText("Shell gateway route:");
-    await expect(marker).toContainText("@mvp/page-home");
+    // The shell is a transparent proxy: it returns page-home's HTML verbatim
+    // (so hydration stays byte-consistent) and no longer injects a chrome
+    // wrapper. Its passage is still provable via the trace header it stamps.
+    expect(response?.headers()["x-trace-id"]).toBeTruthy();
+    await expect(page.locator('main[data-page="home"]')).toHaveCount(1);
+    await expect(page.locator('[data-shell-gateway="true"]')).toHaveCount(0);
   });
 
   test("exposes trace headers on the composed response", async ({ page }) => {

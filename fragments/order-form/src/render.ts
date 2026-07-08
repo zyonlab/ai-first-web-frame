@@ -6,6 +6,7 @@ import { createRequestContext } from "@mvp/request-context";
 import { type AccountMargin, loadAccountMargin } from "./data";
 import { createDefaultDraft, type OrderFormDraft } from "./islandLogic";
 import { orderFormManifest } from "./manifest";
+import { orderFormCss } from "./styles";
 
 export type OrderFormRenderRequest = {
   ctx?: {
@@ -130,6 +131,7 @@ export function renderOrderFormHtml(
   const snapshot = buildIslandSnapshot(islandProps);
   const activeBuy = draft.side === "buy";
   return (
+    `<style data-fragment-style="order-form">${orderFormCss}</style>` +
     `<section data-fragment="order-form" data-symbol="${escapeHtml(symbol)}">` +
     `<div data-island="orderForm">` +
     // --- SSR first paint (readable, static) ---

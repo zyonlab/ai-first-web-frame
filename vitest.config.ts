@@ -52,10 +52,19 @@ export default defineConfig({
       ),
       "@mvp/runtime": pathFromRoot("./packages/runtime/src/index.ts"),
       "@mvp/storage": pathFromRoot("./packages/storage/src/index.ts"),
+      "@mvp/ui/AppNav": pathFromRoot("./packages/ui/src/AppNav/index.ts"),
       "@mvp/ui/shadcn": pathFromRoot("./packages/ui/src/shadcn/index.ts"),
       "@mvp/ui": pathFromRoot("./packages/ui/src/index.ts"),
       "@mvp/workers": pathFromRoot("./packages/workers/src/index.ts"),
     },
+  },
+  // The page apps set `jsx: "preserve"` in their tsconfig (Next.js owns the JSX
+  // transform in the real build). Under Vitest we transpile the same `.tsx`
+  // ourselves, so force the automatic JSX runtime here — otherwise esbuild falls
+  // back to the classic transform and SSR-rendering a layout/page throws
+  // "React is not defined". This matches the `react-jsx` mode packages already use.
+  esbuild: {
+    jsx: "automatic",
   },
   test: {
     globals: true,

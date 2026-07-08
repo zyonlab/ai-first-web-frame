@@ -23,6 +23,12 @@ function snapshot(overrides: Partial<FundingSnapshot> = {}): FundingSnapshot {
 describe("renderFundingBarHtml (pure, deterministic given now)", () => {
   it("renders a stable funding bar with rate, countdown and oracle", () => {
     const html = renderFundingBarHtml(snapshot(), NOW);
+    // self-contained scoped stylesheet is inlined once at the front
+    expect(html).toContain('<style data-fragment-style="funding-bar">');
+    expect(
+      html.split('<style data-fragment-style="funding-bar">'),
+    ).toHaveLength(2);
+    expect(html).toContain(".funding-bar");
     expect(html).toContain('data-fragment="funding-bar"');
     expect(html).toContain('data-symbol="BTC"');
     // funding rate label

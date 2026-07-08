@@ -10,6 +10,7 @@ import {
   type LadderRow,
 } from "./ladder";
 import { orderBookManifest } from "./manifest";
+import { orderBookCss } from "./styles";
 
 export type OrderBookRenderRequest = {
   ctx?: {
@@ -144,6 +145,7 @@ export function renderLadderHtml(
   const bidRows = ladder.bids.map((r) => rowHtml(r)).join("");
 
   return [
+    `<style data-fragment-style="order-book">${orderBookCss}</style>`,
     `<section class="ob" data-fragment="order-book" data-symbol="${escapeAttr(ladder.symbol)}" data-seq="${ladder.seq}">`,
     `<div data-island="book">`,
     `<div class="ob-grouping" role="group" aria-label="Tick grouping">`,

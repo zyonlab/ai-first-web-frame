@@ -1,0 +1,149 @@
+/**
+ * Scoped CSS for the pnl-chart fragment — single source of truth.
+ *
+ * This string is inlined once at the front of the fragment's SSR HTML (see
+ * render), so the dense terminal styling reaches the browser even when the
+ * composed page never fetches the standalone /assets/pnl-chart.css file.
+ *
+ * Keep this in sync with assets/pnl-chart.css (or src/pnl-chart.css); the .css file
+ * is retained so the css-budget audit still measures the fragment stylesheet.
+ */
+export const pnlChartCss = `/**
+ * pnl-chart scoped styles.
+ *
+ * Pure SSR inline SVG, no island: semantic up/down PnL colors come from design
+ * tokens (\`--mvp-color-up\` / \`--mvp-color-down\`); no hard-coded hexes beyond
+ * token fallbacks. All selectors are scoped under \`[data-fragment="pnl-chart"]\`.
+ */
+
+[data-fragment="pnl-chart"] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mvp-spacing-sm, 8px);
+  padding: var(--mvp-spacing-md, 16px);
+  border: 1px solid var(--trade-panel-border, rgba(128, 128, 128, 0.24));
+  border-radius: var(--mvp-radius-sm, 4px);
+  background: var(--mvp-color-surface, transparent);
+  font-family: var(
+    --trade-font-mono,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace
+  );
+  font-size: var(--mvp-font-size-sm, 13px);
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mvp-spacing-md, 16px);
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mvp-spacing-xs, 4px);
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--mvp-font-size-xs, 11px);
+  color: var(--mvp-color-muted, rgba(128, 128, 128, 0.9));
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__range {
+  font-size: var(--mvp-font-size-xs, 11px);
+  color: var(--mvp-color-muted, rgba(128, 128, 128, 0.9));
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__stats {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mvp-spacing-sm, 8px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__return {
+  font-size: var(--mvp-font-size-xs, 11px);
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__stats--up {
+  color: var(--mvp-color-up, #12a150);
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__stats--down {
+  color: var(--mvp-color-down, #d1363f);
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__stats--flat {
+  color: var(--mvp-color-muted, rgba(128, 128, 128, 0.9));
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__grid {
+  stroke: var(--trade-panel-border, rgba(128, 128, 128, 0.18));
+  stroke-width: 1;
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__baseline {
+  stroke: var(--mvp-color-muted, rgba(128, 128, 128, 0.5));
+  stroke-width: 1;
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__line {
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+[data-fragment="pnl-chart"][data-direction="up"] .pnl-chart__line {
+  stroke: var(--mvp-color-up, #12a150);
+}
+
+[data-fragment="pnl-chart"][data-direction="down"] .pnl-chart__line {
+  stroke: var(--mvp-color-down, #d1363f);
+}
+
+[data-fragment="pnl-chart"][data-direction="flat"] .pnl-chart__line {
+  stroke: var(--mvp-color-muted, rgba(128, 128, 128, 0.7));
+}
+
+[data-fragment="pnl-chart"] .pnl-chart__area {
+  stroke: none;
+  opacity: 0.16;
+}
+
+[data-fragment="pnl-chart"][data-direction="up"] .pnl-chart__area {
+  fill: var(--mvp-color-up, #12a150);
+}
+
+[data-fragment="pnl-chart"][data-direction="down"] .pnl-chart__area {
+  fill: var(--mvp-color-down, #d1363f);
+}
+
+[data-fragment="pnl-chart"][data-direction="flat"] .pnl-chart__area {
+  fill: var(--mvp-color-muted, rgba(128, 128, 128, 0.5));
+}
+
+/* Screen-reader / no-JS textual summary; visually compact but readable. */
+[data-fragment="pnl-chart"] .pnl-chart__sr {
+  margin: 0;
+  font-size: var(--mvp-font-size-xs, 11px);
+  color: var(--mvp-color-muted, rgba(128, 128, 128, 0.9));
+}
+
+[data-fragment="pnl-chart"][data-fallback="true"] {
+  color: var(--mvp-color-muted, rgba(128, 128, 128, 0.9));
+}`;

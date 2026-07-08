@@ -20,6 +20,7 @@ import {
   DEFAULT_INTERVAL,
   DEFAULT_SYMBOL,
 } from "./manifest";
+import { chartPanelCss } from "./styles";
 
 export type ChartPanelRenderRequest = {
   ctx?: {
@@ -115,6 +116,7 @@ export function renderChartPanelHtml(
     : "";
 
   return (
+    `<style data-fragment-style="chart-panel">${chartPanelCss}</style>` +
     `<section data-fragment="chart-panel" class="chart-panel"${sectionAttrs}>` +
     `<div data-island="${ISLAND_NAME}" class="chart-panel__island">` +
     `<header class="chart-panel__header">` +

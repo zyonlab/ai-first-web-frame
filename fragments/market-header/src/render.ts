@@ -8,6 +8,7 @@ import {
   toMarketHeaderView,
 } from "./data";
 import { DEFAULT_SYMBOL, marketHeaderManifest } from "./manifest";
+import { marketHeaderCss } from "./styles";
 
 export type MarketHeaderRenderRequest = {
   ctx?: {
@@ -84,6 +85,7 @@ export function renderMarketHeaderHtml(
         : "market-header__change--flat";
 
   return (
+    `<style data-fragment-style="market-header">${marketHeaderCss}</style>` +
     `<section data-fragment="market-header" class="market-header">` +
     `<div data-island="${ISLAND_NAME}" class="market-header__row">` +
     `<span class="market-header__pair" data-field="pair">${escapeHtml(view.symbol)}</span>` +

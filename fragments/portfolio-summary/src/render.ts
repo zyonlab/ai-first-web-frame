@@ -3,6 +3,7 @@ import type { RequestTrace } from "@mvp/observability";
 import { createRequestContext } from "@mvp/request-context";
 import { loadPortfolioSnapshot, type PortfolioSnapshot } from "./data";
 import { portfolioSummaryManifest } from "./manifest";
+import { portfolioSummaryCss } from "./styles";
 import {
   formatPositionRow,
   type PortfolioOverview,
@@ -108,6 +109,7 @@ export function renderPortfolioSummaryHtml(
 ): string {
   const overview = toPortfolioOverview(snapshot.account, snapshot.balances);
   return (
+    `<style data-fragment-style="portfolio-summary">${portfolioSummaryCss}</style>` +
     `<section class="ps" data-fragment="portfolio-summary">` +
     renderOverviewCards(overview) +
     renderPositionsTable(snapshot.positions) +

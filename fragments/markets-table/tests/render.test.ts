@@ -36,6 +36,12 @@ function snapshot(): MarketsTableSnapshot {
 describe("renderMarketsTableHtml (pure, deterministic)", () => {
   it("renders a stable table with a header and one row per market", () => {
     const html = renderMarketsTableHtml(snapshot());
+    // self-contained scoped stylesheet is inlined once at the front
+    expect(html).toContain('<style data-fragment-style="markets-table">');
+    expect(
+      html.split('<style data-fragment-style="markets-table">'),
+    ).toHaveLength(2);
+    expect(html).toContain(".markets-table");
     expect(html).toContain('data-fragment="markets-table"');
     expect(html).toContain('data-row-count="2"');
     expect(html).toContain("<table");

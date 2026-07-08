@@ -4,18 +4,28 @@ import {
   createAssetHtmlTags,
 } from "@mvp/assets";
 import { baseResetCss, createAllThemeVariables } from "@mvp/design-system";
+import { readThemePreference, resolveLocalePreference } from "@mvp/storage";
+import { AppNav, appNavCss } from "@mvp/ui/AppNav";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import { marketsLayoutCss } from "../src/gridStyles";
 import { metadata } from "../src/metadata";
 
 export { metadata };
 
+/** BCP-47 `<html lang>` tags for each short locale (page now owns this). */
+const LOCALE_LANG = { en: "en-US", zh: "zh-CN" } as const;
+
 /**
  * Theme + i18n asset tags for the markets page. The design-system is the single
  * CSS source (spine §11): we inject the base reset, all theme variable blocks
- * (light + dark, attribute-driven), and the markets layout CSS through the
- * `@mvp/assets` plane. `data-theme` is set by the shell; this page paints the
- * default (light) with zero JS when the attribute is absent.
+ * (light + dark, attribute-driven), the markets layout CSS, and the shared
+ * `AppNav` stylesheet through the `@mvp/assets` plane.
+ *
+ * The page — not the shell — now owns theme/locale and the top navigation, so
+ * its SSR output is a self-consistent React tree that hydrates without a
+ * mismatch (fixes React #418). `data-theme` is resolved from the `mvp_theme`
+ * cookie for a flash-free first paint.
  */
 const assetTags = createAssetHtmlTags(
   collectAssets({
@@ -31,9 +41,14 @@ const assetTags = createAssetHtmlTags(
         order: 2,
       },
       {
+        name: "app-nav",
+        content: appNavCss(),
+        order: 3,
+      },
+      {
         name: "markets-layout",
         content: marketsLayoutCss,
-        order: 3,
+        order: 4,
       },
     ],
     i18n: [
@@ -41,27 +56,38 @@ const assetTags = createAssetHtmlTags(
         locale: "en-US",
         namespace: "markets",
         messages: { title: "MVP Perps — Markets" },
-        order: 4,
+        order: 5,
       },
       {
         locale: "zh-CN",
         namespace: "markets",
         messages: { title: "MVP 永续 — 市场" },
-        order: 5,
+        order: 6,
       },
     ],
   }),
 );
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const cookieHeader = (await headers()).get("cookie") ?? "";
+  const theme = readThemePreference(cookieHeader);
+  const locale = resolveLocalePreference({ cookieHeader });
+
   return (
-    <html lang="en" data-theme="system">
+    <html lang={LOCALE_LANG[locale]} data-theme={theme}>
       <head>
         {assetTags.map((tag) => (
           <AssetTag key={assetTagKey(tag)} tag={tag} />
         ))}
       </head>
-      <body>{children}</body>
+      <body>
+        <AppNav currentPath="/markets" theme={theme} locale={locale} />
+        {children}
+      </body>
     </html>
   );
 }

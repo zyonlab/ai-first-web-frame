@@ -61,6 +61,12 @@ describe("trades-feed fragment service", () => {
     });
     expect(response.statusCode).toBe(200);
     const { html } = response.json();
+    // self-contained scoped stylesheet is inlined once at the front
+    expect(html).toContain('<style data-fragment-style="trades-feed">');
+    expect(
+      html.split('<style data-fragment-style="trades-feed">'),
+    ).toHaveLength(2);
+    expect(html).toContain(".trades-tape");
     expect(html).toContain('data-fragment="trades-feed"');
     expect(html).toContain('data-island="trades"');
     // Patch-only: no React shipped inline.

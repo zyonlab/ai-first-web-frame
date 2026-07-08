@@ -8,6 +8,12 @@ describe("order-book SSR render", () => {
     });
     expect(result.statusCode).toBe(200);
     const html = "html" in result.body ? result.body.html : "";
+    // self-contained scoped stylesheet is inlined once at the front
+    expect(html).toContain('<style data-fragment-style="order-book">');
+    expect(html.split('<style data-fragment-style="order-book">')).toHaveLength(
+      2,
+    );
+    expect(html).toContain(".ob-table");
     expect(html).toContain('data-fragment="order-book"');
     expect(html).toContain('data-symbol="BTC"');
     // deterministic golden values from tradeFixtures.BTC.orderbook

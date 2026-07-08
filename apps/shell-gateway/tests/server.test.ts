@@ -37,16 +37,15 @@ describe("shell-gateway", () => {
     expect(response.json().fragments).toHaveProperty("promotion-banner");
   });
 
-  it("/ resolves to page-home", async () => {
+  it("/ transparently proxies page-home HTML byte-for-byte", async () => {
+    const upstream =
+      "<!doctype html><html><body><main>home page</main></body></html>";
     globalThis.fetch = vi.fn(async (url) => {
       expect(String(url)).toBe("http://localhost:4101/");
-      return new Response(
-        "<!doctype html><html><body><main>home page</main></body></html>",
-        {
-          status: 200,
-          headers: { "content-type": "text/html" },
-        },
-      );
+      return new Response(upstream, {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
     }) as typeof fetch;
     const server = buildServer();
     const response = await server.inject({
@@ -54,9 +53,11 @@ describe("shell-gateway", () => {
       url: "/",
       headers: { "x-trace-id": "trace-home" },
     });
-    expect(response.body).toContain("home page");
-    expect(response.body).toContain('data-shell-gateway="true"');
-    expect(response.body).toContain("@mvp/page-home");
+    // Transparent proxy: upstream HTML returned unchanged, no injected chrome.
+    expect(response.body).toBe(upstream);
+    expect(response.body).not.toContain("data-shell-gateway");
+    expect(response.body).not.toContain("data-shell-nav");
+    // Trace header is still set by the shell response hook.
     expect(response.headers["x-trace-id"]).toBe("trace-home");
   });
 
@@ -93,6 +94,43 @@ describe("shell-gateway", () => {
     expect(response.body).toContain("data-shell-fallback");
   });
 
+  it("reverse-proxies /_next/* assets to the page origin from the Referer", async () => {
+    globalThis.fetch = vi.fn(async (url) => {
+      // Resolved from the Referer's route (page-home @ 4101).
+      expect(String(url)).toBe(
+        "http://localhost:4101/_next/static/chunks/main.js",
+      );
+      return new Response("console.log('bundle')", {
+        status: 200,
+        headers: {
+          "content-type": "application/javascript",
+          "cache-control": "public, max-age=31536000",
+        },
+      });
+    }) as typeof fetch;
+    const server = buildServer();
+    const response = await server.inject({
+      method: "GET",
+      url: "/_next/static/chunks/main.js",
+      headers: { referer: "http://localhost:4100/" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain(
+      "application/javascript",
+    );
+    expect(response.headers["cache-control"]).toContain("max-age=31536000");
+    expect(response.body).toContain("bundle");
+  });
+
+  it("404s a /_next asset request that can't resolve an origin", async () => {
+    const server = buildServer();
+    const response = await server.inject({
+      method: "GET",
+      url: "/_next/static/x.js",
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
   it("sets security headers", async () => {
     const server = buildServer();
     const response = await server.inject({ method: "GET", url: "/health" });
@@ -101,83 +139,63 @@ describe("shell-gateway", () => {
   });
 });
 
-describe("shell-gateway chrome + theme/locale", () => {
+describe("shell-gateway transparent proxy + theme/locale", () => {
+  const PAGE_HTML =
+    '<!doctype html><html><head><title>t</title></head><body><header data-shell-nav="true">MVP Perps</header><main>home page</main></body></html>';
+
   function stubPage() {
     globalThis.fetch = vi.fn(
       async () =>
-        new Response(
-          "<!doctype html><html><head><title>t</title></head><body><main>home page</main></body></html>",
-          { status: 200, headers: { "content-type": "text/html" } },
-        ),
-    ) as typeof fetch;
-  }
-
-  it("renders the global nav with every primary link", async () => {
-    stubPage();
-    const server = buildServer();
-    const response = await server.inject({ method: "GET", url: "/" });
-    expect(response.body).toContain('data-shell-nav="true"');
-    expect(response.body).toContain("MVP Perps");
-    expect(response.body).toContain('href="/trade/BTC"');
-    expect(response.body).toContain('href="/markets"');
-    expect(response.body).toContain('href="/portfolio"');
-    expect(response.body).toContain('href="/vaults"');
-    expect(response.body).toContain('href="/referrals"');
-  });
-
-  it("does not mark any primary link active on a non-nav route", async () => {
-    globalThis.fetch = vi.fn(
-      async () =>
-        new Response("<main>product</main>", {
+        new Response(PAGE_HTML, {
           status: 200,
           headers: { "content-type": "text/html" },
         }),
     ) as typeof fetch;
-    const server = buildServer();
-    const response = await server.inject({ method: "GET", url: "/product/1" });
-    // /product/1 matches no primary nav item -> no aria-current on a navlink.
-    expect(response.body).not.toMatch(
-      /mvp-shell-navlink[^>]*aria-current="page"/,
-    );
-    expect(response.body).toContain('data-shell-nav="true"');
-  });
+  }
 
-  it("defaults to data-theme=system + lang en-US with no cookies", async () => {
+  it("returns the upstream page HTML unchanged (no shell-injected chrome)", async () => {
     stubPage();
     const server = buildServer();
     const response = await server.inject({ method: "GET", url: "/" });
-    expect(response.body).toContain('data-theme="system"');
-    expect(response.body).toContain('lang="en-US"');
+    // The nav is now part of the page's own SSR output — the shell passes it
+    // through verbatim rather than injecting/wrapping its own.
+    expect(response.body).toBe(PAGE_HTML);
+    // No shell-owned route marker or theme head is added on top.
+    expect(response.body).not.toContain("data-shell-gateway");
+    expect(response.body).not.toContain(':where([data-theme="dark"])');
   });
 
-  it("renders data-theme=dark from the mvp_theme cookie", async () => {
-    stubPage();
+  it("does not rewrite <html> data-theme/lang (the page owns theme now)", async () => {
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(
+          '<!doctype html><html lang="en-US" data-theme="dark"><body><main>ok</main></body></html>',
+          { status: 200, headers: { "content-type": "text/html" } },
+        ),
+    ) as typeof fetch;
     const server = buildServer();
+    // Cookie present, but the shell must NOT mutate the upstream <html> tag.
     const response = await server.inject({
       method: "GET",
       url: "/",
-      headers: { cookie: "mvp_theme=dark" },
+      headers: { cookie: "mvp_theme=light; mvp_locale=zh" },
     });
+    expect(response.body).toContain('lang="en-US"');
     expect(response.body).toContain('data-theme="dark"');
   });
 
-  it("renders lang=zh-CN from the mvp_locale cookie", async () => {
-    stubPage();
-    const server = buildServer();
-    const response = await server.inject({
-      method: "GET",
-      url: "/",
-      headers: { cookie: "mvp_locale=zh" },
-    });
-    expect(response.body).toContain('lang="zh-CN"');
-  });
-
-  it("injects the design-system theme variables into <head>", async () => {
-    stubPage();
+  it("preserves the upstream status code and content-type", async () => {
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(PAGE_HTML, {
+          status: 200,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+    ) as typeof fetch;
     const server = buildServer();
     const response = await server.inject({ method: "GET", url: "/" });
-    expect(response.body).toContain("--mvp-color-surface-1");
-    expect(response.body).toContain(':where([data-theme="dark"])');
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("text/html");
   });
 
   it("/_shell/theme writes mvp_theme and 302s back to the origin", async () => {
@@ -375,16 +393,21 @@ describe("shell-gateway observability", () => {
     expect(csp).toContain("frame-ancestors 'none'");
   });
 
-  it("injects the request nonce into the composed shell marker", async () => {
+  it("does not stamp the per-request nonce into the proxied body", async () => {
+    const upstream =
+      "<!doctype html><html><body><main>home page</main></body></html>";
     globalThis.fetch = vi.fn(
       async () =>
-        new Response(
-          "<!doctype html><html><body><main>home page</main></body></html>",
-          { status: 200, headers: { "content-type": "text/html" } },
-        ),
+        new Response(upstream, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
     ) as typeof fetch;
     const server = buildServer({ nonceFactory: () => "marker-nonce" });
     const response = await server.inject({ method: "GET", url: "/" });
-    expect(response.body).toContain('nonce="marker-nonce"');
+    // Transparent proxy: the shell no longer injects a nonced marker/head, so the
+    // nonce never leaks into the HTML body; the body is the upstream verbatim.
+    expect(response.body).toBe(upstream);
+    expect(response.body).not.toContain("marker-nonce");
   });
 });

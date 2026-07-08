@@ -31,7 +31,7 @@ importers:
         version: 18.3.7(@types/react@18.3.31)
       '@typescript/native-preview':
         specifier: latest
-        version: 7.0.0-dev.20260706.1
+        version: 7.0.0-dev.20260707.2
       '@vitest/coverage-v8':
         specifier: ^4.1.9
         version: 4.1.9(vitest@4.1.9)
@@ -113,6 +113,12 @@ importers:
       '@mvp/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
+      '@mvp/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@mvp/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       next:
         specifier: ^15.3.4
         version: 15.5.20(@playwright/test@1.61.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -146,6 +152,12 @@ importers:
       '@mvp/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
+      '@mvp/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@mvp/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       next:
         specifier: ^15.3.4
         version: 15.5.20(@playwright/test@1.61.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -203,6 +215,12 @@ importers:
       '@mvp/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
+      '@mvp/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@mvp/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       next:
         specifier: ^15.3.4
         version: 15.5.20(@playwright/test@1.61.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -260,6 +278,9 @@ importers:
       '@mvp/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
+      '@mvp/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       '@mvp/trade-client':
         specifier: workspace:*
         version: link:../../packages/trade-client
@@ -284,6 +305,12 @@ importers:
       '@mvp/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
+      '@mvp/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@mvp/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       next:
         specifier: ^15.3.4
         version: 15.5.20(@playwright/test@1.61.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -320,7 +347,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/account-bar:
     dependencies:
@@ -354,7 +381,7 @@ importers:
         version: 18.3.1
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/chart-panel:
     dependencies:
@@ -391,7 +418,7 @@ importers:
         version: 18.3.1
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/funding-bar:
     dependencies:
@@ -416,7 +443,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/market-header:
     dependencies:
@@ -450,7 +477,7 @@ importers:
         version: 18.3.1
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/markets-table:
     dependencies:
@@ -475,7 +502,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/open-orders:
     dependencies:
@@ -503,7 +530,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/order-book:
     dependencies:
@@ -531,7 +558,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/order-form:
     dependencies:
@@ -568,7 +595,7 @@ importers:
         version: 18.3.1
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/pnl-chart:
     dependencies:
@@ -593,7 +620,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/portfolio-summary:
     dependencies:
@@ -618,7 +645,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/positions-table:
     dependencies:
@@ -646,7 +673,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/promotion-banner:
     dependencies:
@@ -671,7 +698,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/recommendation-widget:
     dependencies:
@@ -696,7 +723,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   fragments/trades-feed:
     dependencies:
@@ -724,13 +751,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/assets:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/contracts:
     dependencies:
@@ -740,7 +767,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/data:
     dependencies:
@@ -753,7 +780,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/design-system:
     dependencies:
@@ -766,13 +793,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/design-tokens:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/interaction:
     dependencies:
@@ -782,13 +809,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/observability:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/optimizer:
     dependencies:
@@ -801,7 +828,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/request:
     dependencies:
@@ -817,7 +844,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/request-context:
     dependencies:
@@ -827,7 +854,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/runtime:
     dependencies:
@@ -840,7 +867,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/storage:
     dependencies:
@@ -850,7 +877,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/trade-client:
     dependencies:
@@ -869,7 +896,7 @@ importers:
         version: 18.3.1(react@18.3.1)
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/ui:
     dependencies:
@@ -927,7 +954,7 @@ importers:
         version: 4.3.2
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/workers:
     dependencies:
@@ -937,7 +964,7 @@ importers:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3)
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   tools/bundle-budget-check: {}
 
@@ -2115,50 +2142,50 @@ packages:
   '@types/react@18.3.31':
     resolution: {integrity: sha512-vfEqpXTvwT91yhmwdfouStN2hSKwTvyRs8qpLfADyrq/kxDw0hZM7Wk9Ug1FELj8hIby+S/+kQCSRFF32nv2Qw==}
 
-  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260706.1':
-    resolution: {integrity: sha512-l9UTIdxt99UUJ7pe/xWWwjoxr9EnG+Sc2k6FUchQrSK0sFZOlx76+hQm6DvuzWOr+1JEpVP/LGmnx7+qk8Yr3Q==}
+  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260707.2':
+    resolution: {integrity: sha512-wny2pgKjGbiZtnOIHVa3tXC1UfDqxNEFzyPGmiqybedG8hipG2Nfp0l5UxbaKCjkLacUpH/W5bP2hBOMVhCOzg==}
     engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [darwin]
 
-  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260706.1':
-    resolution: {integrity: sha512-2/ivq1yeOrhNnN+aQhCLtGeqZ90R5v9OaoON4tG0zEJZLy+jIZGnRK6+gbI8lBhKuIVY2pjpHPJxN1VCaBmxGA==}
+  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260707.2':
+    resolution: {integrity: sha512-Afc7M5zOwo+GpfcYwz5Z8HMB2tPVsui7nNIqEuuFB73MPdVqNn/Wmpe4tP4MRri0AtJnJknoHBaTJ/VDAp/Jhw==}
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [darwin]
 
-  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260706.1':
-    resolution: {integrity: sha512-eokiB0dLt8uUeWH2BbwhQZLrGay5quzptTsFs8kh/nFdSF4gYLoBwmpJn/o5YYrQU89T7Mvi4tKPkgo0TCnwIw==}
+  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260707.2':
+    resolution: {integrity: sha512-iITBa2WjjTI5N9t5l7Z4KoOSI+2zBlhbvFzsD/f8qX8QoKjz/Y4DPyBDgezYi8nkqjjksbgSOJ3/ykzhwrB9cg==}
     engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [linux]
 
-  '@typescript/native-preview-linux-arm@7.0.0-dev.20260706.1':
-    resolution: {integrity: sha512-E2n8tnUcXwY4vRmyEpS8CfpJbK7y5coPtKtqDFtGZHbvWLPoiIP6OhHF5fIPCNMziBclz+5MR86OzxK1jt93YQ==}
+  '@typescript/native-preview-linux-arm@7.0.0-dev.20260707.2':
+    resolution: {integrity: sha512-hJm/UOqZTr9FHmR7uNm8VGX4oKtfWk0Jem0zPeJFNC8ckGUfSBueyiEYMZB+XmRc1aG4x1E46y3CplP4CLHvGQ==}
     engines: {node: '>=16.20.0'}
     cpu: [arm]
     os: [linux]
 
-  '@typescript/native-preview-linux-x64@7.0.0-dev.20260706.1':
-    resolution: {integrity: sha512-JwrLUanCkVq+vbSjcc+qMqQN909Jhiy1s671q5vaYmBMLIzlhNSkvWqmHk+8XLt100zcgJDGgv+kHRazDlpPUQ==}
+  '@typescript/native-preview-linux-x64@7.0.0-dev.20260707.2':
+    resolution: {integrity: sha512-du0dzi6y97Po5vDNdPJTyyijHCpaS22JLRnKZEJXBDaO9gCIymOv/5QQokFRuOlQm0bWl3i9PF4OVdGP6uAOQA==}
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [linux]
 
-  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260706.1':
-    resolution: {integrity: sha512-z75g24yUxktDSnP41t5Y3lV8BbraGyFuRvxhpd5GwXxT/qKQ3bHHcmdTTDSLkn+SRD8fAnnbFqb274UIC4OcCA==}
+  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260707.2':
+    resolution: {integrity: sha512-SsAwfhyHJ1akgBc+99z4+hwdbHsdWaKB8EwCNIMA6JfSLMeUjffrYvxu+vfMyxVtOVOz7RrRXRoiDiu4a2sCtg==}
     engines: {node: '>=16.20.0'}
     cpu: [arm64]
     os: [win32]
 
-  '@typescript/native-preview-win32-x64@7.0.0-dev.20260706.1':
-    resolution: {integrity: sha512-kWP0dMeCvTN5E4X4lQ7dELxyarnfapY1R9KPwHZdN7mcY67uPYSFTvBHD1+V3Q4dTQHQVIaHDUNOfU6McBo1wA==}
+  '@typescript/native-preview-win32-x64@7.0.0-dev.20260707.2':
+    resolution: {integrity: sha512-DL4u27stv0fo71sVhOzHSwE+YMZsbBijVI+kg5dLDLilSH79WFTJ8RSQ46vJrCMt+Gjlv/JOZP1PuLJDfioYeQ==}
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [win32]
 
-  '@typescript/native-preview@7.0.0-dev.20260706.1':
-    resolution: {integrity: sha512-lm3nzcj+cbml0Pt+0QyOpdhZES9WRj0Fv/fds2GaKSf9wXe8694gy6Fa5D65lRcP6q4HHivlrNqJo8rR5Klzww==}
+  '@typescript/native-preview@7.0.0-dev.20260707.2':
+    resolution: {integrity: sha512-oUGp+Rep/hqMhPunyinsALUwSlzHINSxitifPiSaeqoKOKD2OlR9NE3TaPqwsl4NlGslsOSUXI1JotWQzpYCPg==}
     engines: {node: '>=16.20.0'}
     hasBin: true
 
@@ -3913,36 +3940,36 @@ snapshots:
       '@types/prop-types': 15.7.15
       csstype: 3.2.3
 
-  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260706.1':
+  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260707.2':
     optional: true
 
-  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260706.1':
+  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260707.2':
     optional: true
 
-  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260706.1':
+  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260707.2':
     optional: true
 
-  '@typescript/native-preview-linux-arm@7.0.0-dev.20260706.1':
+  '@typescript/native-preview-linux-arm@7.0.0-dev.20260707.2':
     optional: true
 
-  '@typescript/native-preview-linux-x64@7.0.0-dev.20260706.1':
+  '@typescript/native-preview-linux-x64@7.0.0-dev.20260707.2':
     optional: true
 
-  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260706.1':
+  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260707.2':
     optional: true
 
-  '@typescript/native-preview-win32-x64@7.0.0-dev.20260706.1':
+  '@typescript/native-preview-win32-x64@7.0.0-dev.20260707.2':
     optional: true
 
-  '@typescript/native-preview@7.0.0-dev.20260706.1':
+  '@typescript/native-preview@7.0.0-dev.20260707.2':
     optionalDependencies:
-      '@typescript/native-preview-darwin-arm64': 7.0.0-dev.20260706.1
-      '@typescript/native-preview-darwin-x64': 7.0.0-dev.20260706.1
-      '@typescript/native-preview-linux-arm': 7.0.0-dev.20260706.1
-      '@typescript/native-preview-linux-arm64': 7.0.0-dev.20260706.1
-      '@typescript/native-preview-linux-x64': 7.0.0-dev.20260706.1
-      '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260706.1
-      '@typescript/native-preview-win32-x64': 7.0.0-dev.20260706.1
+      '@typescript/native-preview-darwin-arm64': 7.0.0-dev.20260707.2
+      '@typescript/native-preview-darwin-x64': 7.0.0-dev.20260707.2
+      '@typescript/native-preview-linux-arm': 7.0.0-dev.20260707.2
+      '@typescript/native-preview-linux-arm64': 7.0.0-dev.20260707.2
+      '@typescript/native-preview-linux-x64': 7.0.0-dev.20260707.2
+      '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260707.2
+      '@typescript/native-preview-win32-x64': 7.0.0-dev.20260707.2
 
   '@vitest/coverage-v8@4.1.9(vitest@4.1.9)':
     dependencies:
@@ -4462,7 +4489,7 @@ snapshots:
 
   rfdc@1.4.1: {}
 
-  rolldown-plugin-dts@0.13.14(@typescript/native-preview@7.0.0-dev.20260706.1)(rolldown@1.0.0-beta.9)(typescript@5.9.3):
+  rolldown-plugin-dts@0.13.14(@typescript/native-preview@7.0.0-dev.20260707.2)(rolldown@1.0.0-beta.9)(typescript@5.9.3):
     dependencies:
       '@babel/generator': 7.29.7
       '@babel/parser': 7.29.7
@@ -4474,7 +4501,7 @@ snapshots:
       get-tsconfig: 4.14.0
       rolldown: 1.0.0-beta.9
     optionalDependencies:
-      '@typescript/native-preview': 7.0.0-dev.20260706.1
+      '@typescript/native-preview': 7.0.0-dev.20260707.2
       typescript: 5.9.3
     transitivePeerDependencies:
       - oxc-resolver
@@ -4626,7 +4653,7 @@ snapshots:
 
   toad-cache@3.7.4: {}
 
-  tsdown@0.11.13(@typescript/native-preview@7.0.0-dev.20260706.1)(typescript@5.9.3):
+  tsdown@0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3):
     dependencies:
       ansis: 4.3.1
       cac: 6.7.14
@@ -4636,7 +4663,7 @@ snapshots:
       empathic: 1.1.0
       hookable: 5.5.3
       rolldown: 1.0.0-beta.9
-      rolldown-plugin-dts: 0.13.14(@typescript/native-preview@7.0.0-dev.20260706.1)(rolldown@1.0.0-beta.9)(typescript@5.9.3)
+      rolldown-plugin-dts: 0.13.14(@typescript/native-preview@7.0.0-dev.20260707.2)(rolldown@1.0.0-beta.9)(typescript@5.9.3)
       semver: 7.8.5
       tinyexec: 1.2.4
       tinyglobby: 0.2.17

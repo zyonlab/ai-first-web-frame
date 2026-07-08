@@ -11,6 +11,12 @@ describe("positions-table SSR render", () => {
     const result = await renderPositionsTable({ ctx: { locale: "en-US" } });
     expect(result.statusCode).toBe(200);
     const html = "html" in result.body ? result.body.html : "";
+    // self-contained scoped stylesheet is inlined once at the front
+    expect(html).toContain('<style data-fragment-style="positions-table">');
+    expect(
+      html.split('<style data-fragment-style="positions-table">'),
+    ).toHaveLength(2);
+    expect(html).toContain(".pt-table");
     expect(html).toContain('data-fragment="positions-table"');
     expect(html).toContain('data-island="positions"');
     // deterministic fixture positions: BTC long (+60), ETH short (+32)

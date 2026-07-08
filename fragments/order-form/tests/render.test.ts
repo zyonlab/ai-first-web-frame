@@ -21,6 +21,12 @@ describe("order-form render — first paint", () => {
     const result = await okRender();
     expect(result.statusCode).toBe(200);
     const html = "html" in result.body ? result.body.html : "";
+    // self-contained scoped stylesheet is inlined once at the front
+    expect(html).toContain('<style data-fragment-style="order-form">');
+    expect(html.split('<style data-fragment-style="order-form">')).toHaveLength(
+      2,
+    );
+    expect(html).toContain(".of-form");
     expect(html).toContain('data-fragment="order-form"');
     // symbol is uppercased
     expect(html).toContain('data-symbol="BTC"');

@@ -39,6 +39,12 @@ describe("open-orders render — pure HTML", () => {
 
   it("emits the section wrapper, thead, island mount + inline snapshot", () => {
     const html = renderOrdersHtml("BTC", [order()]);
+    // self-contained scoped stylesheet is inlined once at the front
+    expect(html).toContain('<style data-fragment-style="open-orders">');
+    expect(
+      html.split('<style data-fragment-style="open-orders">'),
+    ).toHaveLength(2);
+    expect(html).toContain(".oo-row");
     expect(html).toContain('data-fragment="open-orders"');
     expect(html).toContain('data-island="openOrders"');
     expect(html).toContain('data-symbol="BTC"');

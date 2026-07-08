@@ -9,6 +9,7 @@ import {
   formatPrintRow,
   MAX_TRADES_LIMIT,
 } from "./patch";
+import { tradesFeedCss } from "./styles";
 
 export type TradesFeedRenderRequest = {
   ctx?: {
@@ -137,6 +138,7 @@ export function renderTapeHtml(
   const rows = prints.map((print) => renderTapeRow(print)).join("");
   const snapshot = JSON.stringify({ symbol, limit, prints });
   return (
+    `<style data-fragment-style="trades-feed">${tradesFeedCss}</style>` +
     `<section data-fragment="trades-feed" data-island="trades" data-symbol="${escapeHtml(symbol)}" data-limit="${limit}">` +
     `<table class="trades-tape" role="table">` +
     `<thead><tr class="trades-tape__head">` +

@@ -4,6 +4,7 @@ import { createRequestContext } from "@mvp/request-context";
 import { loadPositions, type Position } from "./data";
 import { positionsTableManifest } from "./manifest";
 import { formatPositionRow, positionKey } from "./patch";
+import { positionsTableCss } from "./styles";
 
 export type PositionsTableRenderRequest = {
   ctx?: {
@@ -126,6 +127,7 @@ export function renderPositionsHtml(
       ? rows
       : `<tr class="pt-empty"><td colspan="8">No open positions</td></tr>`;
   return (
+    `<style data-fragment-style="positions-table">${positionsTableCss}</style>` +
     `<section class="pt" data-fragment="positions-table" data-island="positions">` +
     `<div class="pt-scroll">` +
     `<table class="pt-table" role="table" aria-label="Open positions">` +

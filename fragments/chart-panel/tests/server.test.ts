@@ -71,6 +71,12 @@ describe("chart-panel fragment service", () => {
     });
     expect(response.statusCode).toBe(200);
     const html = response.json().html as string;
+    // self-contained scoped stylesheet is inlined once at the front
+    expect(html).toContain('<style data-fragment-style="chart-panel">');
+    expect(
+      html.split('<style data-fragment-style="chart-panel">'),
+    ).toHaveLength(2);
+    expect(html).toContain(".chart-panel");
     // OHLC summary comes only from the data plane (proves @mvp/data ran).
     expect(html).toContain('data-value="close">63,072.29');
     expect(html).toContain('data-field="pair">BTC');

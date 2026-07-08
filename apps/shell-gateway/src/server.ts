@@ -16,7 +16,6 @@ import {
   matchRoute,
   routeRegistry,
 } from "../../../platform/route-registry/src/registry";
-import { wrapShellChrome } from "./chrome";
 import { createFragmentHeaders, createShellRequestContext } from "./context";
 import { createNotFoundFallback, createShellFallback } from "./fallback";
 import {
@@ -204,17 +203,12 @@ export function buildServer(options: BuildServerOptions = {}) {
       reply
         .code(response.status)
         .type(response.headers.get("content-type") ?? "text/html");
-      const body = await response.text();
-      const state = requestState.get(request);
-      return wrapShellChrome({
-        html: body,
-        pathname,
-        page: route.page,
-        theme: ctx.theme,
-        locale: ctx.shellLocale,
-        lastSymbol: ctx.lastSymbol,
-        nonce: state?.nonce,
-      });
+      // Transparent proxy: the composed page now owns its own navigation chrome
+      // + theme/locale head (rendered inside its own React tree), so the shell
+      // returns the upstream HTML byte-for-byte. Injecting nav here previously
+      // broke Next hydration (React #418) because the shell-added DOM diverged
+      // from the client's SSR expectation.
+      return await response.text();
     } catch (error) {
       const reason =
         error instanceof Error ? error.message : "page proxy failed";

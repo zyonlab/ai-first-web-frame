@@ -3,13 +3,16 @@ import { expect, test } from "@playwright/test";
 // Product route composed through shell-gateway plus the standalone
 // page-product service redirect chain (port 4102).
 test.describe("product route via shell-gateway", () => {
-  test("responds 200 with shell marker and product page", async ({ page }) => {
+  test("responds 200 and transparently proxies the product page", async ({
+    page,
+  }) => {
     const response = await page.goto("/product/123");
     expect(response?.status()).toBe(200);
 
-    const marker = page.locator('[data-shell-gateway="true"]');
-    await expect(marker).toHaveCount(1);
-    await expect(marker).toContainText("@mvp/page-product");
+    // Transparent proxy: page-product's HTML is returned verbatim (no injected
+    // chrome wrapper); the shell trace header proves it routed through the shell.
+    expect(response?.headers()["x-trace-id"]).toBeTruthy();
+    await expect(page.locator('[data-shell-gateway="true"]')).toHaveCount(0);
 
     const main = page.locator('main[data-page="product"]');
     await expect(main).toHaveCount(1);

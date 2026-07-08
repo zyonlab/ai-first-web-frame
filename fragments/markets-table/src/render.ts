@@ -11,6 +11,7 @@ import {
   tradeHref,
 } from "./format";
 import { marketsTableManifest } from "./manifest";
+import { marketsTableCss } from "./styles";
 
 export type MarketsTableRenderRequest = {
   ctx?: {
@@ -126,6 +127,7 @@ export function applyView(
 export function renderMarketsTableHtml(snapshot: MarketsTableSnapshot): string {
   const rows = snapshot.rows.map((row) => renderRow(row)).join("");
   return (
+    `<style data-fragment-style="markets-table">${marketsTableCss}</style>` +
     `<section data-fragment="markets-table" data-row-count="${snapshot.rows.length}">` +
     `<table class="markets-table">` +
     `<thead><tr class="markets-table__head">` +

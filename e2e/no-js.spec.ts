@@ -13,8 +13,8 @@ test.describe("home page without client JavaScript", () => {
     const response = await page.goto("/");
     expect(response?.status()).toBe(200);
 
-    // Shell marker and page shell.
-    await expect(page.locator('[data-shell-gateway="true"]')).toHaveCount(1);
+    // Page shell (served verbatim through the transparent shell proxy).
+    await expect(page.locator('main[data-page="home"]')).toHaveCount(1);
     await expect(
       page.getByRole("heading", { name: "MVP Storefront Home" }),
     ).toBeVisible();

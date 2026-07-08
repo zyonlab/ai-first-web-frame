@@ -50,6 +50,8 @@ Reports are written to `reports/playwright`.
 
 - Playwright specs are `e2e/*.spec.ts`. Vitest unit tests may live under
   `e2e/unit/**/*.test.ts` and are excluded via `testMatch`.
-- Anchor assertions on stable contracts (`data-shell-gateway`,
-  `data-fragment`, `data-request-trace`, `/health`, `/manifest`, route
-  status codes), not on styling or demo copy that changes between waves.
+- Anchor assertions on stable contracts (`data-page`, `data-fragment`,
+  `data-request-trace`, the `x-trace-id` shell header, `/health`, `/manifest`,
+  route status codes), not on styling or demo copy that changes between waves.
+  Note: the shell is a transparent proxy, so composed pages carry no injected
+  chrome marker — assert the page's own `data-page`/content instead.

@@ -69,6 +69,12 @@ describe("account-bar fragment service", () => {
     });
     expect(response.statusCode).toBe(200);
     const html = response.json().html as string;
+    // self-contained scoped stylesheet is inlined once at the front
+    expect(html).toContain('<style data-fragment-style="account-bar">');
+    expect(
+      html.split('<style data-fragment-style="account-bar">'),
+    ).toHaveLength(2);
+    expect(html).toContain(".account-bar");
     // Numbers come only from the data plane (proves @mvp/data ran).
     expect(html).toContain('data-value="equity">100,092.00');
     expect(html).toContain('data-value="marginUsed">20,018.40');

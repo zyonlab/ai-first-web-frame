@@ -4,6 +4,7 @@ import { createRequestContext } from "@mvp/request-context";
 import { loadOpenOrders } from "./data";
 import { openOrdersManifest } from "./manifest";
 import { formatOrderRow, type OpenOrder, toOpenOrder } from "./patch";
+import { openOrdersCss } from "./styles";
 
 export type OpenOrdersRenderRequest = {
   ctx?: {
@@ -118,6 +119,7 @@ export function renderOrdersHtml(symbol: string, orders: OpenOrder[]): string {
     `<tr class="oo-empty" data-oo-empty><td colspan="6">No open orders</td></tr>`;
   const snapshot = JSON.stringify({ symbol, orders });
   return (
+    `<style data-fragment-style="open-orders">${openOrdersCss}</style>` +
     `<section data-fragment="open-orders" data-island="openOrders" data-symbol="${escapeHtml(symbol)}">` +
     `<table class="oo-table" role="table">` +
     `<thead><tr class="oo-head">` +

@@ -9,6 +9,7 @@ import {
 } from "./countdown";
 import { type FundingSnapshot, loadFundingSnapshot } from "./data";
 import { fundingBarManifest } from "./manifest";
+import { fundingBarCss } from "./styles";
 
 export type FundingBarRenderRequest = {
   ctx?: {
@@ -123,6 +124,7 @@ export function renderFundingBarHtml(
   const oracleLabel = formatPrice(snapshot.oraclePrice);
 
   return (
+    `<style data-fragment-style="funding-bar">${fundingBarCss}</style>` +
     `<section data-fragment="funding-bar" data-symbol="${escapeHtml(snapshot.symbol)}">` +
     `<div class="funding-bar__item funding-bar__rate funding-bar__rate--${direction}">` +
     `<span class="funding-bar__label">Funding</span>` +

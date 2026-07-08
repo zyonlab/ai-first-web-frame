@@ -46,6 +46,12 @@ function snapshot(
 describe("renderPortfolioSummaryHtml (pure, deterministic)", () => {
   it("renders the four overview cards with equity/uPnL/margin/withdrawable", () => {
     const html = renderPortfolioSummaryHtml(snapshot());
+    // self-contained scoped stylesheet is inlined once at the front
+    expect(html).toContain('<style data-fragment-style="portfolio-summary">');
+    expect(
+      html.split('<style data-fragment-style="portfolio-summary">'),
+    ).toHaveLength(2);
+    expect(html).toContain(".ps");
     expect(html).toContain('data-fragment="portfolio-summary"');
     expect(html).toContain("Equity");
     expect(html).toContain("100,240.00");

@@ -13,6 +13,7 @@ import {
 } from "./curve";
 import { loadPnlSnapshot, type PnlSnapshot } from "./data";
 import { pnlChartManifest } from "./manifest";
+import { pnlChartCss } from "./styles";
 
 export type PnlChartRenderRequest = {
   ctx?: {
@@ -130,6 +131,7 @@ export function renderPnlChartHtml(
   const { width, height } = geometry.viewBox;
 
   return (
+    `<style data-fragment-style="pnl-chart">${pnlChartCss}</style>` +
     `<section data-fragment="pnl-chart" data-symbol="${escapeHtml(symbol)}" data-direction="${direction}">` +
     `<header class="pnl-chart__header">` +
     `<div class="pnl-chart__meta">` +

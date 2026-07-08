@@ -7,6 +7,7 @@ import {
   toAccountBarView,
 } from "./data";
 import { accountBarManifest } from "./manifest";
+import { accountBarCss } from "./styles";
 
 export type AccountBarRenderRequest = {
   ctx?: {
@@ -69,6 +70,7 @@ export function renderAccountBarHtml(
   const snapshot = JSON.stringify({ props, slice: ISLAND_SLICE });
 
   return (
+    `<style data-fragment-style="account-bar">${accountBarCss}</style>` +
     `<section data-fragment="account-bar" class="account-bar">` +
     `<div data-island="${ISLAND_NAME}" class="account-bar__row">` +
     `<span class="account-bar__stat" data-field="equity">` +

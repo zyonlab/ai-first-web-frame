@@ -1,0 +1,129 @@
+/**
+ * Scoped CSS for the positions-table fragment — single source of truth.
+ *
+ * This string is inlined once at the front of the fragment's SSR HTML (see
+ * render), so the dense terminal styling reaches the browser even when the
+ * composed page never fetches the standalone /assets/positions-table.css file.
+ *
+ * Keep this in sync with assets/positions-table.css (or src/positions-table.css); the .css file
+ * is retained so the css-budget audit still measures the fragment stylesheet.
+ */
+export const positionsTableCss = `.pt {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--trade-panel-border, #23262f);
+  border-radius: var(--mvp-radius-sm, 4px);
+  background: var(--trade-panel-bg, #0e1015);
+  color: var(--trade-text, #d6d9e0);
+  font-family: var(
+    --trade-font-mono,
+    ui-monospace,
+    "SFMono-Regular",
+    monospace
+  );
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  overflow: hidden;
+}
+
+.pt-scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.pt-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.pt-head th {
+  position: sticky;
+  top: 0;
+  z-index: var(--mvp-z-sticky, 10);
+  padding: 2px 8px;
+  background: var(--trade-panel-bg, #0e1015);
+  color: var(--trade-text-muted, #8a8f9a);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pt-col--symbol,
+.pt-col--side,
+.pt-col--action {
+  text-align: left;
+}
+
+.pt-row {
+  height: 24px;
+  line-height: 24px;
+}
+
+.pt-row.is-active {
+  background: var(--trade-row-hover, rgba(255, 255, 255, 0.04));
+}
+
+.pt-row:hover {
+  background: var(--trade-row-hover, rgba(255, 255, 255, 0.04));
+}
+
+.pt-cell {
+  padding: 0 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pt-cell--symbol {
+  text-align: left;
+  font-weight: 600;
+}
+
+.pt-cell--side {
+  text-align: left;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.pt-cell--action {
+  text-align: left;
+}
+
+.pt-side--long {
+  color: var(--trade-buy, #1ea97c);
+}
+
+.pt-side--short {
+  color: var(--trade-sell, #e5504d);
+}
+
+.pt-pnl--up {
+  color: var(--trade-buy, #1ea97c);
+}
+
+.pt-pnl--down {
+  color: var(--trade-sell, #e5504d);
+}
+
+.pt-close {
+  padding: 1px 8px;
+  border: 1px solid var(--trade-panel-border, #23262f);
+  border-radius: var(--mvp-radius-sm, 4px);
+  background: transparent;
+  color: var(--trade-text-muted, #8a8f9a);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pt-close:hover {
+  color: var(--trade-text, #d6d9e0);
+  background: var(--trade-chip-active, #23262f);
+}
+
+.pt-empty td {
+  padding: 8px;
+  color: var(--trade-text-muted, #8a8f9a);
+  text-align: center;
+}`;

@@ -27,6 +27,12 @@ function snapshot(
 describe("renderPnlChartHtml (pure, deterministic given snapshot)", () => {
   it("renders a stable pnl chart with an SVG polyline and labels", () => {
     const html = renderPnlChartHtml(snapshot([100, 130, 160]), "24h");
+    // self-contained scoped stylesheet is inlined once at the front
+    expect(html).toContain('<style data-fragment-style="pnl-chart">');
+    expect(html.split('<style data-fragment-style="pnl-chart">')).toHaveLength(
+      2,
+    );
+    expect(html).toContain(".pnl-chart__svg");
     expect(html).toContain('data-fragment="pnl-chart"');
     expect(html).toContain('data-symbol="BTC"');
     // hand-rolled SVG polyline, not a chart library
@@ -117,7 +123,13 @@ describe("renderPnlChart (SSR entry, reads through C4 client)", () => {
     expect(result.statusCode).toBe(200);
     if (!("html" in result.body)) throw new Error("expected html body");
     expect(result.body.html).toContain("<svg");
-    expect(result.body.html).not.toContain('data-fallback="true"');
+    // The rendered <section> must not be in the fallback state. Match on the
+    // section tag itself, not a raw substring — the inlined <style> block
+    // legitimately references `[data-fallback="true"]` as a CSS selector.
+    expect(result.body.html).toContain('<section data-fragment="pnl-chart"');
+    expect(result.body.html).not.toContain(
+      '<section data-fragment="pnl-chart" data-fallback="true"',
+    );
   });
 
   it("renders a curve synthesized from candle history via createTradeDataClient", async () => {
