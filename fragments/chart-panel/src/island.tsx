@@ -11,6 +11,7 @@ import {
   type ChartInterval,
   type ChartIntervalPayload,
   createInteractionBus,
+  type InteractionBus,
   isChartInterval,
   TRADE_ACTIVE_SYMBOL,
   TRADE_CHART_INTERVAL,
@@ -120,16 +121,22 @@ export function initialChartState(
  *  - subscribes to `TRADE_ACTIVE_SYMBOL` (C3) and, on a symbol switch, refetches
  *    the history and re-subscribes to the live candle for the new symbol.
  */
-export function ChartPanelIsland(props: ChartPanelIslandProps) {
+export function ChartPanelIsland(
+  props: ChartPanelIslandProps & { bus?: InteractionBus },
+) {
   const [state, dispatch] = useReducer(
     chartIslandReducer,
     props,
     initialChartState,
   );
 
+  // Prefer the page-injected shared bus so cross-fragment symbol switches reach
+  // this island; fall back to a private bus for standalone/test rendering.
+  const injectedBus = props.bus;
   const bus = useMemo(
-    () => createInteractionBus({ contracts: tradeSliceContracts }),
-    [],
+    () =>
+      injectedBus ?? createInteractionBus({ contracts: tradeSliceContracts }),
+    [injectedBus],
   );
 
   // Live candle subscription, re-established on symbol/interval change.

@@ -8,6 +8,7 @@ import {
 import {
   type ActiveSymbolPayload,
   createInteractionBus,
+  type InteractionBus,
   TRADE_ACTIVE_SYMBOL,
   tradeSliceContracts,
 } from "@mvp/interaction";
@@ -104,21 +105,30 @@ const COUNTDOWN_TICK_MS = 1000;
  *  - subscribes to `TRADE_ACTIVE_SYMBOL` (C3) and, on a symbol switch, tears
  *    down the old ticker subscription and re-subscribes to the new symbol.
  */
-export function MarketHeaderIsland(props: MarketHeaderIslandProps) {
+export function MarketHeaderIsland(
+  props: MarketHeaderIslandProps & { bus?: InteractionBus },
+) {
   const [state, dispatch] = useReducer(
     islandReducer,
     props,
     initialIslandState,
   );
 
+  // Keyed on the LIVE symbol (not the SSR prop) so a cross-fragment symbol
+  // switch rebuilds the client for the new symbol and the ticker subscription
+  // below re-establishes against it.
   const client = useMemo(() => {
     const ctx = createRequestContext();
-    return createTradeDataClient({ ctx, symbols: [props.view.symbol] });
-  }, [props.view.symbol]);
+    return createTradeDataClient({ ctx, symbols: [state.view.symbol] });
+  }, [state.view.symbol]);
 
+  // Prefer the page-injected shared bus so cross-fragment symbol switches reach
+  // this island; fall back to a private bus for standalone/test rendering.
+  const injectedBus = props.bus;
   const bus = useMemo(
-    () => createInteractionBus({ contracts: tradeSliceContracts }),
-    [],
+    () =>
+      injectedBus ?? createInteractionBus({ contracts: tradeSliceContracts }),
+    [injectedBus],
   );
 
   // Keep the latest funding frame so a ticker patch can re-derive the view.
@@ -143,34 +153,26 @@ export function MarketHeaderIsland(props: MarketHeaderIslandProps) {
     return unsubscribe;
   }, [client, state.view.symbol, fundingRef]);
 
-  // Cross-component symbol switch (C3): resubscribe + reset the view.
+  // Cross-component symbol switch (C3): retarget the view to the new symbol.
+  // The client memo + ticker subscription above are keyed on `state.view.symbol`,
+  // so this dispatch alone re-establishes the live ticker for the new symbol;
+  // the prior mark/oracle numbers show for one tick until the first frame lands.
   useEffect(() => {
     const unsubscribe = bus.subscribe(
       TRADE_ACTIVE_SYMBOL,
-      async (payload) => {
-        const next = (payload as ActiveSymbolPayload).symbol;
+      (payload) => {
+        const next = (payload as ActiveSymbolPayload).symbol?.trim();
         if (!next || next === state.view.symbol) return;
-        const ctx = createRequestContext();
-        const nextClient = createTradeDataClient({ ctx, symbols: [next] });
-        const [ticker, funding] = await Promise.all([
-          nextClient.readData<TickerFrame>(nextClient.sourceIds.ticker(next), {
-            symbol: next,
-          }),
-          nextClient.readData<FundingFrame>(
-            nextClient.sourceIds.funding(next),
-            { symbol: next },
-          ),
-        ]);
         dispatch({
           type: "symbol",
-          view: toMarketHeaderView(ticker.data, funding.data),
+          view: { ...state.view, symbol: next },
           seededNowMs: Date.now(),
         });
       },
       { subscriber: MARKET_HEADER_SUBSCRIBER },
     );
     return unsubscribe;
-  }, [bus, state.view.symbol]);
+  }, [bus, state.view]);
 
   // Countdown ticker.
   useEffect(() => {

@@ -1,4 +1,6 @@
 import {
+  createInteractionBus,
+  type InteractionBus,
   initialTradeSlices,
   type OrderDraftPricePayload,
   TRADE_ACTIVE_SYMBOL,
@@ -6,6 +8,7 @@ import {
   TRADE_ORDER_DRAFT,
   TRADE_ORDER_DRAFT_PRICE,
   type TradeSlices,
+  tradeSliceContracts,
   tradeStoreContracts,
 } from "@mvp/interaction";
 import {
@@ -29,6 +32,11 @@ function makeStore(): TradeStore<TradeSlices> {
   return createTradeStore<TradeSlices>(tradeStoreContracts, {
     initial: structuredClone(initialTradeSlices),
   });
+}
+
+/** A fresh isolated interaction bus per test. */
+function makeBus(): InteractionBus {
+  return createInteractionBus({ contracts: tradeSliceContracts });
 }
 
 /**
@@ -111,14 +119,14 @@ describe("getTradeStore singleton", () => {
 
 describe("registerTradeIslands", () => {
   it("registers all four React islands by their page slot names", () => {
-    registerTradeIslands(makeStore());
+    registerTradeIslands(makeStore(), makeBus());
     for (const name of ["marketHeader", "chart", "accountBar", "orderForm"]) {
       expect(getIsland(name)).toBeTypeOf("function");
     }
   });
 
   it("does not register the patch-only order-book island", () => {
-    registerTradeIslands(makeStore());
+    registerTradeIslands(makeStore(), makeBus());
     // `book` is vanilla (patch-only), not a React island — hydrateIslands skips
     // it because it is never registered.
     expect(getIsland("book")).toBeUndefined();

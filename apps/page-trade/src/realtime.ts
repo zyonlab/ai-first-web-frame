@@ -32,8 +32,11 @@ import { createTradeDataClient, type TradeDataClient } from "@mvp/data";
 import {
   buildLadder,
   diffLadder,
+  formatPrice,
+  formatSize,
   type Ladder,
   type LadderPatchSet,
+  type LadderRow,
 } from "@mvp/fragment-order-book/patch";
 import {
   applyPositionsFrame,
@@ -130,24 +133,75 @@ export function applyLadderPatch(node: Element, patch: LadderPatchSet): void {
   setFieldText(node, "spread-pct", `(${patch.spreadPct})`);
 }
 
+/** Builds one ladder `<tr>` matching the SSR markup exactly (no innerHTML). */
+function buildLadderRow(row: LadderRow): HTMLTableRowElement {
+  const doc = getDocument();
+  const tr = doc.createElement("tr");
+  tr.className = `ob-row ob-${row.side}`;
+  tr.setAttribute("role", "row");
+  tr.setAttribute("tabindex", "0");
+  tr.setAttribute("data-price", row.key);
+  tr.setAttribute("data-side", row.side);
+  tr.style.setProperty("--depth", `${(row.depth * 100).toFixed(2)}%`);
+  const price = doc.createElement("td");
+  price.className = "ob-price";
+  price.setAttribute("data-field", "price");
+  price.setAttribute("data-value", String(row.price));
+  price.textContent = formatPrice(row.price);
+  const size = doc.createElement("td");
+  size.className = "ob-num";
+  size.setAttribute("data-field", "size");
+  size.textContent = formatSize(row.size);
+  const total = doc.createElement("td");
+  total.className = "ob-num";
+  total.setAttribute("data-field", "total");
+  total.textContent = formatSize(row.total);
+  tr.append(price, size, total);
+  return tr;
+}
+
+/**
+ * Rebuilds the whole price ladder in place. Unlike {@link applyLadderPatch}
+ * (which only moves size/total on stable price rows), this replaces every row —
+ * needed on a symbol switch, where the entire price range changes and the SSR
+ * rows carry the previous symbol's keys. Asks render worst→best top-down.
+ */
+export function renderLadder(node: Element, ladder: Ladder): void {
+  const asksBody = node.querySelector(".ob-asks");
+  if (asksBody)
+    asksBody.replaceChildren(...[...ladder.asks].reverse().map(buildLadderRow));
+  const bidsBody = node.querySelector(".ob-bids");
+  if (bidsBody) bidsBody.replaceChildren(...ladder.bids.map(buildLadderRow));
+  setFieldText(node, "spread", formatPrice(ladder.spread));
+  setFieldText(node, "mid", formatPrice(ladder.mid));
+  setFieldText(node, "spread-pct", `(${ladder.spreadPct.toFixed(3)}%)`);
+}
+
 function wireOrderBook(
   node: Element,
   client: TradeDataClient,
   symbol: string,
+  options: { rebuild?: boolean } = {},
 ): PanelController {
   const depth = bookDepth(node);
-  // Seed the "previous" ladder from the rendered rows so the first frame's diff
-  // only patches what actually changed.
-  let prev: Ladder = ladderFromDom(node, symbol, depth);
+  // On a symbol switch the SSR rows hold the previous symbol's prices, so start
+  // from an empty ladder and full-render the first frame; on the initial wire,
+  // seed from the rendered rows so the first live frame only patches deltas.
+  let prev: Ladder | null = options.rebuild
+    ? null
+    : ladderFromDom(node, symbol, depth);
   const stop = client.subscribe<OrderbookL2Frame>(
     client.sourceIds.bookL2(symbol),
     (event: DataSubscriptionEvent<OrderbookL2Frame>) => {
       const frame = event.data;
       if (!frame || !Array.isArray(frame.bids)) return;
       const next = buildLadder(frame, depth);
-      const patch = diffLadder(prev, next);
+      if (prev === null) {
+        renderLadder(node, next);
+      } else {
+        applyLadderPatch(node, diffLadder(prev, next));
+      }
       prev = next;
-      applyLadderPatch(node, patch);
     },
   );
   return { stop };
@@ -412,15 +466,19 @@ export function startTradeRealtime(
   let controllers: PanelController[] = [];
   let client: TradeDataClient | null = null;
 
-  const wireForSymbol = (symbol: string) => {
+  const wireForSymbol = (symbol: string, rebuild = false) => {
     client = makeClient([symbol]);
     controllers = [];
     const bookNode = root.querySelector?.(PANEL_SELECTOR.book);
     if (bookNode && !bookNode.hasAttribute("data-fallback")) {
-      controllers.push(wireOrderBook(bookNode, client, symbol));
+      controllers.push(wireOrderBook(bookNode, client, symbol, { rebuild }));
     }
     const tradesNode = root.querySelector?.(PANEL_SELECTOR.trades);
     if (tradesNode && !tradesNode.hasAttribute("data-fallback")) {
+      // The tape shows no per-row symbol, so on a switch clear the previous
+      // symbol's prints and let the new symbol's frames repopulate it.
+      if (rebuild)
+        tradesNode.querySelector("[data-trades-body]")?.replaceChildren();
       controllers.push(wireTradesFeed(tradesNode, client, symbol));
     }
     const positionsNode = root.querySelector?.(PANEL_SELECTOR.positions);
@@ -445,7 +503,7 @@ export function startTradeRealtime(
     if (!next || next === current) return;
     current = next;
     unwire();
-    wireForSymbol(current);
+    wireForSymbol(current, true);
   });
 
   return () => {

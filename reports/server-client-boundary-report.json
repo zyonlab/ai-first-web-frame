@@ -242,6 +242,12 @@
     {
       "code": "large-client-component",
       "severity": "warn",
+      "file": "apps/page-trade/src/hydrate.tsx",
+      "detail": "client component exceeds size guideline"
+    },
+    {
+      "code": "large-client-component",
+      "severity": "warn",
       "file": "apps/page-trade/src/realtime.ts",
       "detail": "client component exceeds size guideline"
     },

@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  type ActiveSymbolPayload,
   createMockMatchingEngine,
   type HoveredPricePayload,
   type OrderDraftPricePayload,
+  TRADE_ACTIVE_SYMBOL,
   TRADE_HOVERED_PRICE,
   TRADE_LEVERAGE,
   TRADE_ORDER_DRAFT,
@@ -100,6 +102,9 @@ export function OrderFormIsland({
   );
   const [draft, setDraft] = useState<OrderFormDraft>(initialDraft);
   const [ack, setAck] = useState<string | null>(null);
+  // The active symbol follows cross-fragment switches (watchlist → shared store)
+  // so the submit button + placed order target the symbol on screen.
+  const [activeSymbol, setActiveSymbol] = useState(symbol);
 
   // Subscribe to order-book price clicks -> fold into the draft + re-publish.
   useEffect(() => {
@@ -120,9 +125,17 @@ export function OrderFormIsland({
         // draft mutation here. Kept wired for the price-hint UI affordance.
       },
     );
+    const unsubSymbol = store.subscribe(
+      TRADE_ACTIVE_SYMBOL,
+      (payload: ActiveSymbolPayload) => {
+        const next = payload.symbol?.trim().toUpperCase();
+        if (next) setActiveSymbol(next);
+      },
+    );
     return () => {
       unsubPrice();
       unsubHover();
+      unsubSymbol();
     };
   }, [store]);
 
@@ -142,7 +155,7 @@ export function OrderFormIsland({
   async function onSubmit(event: { preventDefault(): void }) {
     event.preventDefault();
     if (!isDraftSubmittable(draft)) return;
-    const input = toPlaceOrderInput(symbol, draft);
+    const input = toPlaceOrderInput(activeSymbol, draft);
     const outcome = await submitOrder(input, {
       mutate: engine.place,
       userId,
@@ -272,7 +285,7 @@ export function OrderFormIsland({
         data-of-submit
         disabled={!submittable}
       >
-        {draft.side === "buy" ? "Buy" : "Sell"} {symbol}
+        {draft.side === "buy" ? "Buy" : "Sell"} {activeSymbol}
       </button>
 
       {ack ? (

@@ -7,7 +7,13 @@ import {
   OrderFormIsland,
   type OrderFormIslandComponentProps,
 } from "@mvp/fragment-order-form/island";
-import { TRADE_ORDER_DRAFT_PRICE, type TradeSlices } from "@mvp/interaction";
+import {
+  applySymbolSwitch,
+  type InteractionBus,
+  TRADE_ACTIVE_SYMBOL,
+  TRADE_ORDER_DRAFT_PRICE,
+  type TradeSlices,
+} from "@mvp/interaction";
 import type { TradeStore } from "@mvp/trade-client";
 import {
   clearIslandRegistry,
@@ -17,7 +23,7 @@ import {
 } from "@mvp/trade-client";
 import { createElement, useEffect } from "react";
 import { startTradeRealtime } from "./realtime";
-import { getTradeStore } from "./tradeStore";
+import { getTradeBus, getTradeStore } from "./tradeStore";
 
 /**
  * Reads the numeric price from a clicked order-book row. The order-book is a
@@ -73,11 +79,105 @@ function makeOrderFormIsland(store: TradeStore<TradeSlices>) {
  * live `subscribeData` realtime feed are deliberately deferred. The signature
  * order-book → order-form price flow below is fully wired end to end.
  */
-export function registerTradeIslands(store: TradeStore<TradeSlices>): void {
-  registerIsland("marketHeader", MarketHeaderIsland);
-  registerIsland("chart", ChartPanelIsland);
+export function registerTradeIslands(
+  store: TradeStore<TradeSlices>,
+  bus: InteractionBus,
+): void {
+  // Inject the shared bus so market-header + chart receive symbol switches
+  // published by the watchlist (their own default bus would be isolated).
+  registerIsland(
+    "marketHeader",
+    (props: Omit<Parameters<typeof MarketHeaderIsland>[0], "bus">) =>
+      createElement(MarketHeaderIsland, { ...props, bus }),
+  );
+  registerIsland(
+    "chart",
+    (props: Omit<Parameters<typeof ChartPanelIsland>[0], "bus">) =>
+      createElement(ChartPanelIsland, { ...props, bus }),
+  );
   registerIsland("accountBar", AccountBarIsland);
   registerIsland("orderForm", makeOrderFormIsland(store));
+}
+
+/** Extracts an uppercased symbol from a watchlist row's `/trade/<sym>` href. */
+function symbolFromHref(el: Element | null): string | null {
+  const href = el?.getAttribute?.("href") ?? "";
+  const match = /\/trade\/([^/?#]+)/.exec(href);
+  return match ? decodeURIComponent(match[1]).trim().toUpperCase() : null;
+}
+
+/** Reads the symbol out of a `/trade/<sym>` pathname. */
+function symbolFromPath(pathname: string): string | null {
+  const match = /\/trade\/([^/?#]+)/.exec(pathname);
+  return match ? decodeURIComponent(match[1]).trim().toUpperCase() : null;
+}
+
+/**
+ * Progressive-enhancement in-place symbol switch. The watchlist rows are plain
+ * `<a href="/trade/SYM">` (no-JS navigable); with JS this intercepts the click
+ * and instead of a full-page navigation:
+ *  - writes the symbol to the shared store (drives the realtime re-wire of
+ *    order-book / trades / positions) AND publishes it on the shared bus (drives
+ *    the market-header + chart islands),
+ *  - updates the page `data-symbol` + active-row highlight, and
+ *  - `pushState`s the new URL so the address bar + back button stay correct.
+ * Back/forward (`popstate`) re-applies the switch without pushing history.
+ */
+export function attachSymbolSwitcher(
+  store: TradeStore<TradeSlices>,
+  bus: InteractionBus,
+  root: ParentNode & {
+    addEventListener: Element["addEventListener"];
+    removeEventListener: Element["removeEventListener"];
+  },
+): () => void {
+  const doc =
+    (root as { ownerDocument?: Document }).ownerDocument ??
+    (root as unknown as Document);
+  const switchTo = (raw: string, push: boolean) => {
+    const symbol = raw.trim().toUpperCase();
+    if (!symbol) return;
+    const page = doc.querySelector?.('[data-page="trade"]') ?? null;
+    if (page?.getAttribute("data-symbol")?.toUpperCase() === symbol) return;
+    void store.set(TRADE_ACTIVE_SYMBOL, applySymbolSwitch(symbol));
+    // The bus contract for trade.active-symbol pins its declared publisher; use
+    // it so the publish is accepted and reaches the chart + market-header.
+    void bus.publish(TRADE_ACTIVE_SYMBOL, applySymbolSwitch(symbol), {
+      owner: "symbol-switcher",
+    });
+    page?.setAttribute("data-symbol", symbol);
+    for (const row of doc.querySelectorAll?.(".rail-watchlist__row") ?? []) {
+      if (symbolFromHref(row) === symbol)
+        row.setAttribute("aria-current", "page");
+      else row.removeAttribute("aria-current");
+    }
+    if (push && typeof history !== "undefined") {
+      history.pushState({ symbol }, "", `/trade/${symbol}`);
+    }
+  };
+  const onClick = (event: Event) => {
+    const row = (event.target as Element | null)?.closest?.(
+      ".rail-watchlist__row",
+    );
+    const symbol = symbolFromHref(row ?? null);
+    if (!symbol) return;
+    event.preventDefault();
+    switchTo(symbol, true);
+  };
+  const onPop = () => {
+    const symbol =
+      typeof location !== "undefined"
+        ? symbolFromPath(location.pathname)
+        : null;
+    if (symbol) switchTo(symbol, false);
+  };
+  root.addEventListener("click", onClick);
+  if (typeof window !== "undefined") window.addEventListener("popstate", onPop);
+  return () => {
+    root.removeEventListener("click", onClick);
+    if (typeof window !== "undefined")
+      window.removeEventListener("popstate", onPop);
+  };
 }
 
 /**
@@ -107,16 +207,22 @@ export function attachOrderbookPriceBridge(
  * that unmounts them and detaches the bridge. Safe to call once on mount.
  */
 export function hydrateTrade(
-  root: ParentNode & { addEventListener: Element["addEventListener"] },
+  root: ParentNode & {
+    addEventListener: Element["addEventListener"];
+    removeEventListener: Element["removeEventListener"];
+  },
   store: TradeStore<TradeSlices>,
+  bus: InteractionBus = getTradeBus(),
 ): { handles: IslandHandle[]; teardown: () => void } {
-  registerTradeIslands(store);
+  registerTradeIslands(store, bus);
   const handles = hydrateIslands(root);
-  const detach = attachOrderbookPriceBridge(store, root);
+  const detachPrice = attachOrderbookPriceBridge(store, root);
+  const detachSymbol = attachSymbolSwitcher(store, bus, root);
   return {
     handles,
     teardown() {
-      detach();
+      detachSymbol();
+      detachPrice();
       for (const handle of handles) handle.unmount();
       clearIslandRegistry();
     },
@@ -131,7 +237,7 @@ export function hydrateTrade(
 export function TradeHydrator() {
   useEffect(() => {
     const store = getTradeStore();
-    const { teardown } = hydrateTrade(document, store);
+    const { teardown } = hydrateTrade(document, store, getTradeBus());
     // Bring the patch-only panels (order-book / trades-feed / positions-table)
     // to life: subscribe each to its realtime source and apply frames to the
     // SSR DOM in place. The mock transport self-drives on a timer in the browser.

@@ -1,6 +1,9 @@
 import {
+  createInteractionBus,
+  type InteractionBus,
   initialTradeSlices,
   type TradeSlices,
+  tradeSliceContracts,
   tradeStoreContracts,
 } from "@mvp/interaction";
 import { createTradeStore, type TradeStore } from "@mvp/trade-client";
@@ -33,9 +36,30 @@ export function getTradeStore(): TradeStore<TradeSlices> {
 }
 
 /**
- * Test/HMR helper: drops the memoized store so the next `getTradeStore()` builds
- * a fresh one (each test gets an isolated bus + slice values).
+ * The single shared interaction bus for the trade terminal.
+ *
+ * The read-mostly islands (market-header, chart) subscribe to `TRADE_ACTIVE_SYMBOL`
+ * on an interaction bus; `createInteractionBus` instances are isolated (each has
+ * its own subscriber set), so a per-island bus can never receive a publish from
+ * elsewhere. The page therefore injects THIS one shared bus into those islands
+ * (see hydrate.tsx), and the watchlist publisher broadcasts symbol switches on
+ * it — bridging the symbol slice to the islands without a full-page navigation.
+ */
+let bus: InteractionBus | null = null;
+
+/** Returns the process-wide shared interaction bus, creating it on first use. */
+export function getTradeBus(): InteractionBus {
+  if (!bus) {
+    bus = createInteractionBus({ contracts: tradeSliceContracts });
+  }
+  return bus;
+}
+
+/**
+ * Test/HMR helper: drops the memoized store + bus so the next accessor builds a
+ * fresh one (each test gets an isolated bus + slice values).
  */
 export function resetTradeStore(): void {
   store = null;
+  bus = null;
 }
