@@ -10,11 +10,19 @@
  */
 export const orderFormCss = `/* order-form scoped styles — token-backed, no hard-coded colors (spine §13). */
 [data-fragment="order-form"] {
-  display: block;
+  display: flex;
   font: inherit;
+  height: 100%;
+}
+[data-fragment="order-form"] > [data-island="orderForm"] {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 [data-fragment="order-form"] .of-form {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   gap: 12px;
   padding: 12px;
   border: 1px solid var(--mvp-border, #2a2e39);
@@ -77,7 +85,11 @@ export const orderFormCss = `/* order-form scoped styles — token-backed, no ha
 [data-fragment="order-form"] .of-margin {
   display: grid;
   gap: 4px;
-  margin: 0;
+  /* Push the account summary + submit button to the foot of the panel so the
+     controls sit at the top and no dead gap opens in the middle. */
+  margin: auto 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--mvp-border, #2a2e39);
   font-size: 12px;
   color: var(--mvp-text-muted, #8b90a0);
 }

@@ -40,6 +40,58 @@ function PanelFallback({
   );
 }
 
+/**
+ * Compact markets watchlist filling the persistent left rail. Rendered by the
+ * page (not a fragment yet — the `marketrail` fragment is a P3 follow-up), each
+ * row is a plain `<a>` so the rail is fully navigable with no client JS. The
+ * mock quotes are static demo data; live ticking arrives with the fragment.
+ */
+const RAIL_WATCHLIST = [
+  { symbol: "BTC", price: "62,999.0", change: -0.05 },
+  { symbol: "ETH", price: "3,090.4", change: 0.42 },
+  { symbol: "SOL", price: "147.20", change: 1.83 },
+  { symbol: "ARB", price: "0.9820", change: -1.21 },
+  { symbol: "DOGE", price: "0.16200", change: 0.64 },
+  { symbol: "AVAX", price: "38.400", change: -0.33 },
+  { symbol: "LINK", price: "17.850", change: 2.1 },
+  { symbol: "OP", price: "2.4100", change: -0.88 },
+  { symbol: "APT", price: "9.6200", change: 0.15 },
+  { symbol: "SUI", price: "1.8400", change: 3.02 },
+] as const;
+
+function RailWatchlist({ active }: { active: string }) {
+  return (
+    <nav className="rail-watchlist" aria-label="Markets watchlist">
+      <div className="rail-watchlist__head">
+        <span>Markets</span>
+        <span className="rail-watchlist__col">Last</span>
+      </div>
+      <ul className="rail-watchlist__list">
+        {RAIL_WATCHLIST.map((m) => (
+          <li key={m.symbol}>
+            <a
+              className="rail-watchlist__row"
+              href={`/trade/${m.symbol}`}
+              aria-current={m.symbol === active ? "page" : undefined}
+            >
+              <span className="rail-watchlist__sym">{m.symbol}</span>
+              <span className="rail-watchlist__price">{m.price}</span>
+              <span
+                className={`rail-watchlist__chg rail-watchlist__chg--${
+                  m.change >= 0 ? "up" : "down"
+                }`}
+              >
+                {m.change >= 0 ? "+" : ""}
+                {m.change.toFixed(2)}%
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
 type TradePageProps = {
   params: Promise<{ symbol: string }>;
 };
@@ -89,10 +141,7 @@ export default async function TradePage({ params }: TradePageProps) {
           area is filled by one trusted internal fragment's SSR HTML. */}
         <div className={TRADE_GRID_CLASS}>
           <div data-area="rail" data-slot="rail">
-            {/* marketrail fragment is not built yet — mount in P3 follow-up. */}
-            <PanelFallback fragment="marketrail">
-              Watchlist rail — mount marketrail fragment in P3 follow-up.
-            </PanelFallback>
+            <RailWatchlist active={symbol} />
           </div>
 
           <div data-area="header" data-slot="marketHeader">
@@ -206,48 +255,59 @@ export default async function TradePage({ params }: TradePageProps) {
           the order-book → order-form price flow. Renders nothing itself. */}
         <TradeHydrator />
 
-        {/* Scheduler health + hints (mirrors page-home diagnostics posture). */}
-        <section data-scheduler-health="trade">
-          <h2>Scheduler health &amp; hints</h2>
-          <p>
-            Page health:{" "}
-            <span data-field="health">{fragmentHtml.scheduler.health}</span>
-          </p>
-          <ul data-field="slot-status">
-            {diagnosticsList.map(([name, diag]) => (
-              <li key={name} data-slot={name}>
-                {name}: {diag.status}
-                {diag.required ? " (required)" : " (optional)"}
-              </li>
-            ))}
-          </ul>
-          <div data-field="scheduler-hints">
-            {fragmentHtml.scheduler.hints.length === 0 ? (
-              <p data-hints="empty">No waterfall hints: the plan is optimal.</p>
-            ) : (
-              <ul>
-                {fragmentHtml.scheduler.hints.map((hint) => (
-                  <li
-                    key={`${hint.kind}:${hint.slots.join(",")}`}
-                    data-hint={hint.kind}
-                  >
-                    {hint.message}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <p data-field="account-dedupe">
-            account data reads: {fragmentHtml.dataDiagnostics.account.firstRead}{" "}
-            / {fragmentHtml.dataDiagnostics.account.secondRead}
-          </p>
-        </section>
+        {/* Framework observability showcase (scheduler plan + request trace),
+            collapsed so the terminal stays a clean one-screen hero. Native
+            <details> keeps the content in the DOM (no JS) for tests + no-JS. */}
+        <details className="trade-diagnostics">
+          <summary>
+            Framework diagnostics — scheduler health &amp; request trace
+          </summary>
+          {/* Scheduler health + hints (mirrors page-home diagnostics posture). */}
+          <section data-scheduler-health="trade">
+            <h2>Scheduler health &amp; hints</h2>
+            <p>
+              Page health:{" "}
+              <span data-field="health">{fragmentHtml.scheduler.health}</span>
+            </p>
+            <ul data-field="slot-status">
+              {diagnosticsList.map(([name, diag]) => (
+                <li key={name} data-slot={name}>
+                  {name}: {diag.status}
+                  {diag.required ? " (required)" : " (optional)"}
+                </li>
+              ))}
+            </ul>
+            <div data-field="scheduler-hints">
+              {fragmentHtml.scheduler.hints.length === 0 ? (
+                <p data-hints="empty">
+                  No waterfall hints: the plan is optimal.
+                </p>
+              ) : (
+                <ul>
+                  {fragmentHtml.scheduler.hints.map((hint) => (
+                    <li
+                      key={`${hint.kind}:${hint.slots.join(",")}`}
+                      data-hint={hint.kind}
+                    >
+                      {hint.message}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <p data-field="account-dedupe">
+              account data reads:{" "}
+              {fragmentHtml.dataDiagnostics.account.firstRead} /{" "}
+              {fragmentHtml.dataDiagnostics.account.secondRead}
+            </p>
+          </section>
 
-        {/* Request trace (dependency-graph log), mirrors page-home. */}
-        <section data-request-trace="trade">
-          <h2>Request trace</h2>
-          <pre>{fragmentHtml.traceLog}</pre>
-        </section>
+          {/* Request trace (dependency-graph log), mirrors page-home. */}
+          <section data-request-trace="trade">
+            <h2>Request trace</h2>
+            <pre>{fragmentHtml.traceLog}</pre>
+          </section>
+        </details>
       </main>
     </>
   );

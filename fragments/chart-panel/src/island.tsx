@@ -20,7 +20,7 @@ import { createRequestContext } from "@mvp/request-context";
 import type { Candle as ChartCandle } from "@mvp/trade-client";
 import { CandleChart } from "@mvp/trade-client";
 import { Tabs, TabsList, TabsTrigger } from "@mvp/ui/shadcn";
-import { useEffect, useMemo, useReducer } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   applyLiveCandle,
   buildIntervalPayload,
@@ -193,6 +193,33 @@ export function ChartPanelIsland(props: ChartPanelIslandProps) {
 
   const summary = summarizeSeries(state.series);
 
+  // Size the canvas to its pane so the chart fills the grid cell instead of
+  // leaving a fixed-size void. CandleChart redraws whenever width/height change;
+  // a ResizeObserver tracks the flex pane as the terminal layout reflows.
+  const canvasWrapRef = useRef<HTMLDivElement | null>(null);
+  const [chartSize, setChartSize] = useState({
+    width: CHART_WIDTH,
+    height: CHART_HEIGHT,
+  });
+  useEffect(() => {
+    const el = canvasWrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      const width = Math.max(160, Math.floor(rect.width));
+      const height = Math.max(120, Math.floor(rect.height));
+      setChartSize((prev) =>
+        prev.width === width && prev.height === height
+          ? prev
+          : { width, height },
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="chart-panel__island">
       <header className="chart-panel__header">
@@ -240,12 +267,12 @@ export function ChartPanelIsland(props: ChartPanelIslandProps) {
           </span>
         </div>
       ) : null}
-      <div className="chart-panel__canvas-wrap">
+      <div className="chart-panel__canvas-wrap" ref={canvasWrapRef}>
         <CandleChart
           series={state.series}
           interval={state.interval}
-          width={CHART_WIDTH}
-          height={CHART_HEIGHT}
+          width={chartSize.width}
+          height={chartSize.height}
         />
       </div>
     </div>

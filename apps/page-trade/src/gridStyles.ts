@@ -23,18 +23,19 @@ export const tradeGridCss = `
     var(--mvp-grid-form);
   grid-template-rows:
     auto
-    1fr
-    minmax(160px, 22vh)
-    auto
+    minmax(0, 2fr)
+    minmax(0, 1fr)
+    minmax(120px, 220px)
     auto;
   grid-template-areas:
     "header header  header  header"
     "rail   chart   book    form"
-    "rail   trades  book    form"
+    "rail   chart   trades  form"
     "ledger ledger  ledger  ledger"
     "status status  status  status";
   gap: var(--mvp-spacing-xs);
-  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
   background: var(--mvp-color-surface-0);
   color: var(--mvp-color-ink);
   padding: var(--mvp-spacing-xs);
@@ -46,6 +47,14 @@ export const tradeGridCss = `
   background: var(--mvp-color-surface-1);
   overflow: auto;
   min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* The single fragment in each pane fills it, so dense panels reach the pane
+   edges instead of stranding their content above a fixed-size void. */
+.${TRADE_GRID_CLASS} [data-area] > * {
+  flex: 1 1 auto;
   min-height: 0;
 }
 .${TRADE_GRID_CLASS} [data-area="rail"] { grid-area: rail; }
@@ -93,14 +102,16 @@ export const tradeGridCss = `
 @media (max-width: 1023px) {
   .${TRADE_GRID_CLASS} {
     grid-template-columns: minmax(320px, 1fr) var(--mvp-grid-book);
-    grid-template-rows: auto 1fr minmax(160px, 22vh) auto auto auto;
+    grid-template-rows: auto minmax(320px, 1.6fr) minmax(220px, 1fr) auto auto auto;
     grid-template-areas:
       "header header"
       "chart  book"
-      "trades book"
+      "chart  trades"
       "form   form"
       "ledger ledger"
       "status status";
+    height: auto;
+    overflow: visible;
   }
   .${TRADE_GRID_CLASS} [data-area="rail"] { display: none; }
 }
@@ -109,6 +120,7 @@ export const tradeGridCss = `
 @media (max-width: 767px) {
   .${TRADE_GRID_CLASS} {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 320px 240px 220px auto auto auto;
     grid-template-areas:
       "header"
       "chart"
@@ -117,9 +129,126 @@ export const tradeGridCss = `
       "form"
       "ledger"
       "status";
+    height: auto;
+    overflow: visible;
   }
   .${TRADE_GRID_CLASS} [data-area="rail"] { display: none; }
   .${TRADE_GRID_CLASS} .trade-ledger-tabs { grid-template-columns: 1fr; }
+}
+
+/* Left-rail markets watchlist (page-rendered until the marketrail fragment
+   lands). Fills the persistent rail; rows are plain <a>s so the rail is fully
+   navigable with no client JS. */
+.rail-watchlist {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  font-family: var(--mvp-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.rail-watchlist__head {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mvp-color-text-muted);
+  border-bottom: 1px solid var(--mvp-color-border);
+  position: sticky;
+  top: 0;
+  background: var(--mvp-color-surface-1);
+}
+.rail-watchlist__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+.rail-watchlist__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "sym price" "sym chg";
+  column-gap: 8px;
+  align-items: center;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--mvp-color-ink);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--mvp-color-border) 50%, transparent);
+}
+.rail-watchlist__row:hover {
+  background: color-mix(in srgb, var(--mvp-color-ink) 6%, transparent);
+}
+.rail-watchlist__row[aria-current="page"] {
+  background: var(--mvp-color-surface-2);
+  box-shadow: inset 2px 0 0 0 var(--mvp-color-accent);
+}
+.rail-watchlist__sym {
+  grid-area: sym;
+  font-weight: 600;
+}
+.rail-watchlist__price {
+  grid-area: price;
+  text-align: right;
+}
+.rail-watchlist__chg {
+  grid-area: chg;
+  text-align: right;
+  font-size: 10px;
+}
+.rail-watchlist__chg--up {
+  color: var(--mvp-color-up);
+}
+.rail-watchlist__chg--down {
+  color: var(--mvp-color-down);
+}
+
+/* Framework-observability drawer (scheduler health + request trace), collapsed
+   below the 100dvh terminal so the raw diagnostics never dominate the demo. */
+.trade-diagnostics {
+  border-top: 1px solid var(--mvp-color-border);
+  background: var(--mvp-color-surface-0);
+  color: var(--mvp-color-text-muted);
+  font-family: var(--mvp-font-mono);
+  font-size: 12px;
+}
+.trade-diagnostics > summary {
+  cursor: pointer;
+  padding: 8px var(--mvp-spacing-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+  user-select: none;
+}
+.trade-diagnostics > summary:hover {
+  color: var(--mvp-color-ink);
+}
+.trade-diagnostics[open] {
+  padding-bottom: var(--mvp-spacing-md);
+}
+.trade-diagnostics section {
+  padding: 0 var(--mvp-spacing-md) var(--mvp-spacing-sm);
+}
+.trade-diagnostics h2 {
+  font-size: 12px;
+  margin: 8px 0 4px;
+  color: var(--mvp-color-ink);
+}
+.trade-diagnostics ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+.trade-diagnostics pre {
+  max-height: 240px;
+  overflow: auto;
+  background: var(--mvp-color-surface-1);
+  border: 1px solid var(--mvp-color-border);
+  border-radius: var(--mvp-radius-sm);
+  padding: 8px;
+  font-size: 11px;
 }
 
 /* No-JS/SEO heading kept in the DOM for accessibility + crawlers but visually

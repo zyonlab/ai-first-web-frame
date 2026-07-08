@@ -23,6 +23,7 @@ export const chartPanelCss = `/*
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: 100%;
 }
 
 .chart-panel__island {
@@ -30,6 +31,9 @@ export const chartPanelCss = `/*
   flex-direction: column;
   gap: var(--mvp-spacing-sm, 8px);
   padding: var(--mvp-spacing-sm, 8px) var(--mvp-spacing-md, 16px);
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
 .chart-panel__header {
@@ -132,11 +136,17 @@ export const chartPanelCss = `/*
   display: flex;
   flex-direction: column;
   min-height: 0;
+  flex: 1 1 auto;
+}
+
+.chart-panel__canvas-wrap [data-island-view="candle-chart"] {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .chart-panel__canvas {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
 }
 
