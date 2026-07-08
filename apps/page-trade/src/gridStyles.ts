@@ -23,9 +23,9 @@ export const tradeGridCss = `
     var(--mvp-grid-form);
   grid-template-rows:
     auto
-    minmax(0, 2fr)
-    minmax(0, 1fr)
-    minmax(120px, 220px)
+    minmax(0, max-content)
+    minmax(140px, 1fr)
+    minmax(120px, 200px)
     auto;
   grid-template-areas:
     "header header  header  header"
@@ -56,6 +56,26 @@ export const tradeGridCss = `
 .${TRADE_GRID_CLASS} [data-area] > * {
   flex: 1 1 auto;
   min-height: 0;
+}
+/* Dark, thin scrollbars so the default light OS scrollbar never breaks the
+   terminal in scrolling panes (trades tape, book, ledger). */
+.${TRADE_GRID_CLASS} * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mvp-color-border) transparent;
+}
+.${TRADE_GRID_CLASS} *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.${TRADE_GRID_CLASS} *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.${TRADE_GRID_CLASS} *::-webkit-scrollbar-thumb {
+  background: var(--mvp-color-border);
+  border-radius: 4px;
+}
+.${TRADE_GRID_CLASS} *::-webkit-scrollbar-thumb:hover {
+  background: var(--mvp-color-text-muted);
 }
 .${TRADE_GRID_CLASS} [data-area="rail"] { grid-area: rail; }
 .${TRADE_GRID_CLASS} [data-area="header"] { grid-area: header; }
