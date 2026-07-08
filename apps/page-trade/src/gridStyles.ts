@@ -25,7 +25,7 @@ export const tradeGridCss = `
     auto
     minmax(0, max-content)
     minmax(140px, 1fr)
-    minmax(120px, 200px)
+    minmax(0, auto)
     auto;
   grid-template-areas:
     "header header  header  header"
@@ -93,7 +93,14 @@ export const tradeGridCss = `
 }
 .${TRADE_GRID_CLASS} [data-area="ledger"] {
   grid-area: ledger;
-  overflow-x: auto;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+/* The ledger hugs its rows (the two panels carry their own frames), so it never
+   opens a dead band below a couple of positions. */
+.${TRADE_GRID_CLASS} [data-area="ledger"] > * {
+  flex: 0 0 auto;
 }
 .${TRADE_GRID_CLASS} [data-area="status"] {
   grid-area: status;
@@ -108,14 +115,39 @@ export const tradeGridCss = `
   background: var(--mvp-color-surface-1);
   overflow: auto;
 }
-/* Ledger holds the positions + open-orders tables side by side, each x-scrolls
-   inside its own container so the page body never scrolls horizontally. */
+/* Ledger holds the positions + open-orders panels side by side. Each is a
+   titled, self-framed panel whose body scrolls (x + y) independently, so the
+   page body never scrolls and long ledgers cap instead of pushing the layout. */
 .${TRADE_GRID_CLASS} .trade-ledger-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--mvp-spacing-xs);
+  align-items: stretch;
 }
-.${TRADE_GRID_CLASS} .trade-ledger-tabs > * { overflow-x: auto; min-width: 0; }
+.${TRADE_GRID_CLASS} .ledger-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--mvp-color-border);
+  border-radius: var(--mvp-radius-sm);
+  background: var(--mvp-color-surface-1);
+  overflow: hidden;
+}
+.${TRADE_GRID_CLASS} .ledger-panel__head {
+  flex: none;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvp-color-text-muted);
+  border-bottom: 1px solid var(--mvp-color-border);
+}
+.${TRADE_GRID_CLASS} .ledger-panel__body {
+  max-height: 176px;
+  min-width: 0;
+  overflow: auto;
+}
 
 /* Tablet md–lg (768–1023px): two columns, book/trades/form become a right
    stack; the persistent rail collapses (01 doc §2.2). */

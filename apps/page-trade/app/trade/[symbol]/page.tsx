@@ -210,26 +210,32 @@ export default async function TradePage({ params }: TradePageProps) {
           {/* Ledger: positions + open-orders tables, each x-scrolls internally. */}
           <div data-area="ledger" data-slot="ledger">
             <div className="trade-ledger-tabs">
-              <div data-slot="positions">
-                <FragmentHtml
-                  html={slots.positions}
-                  fallback={
-                    <PanelFallback fragment="positions-table">
-                      Positions are loading.
-                    </PanelFallback>
-                  }
-                />
-              </div>
-              <div data-slot="openOrders">
-                <FragmentHtml
-                  html={slots.openOrders}
-                  fallback={
-                    <PanelFallback fragment="open-orders">
-                      Open orders are loading.
-                    </PanelFallback>
-                  }
-                />
-              </div>
+              <section className="ledger-panel" data-slot="positions">
+                <header className="ledger-panel__head">Positions</header>
+                <div className="ledger-panel__body">
+                  <FragmentHtml
+                    html={slots.positions}
+                    fallback={
+                      <PanelFallback fragment="positions-table">
+                        Positions are loading.
+                      </PanelFallback>
+                    }
+                  />
+                </div>
+              </section>
+              <section className="ledger-panel" data-slot="openOrders">
+                <header className="ledger-panel__head">Open orders</header>
+                <div className="ledger-panel__body">
+                  <FragmentHtml
+                    html={slots.openOrders}
+                    fallback={
+                      <PanelFallback fragment="open-orders">
+                        Open orders are loading.
+                      </PanelFallback>
+                    }
+                  />
+                </div>
+              </section>
             </div>
           </div>
 
