@@ -59,6 +59,7 @@
     "apps/page-trade/app/layout.tsx",
     "apps/page-trade/app/trade/[symbol]/page.tsx",
     "apps/page-trade/next-env.d.ts",
+    "apps/page-trade/src/TraceDrawer.tsx",
     "apps/page-trade/src/budget.ts",
     "apps/page-trade/src/fragmentSlots.ts",
     "apps/page-trade/src/gridStyles.ts",

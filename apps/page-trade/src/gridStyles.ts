@@ -226,49 +226,207 @@ export const tradeGridCss = `
   color: var(--mvp-color-down);
 }
 
-/* Framework-observability drawer (scheduler health + request trace), collapsed
-   below the 100dvh terminal so the raw diagnostics never dominate the demo. */
-.trade-diagnostics {
-  border-top: 1px solid var(--mvp-color-border);
-  background: var(--mvp-color-surface-0);
-  color: var(--mvp-color-text-muted);
+/* Framework-observability drawer: a bottom-docked request-trace waterfall.
+   Native <details> — the summary is a floating pill tab; opening slides up a
+   fixed bottom panel over the 100dvh terminal. No client JS. */
+.trace-drawer {
   font-family: var(--mvp-font-mono);
-  font-size: 12px;
-}
-.trade-diagnostics > summary {
-  cursor: pointer;
-  padding: 8px var(--mvp-spacing-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   font-size: 11px;
-  user-select: none;
 }
-.trade-diagnostics > summary:hover {
-  color: var(--mvp-color-ink);
-}
-.trade-diagnostics[open] {
-  padding-bottom: var(--mvp-spacing-md);
-}
-.trade-diagnostics section {
-  padding: 0 var(--mvp-spacing-md) var(--mvp-spacing-sm);
-}
-.trade-diagnostics h2 {
-  font-size: 12px;
-  margin: 8px 0 4px;
-  color: var(--mvp-color-ink);
-}
-.trade-diagnostics ul {
-  margin: 0;
-  padding-left: 1.2em;
-}
-.trade-diagnostics pre {
-  max-height: 240px;
-  overflow: auto;
-  background: var(--mvp-color-surface-1);
+.trace-drawer > summary {
+  position: fixed;
+  right: var(--mvp-spacing-sm);
+  bottom: var(--mvp-spacing-sm);
+  z-index: var(--mvp-zIndex-overlay, 1000);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--mvp-color-surface-2);
   border: 1px solid var(--mvp-color-border);
-  border-radius: var(--mvp-radius-sm);
-  padding: 8px;
+  border-radius: 999px;
+  color: var(--mvp-color-text-muted);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.4);
+}
+.trace-drawer > summary::-webkit-details-marker {
+  display: none;
+}
+.trace-drawer > summary:hover {
+  color: var(--mvp-color-ink);
+}
+.trace-drawer[open] > summary {
+  z-index: calc(var(--mvp-zIndex-overlay, 1000) + 2);
+  background: var(--mvp-color-surface-1);
+}
+.trace-drawer__tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mvp-color-buy);
+}
+.trace-drawer__tab-dot[data-health="degraded"] {
+  background: var(--mvp-color-signal);
+}
+.trace-drawer__tab-dot[data-health="unhealthy"] {
+  background: var(--mvp-color-sell);
+}
+.trace-drawer__panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: min(46vh, 460px);
+  z-index: calc(var(--mvp-zIndex-overlay, 1000) + 1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 16px;
+  background: var(--mvp-color-surface-1);
+  border-top: 1px solid var(--mvp-color-border);
+  box-shadow: 0 -8px 30px rgb(0 0 0 / 0.5);
+  overflow: auto;
+  animation: trace-drawer-in 160ms ease-out;
+}
+@keyframes trace-drawer-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.trace-drawer__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--mvp-color-ink);
+}
+.trace-drawer__head strong {
+  font-size: 12px;
+}
+.trace-drawer__meta {
+  color: var(--mvp-color-text-muted);
+}
+.trace-drawer__health[data-health="ok"] {
+  color: var(--mvp-color-buy);
+}
+.trace-drawer__health[data-health="degraded"] {
+  color: var(--mvp-color-signal);
+}
+.trace-drawer__health[data-health="unhealthy"] {
+  color: var(--mvp-color-sell);
+}
+.trace-drawer__legend {
+  display: inline-flex;
+  gap: 12px;
+  margin-left: auto;
+  color: var(--mvp-color-text-muted);
+}
+.trace-drawer__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Waterfall: label column + a proportional time track per span. */
+.trace-wf {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.trace-wf__axis {
+  display: flex;
+  justify-content: space-between;
+  margin-left: 220px;
+  padding-bottom: 2px;
+  color: var(--mvp-color-text-muted);
+  font-size: 10px;
+  border-bottom: 1px solid var(--mvp-color-border);
+}
+.trace-wf__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.trace-wf__row {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  align-items: center;
+  height: 20px;
+}
+.trace-wf__row:hover {
+  background: color-mix(in srgb, var(--mvp-color-ink) 5%, transparent);
+}
+.trace-wf__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.trace-wf__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--mvp-color-ink);
+}
+.trace-wf__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex: none;
+  background: var(--mvp-color-text-muted);
+}
+.trace-wf__track {
+  position: relative;
+  height: 14px;
+}
+.trace-wf__bar {
+  position: absolute;
+  top: 2px;
+  height: 10px;
+  min-width: 2px;
+  border-radius: 2px;
+  background: var(--mvp-color-text-muted);
+}
+.trace-wf__dot[data-kind="request"],
+.trace-wf__bar[data-kind="request"] {
+  background: var(--mvp-color-accent);
+}
+.trace-wf__dot[data-kind="network"],
+.trace-wf__bar[data-kind="network"] {
+  background: var(--mvp-color-signal);
+}
+.trace-wf__dot[data-kind="fragment"],
+.trace-wf__bar[data-kind="fragment"] {
+  background: var(--mvp-color-buy);
+}
+.trace-wf__bar[data-status="error"] {
+  background: var(--mvp-color-sell);
+}
+.trace-wf__dur {
+  position: absolute;
+  top: 0;
+  padding-left: 4px;
+  line-height: 14px;
+  font-size: 10px;
+  white-space: nowrap;
+  color: var(--mvp-color-text-muted);
+}
+.trace-drawer__hints strong {
   font-size: 11px;
+  color: var(--mvp-color-ink);
+}
+.trace-drawer__hints ul {
+  margin: 4px 0 0;
+  padding-left: 1.1em;
+  color: var(--mvp-color-text-muted);
+}
+.trace-drawer__hints li {
+  margin: 2px 0;
 }
 
 /* No-JS/SEO heading kept in the DOM for accessibility + crawlers but visually

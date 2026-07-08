@@ -34,6 +34,24 @@ vi.mock("../src/fragmentSlots", async (importOriginal) => {
       },
       scheduler: { health: "ok", hints: [] },
       traceLog: "trace",
+      traceSnapshot: {
+        traceId: "trace-abc123",
+        startedAtMs: 0,
+        endedAtMs: 12,
+        durationMs: 12,
+        nodes: [
+          {
+            id: "s1",
+            name: "shell.compose",
+            kind: "request",
+            startedAtMs: 0,
+            endedAtMs: 12,
+            durationMs: 12,
+            attributes: {},
+          },
+        ],
+        edges: [],
+      },
     }),
   };
 });

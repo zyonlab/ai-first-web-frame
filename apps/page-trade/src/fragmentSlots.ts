@@ -3,7 +3,10 @@ import {
   type DataReadResult,
   defineDataSource,
 } from "@mvp/data";
-import { createRequestTrace } from "@mvp/observability";
+import {
+  createRequestTrace,
+  type RequestTraceSnapshot,
+} from "@mvp/observability";
 import { createRequestContext } from "@mvp/request-context";
 import {
   executeFragmentSlots,
@@ -58,6 +61,8 @@ export type TradeFragmentHtml = {
     hints: SchedulerHint[];
   };
   traceLog: string;
+  /** Structured span/edge snapshot for the diagnostics waterfall drawer. */
+  traceSnapshot: RequestTraceSnapshot;
 };
 
 type FetchTradeFragmentSlotsOptions = {
@@ -284,6 +289,7 @@ export async function fetchTradeFragmentSlots({
       hints: execution.hints,
     },
     traceLog: trace.toDependencyGraphLog(),
+    traceSnapshot: trace.toJSON(),
   };
 }
 
