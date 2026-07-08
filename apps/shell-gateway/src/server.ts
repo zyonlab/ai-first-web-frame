@@ -124,6 +124,32 @@ export function buildServer(options: BuildServerOptions = {}) {
     return redirectWithCookie(request, reply, setCookie);
   });
 
+  // Composed Next page apps reference their client bundle + built CSS under
+  // `/_next/*`, which the browser requests from the shell origin. The shell must
+  // reverse-proxy those to the owning page (resolved from the Referer's route)
+  // or hydration/styling break with 404s. Registered before `/*` so it wins.
+  server.get("/_next/*", async (request, reply) => {
+    const origin = pageOriginFromReferer(request);
+    if (!origin) {
+      reply.code(404).type("text/plain");
+      return "asset origin not resolved";
+    }
+    try {
+      const upstream = await fetch(`${origin}${request.url}`, {
+        headers: { accept: request.headers.accept ?? "*/*" },
+      });
+      reply.code(upstream.status);
+      const contentType = upstream.headers.get("content-type");
+      if (contentType) reply.type(contentType);
+      const cacheControl = upstream.headers.get("cache-control");
+      if (cacheControl) reply.header("cache-control", cacheControl);
+      return Buffer.from(await upstream.arrayBuffer());
+    } catch {
+      reply.code(502).type("text/plain");
+      return "asset proxy failed";
+    }
+  });
+
   server.get("/*", async (request, reply) => {
     const ctx = createShellRequestContext(request);
     const trace = createRequestTrace({
@@ -215,6 +241,23 @@ function setRequestTrace(
     state.trace = trace;
     state.routeTemplate = routeTemplate;
   }
+}
+
+/**
+ * Resolves which composed page a `/_next/*` asset request belongs to, using the
+ * `Referer` (the page the browser is on) matched against the route registry.
+ * Returns the page's origin (serviceUrl) or undefined when it can't be resolved.
+ */
+function pageOriginFromReferer(request: FastifyRequest): string | undefined {
+  const referer = request.headers.referer;
+  if (!referer) return undefined;
+  let pathname: string;
+  try {
+    pathname = new URL(referer).pathname;
+  } catch {
+    return undefined;
+  }
+  return matchRoute(pathname)?.serviceUrl;
 }
 
 /** Reads a single query-string value from the request URL. */

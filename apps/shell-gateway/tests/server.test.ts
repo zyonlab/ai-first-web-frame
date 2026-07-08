@@ -362,12 +362,14 @@ describe("shell-gateway observability", () => {
     expect(exportTrace).not.toHaveBeenCalled();
   });
 
-  it("sets a Content-Security-Policy header carrying a per-request nonce", async () => {
-    const server = buildServer({ nonceFactory: () => "test-nonce-value" });
+  it("sets a Content-Security-Policy that permits composed pages' inline assets", async () => {
+    const server = buildServer();
     const response = await server.inject({ method: "GET", url: "/health" });
     const csp = response.headers["content-security-policy"];
     expect(csp).toContain("default-src 'self'");
-    expect(csp).toContain("script-src 'self' 'nonce-test-nonce-value'");
+    // Composed Next page apps need inline styles + Next's inline scripts.
+    expect(csp).toContain("script-src 'self' 'unsafe-inline'");
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("base-uri 'self'");
     expect(csp).toContain("frame-ancestors 'none'");

@@ -46,10 +46,20 @@ export function createNonce(bytes = 16): string {
  * pinned to same-origin plus the per-request nonce and forbids plugins,
  * base-tag hijacking, and framing (GAP 2.6).
  */
-export function createContentSecurityPolicy(nonce: string): string {
+export function createContentSecurityPolicy(_nonce?: string): string {
+  // The shell composes whole Next.js page apps whose HTML carries inline
+  // `<style>` (design-system tokens, depth bars) and Next's own inline bootstrap
+  // `<script>` — none of which share the shell's nonce, so a nonce-only policy
+  // blocks all composed styling/scripts. The composed HTML comes only from
+  // trusted internal page origins (route-registry serviceUrls), so allow
+  // 'unsafe-inline' for script/style; everything else stays pinned to 'self'.
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}'`,
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "frame-ancestors 'none'",

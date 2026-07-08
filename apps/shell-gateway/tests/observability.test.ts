@@ -20,11 +20,15 @@ describe("shell observability helpers", () => {
     expect(isMeteredRoute("/product/:id")).toBe(true);
   });
 
-  it("builds a CSP string that pins scripts to self plus the nonce", () => {
-    const csp = createContentSecurityPolicy("abc123");
+  it("builds a CSP that allows composed pages' inline styles/scripts", () => {
+    const csp = createContentSecurityPolicy();
+    // Composed Next page apps carry inline styles + Next's inline scripts from
+    // trusted internal origins, so script/style allow 'unsafe-inline'.
     expect(csp).toBe(
-      "default-src 'self'; script-src 'self' 'nonce-abc123'; " +
-        "object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; " +
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
+        "font-src 'self' data:; connect-src 'self'; object-src 'none'; " +
+        "base-uri 'self'; frame-ancestors 'none'",
     );
   });
 
