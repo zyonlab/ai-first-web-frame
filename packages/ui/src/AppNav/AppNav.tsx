@@ -207,7 +207,7 @@ export function AppNav({
 export function appNavCss(prefix = "mvp"): string {
   const p = prefix;
   return `
-.mvp-shell-nav{position:sticky;top:0;z-index:var(--${p}-zIndex-sticky,100);background:var(--${p}-color-surface-1);color:var(--${p}-color-ink);border-block-end:1px solid var(--${p}-color-border);font-family:var(--${p}-font-sans,var(--${p}-font-body,system-ui,sans-serif));}
+.mvp-shell-nav{position:sticky;top:0;z-index:var(--${p}-zIndex-sticky,100);background:var(--${p}-color-surface-1);color:var(--${p}-color-ink);border-block-end:1px solid var(--${p}-color-border);font-family:var(--${p}-font-control,system-ui,sans-serif);}
 .mvp-shell-nav-inner{display:flex;align-items:center;justify-content:space-between;gap:var(--${p}-spacing-4,1rem);padding-inline:var(--${p}-spacing-4,1rem);padding-block:var(--${p}-spacing-2,0.5rem);max-width:1440px;margin-inline:auto;}
 .mvp-shell-nav-left{display:flex;align-items:center;gap:var(--${p}-spacing-5,1.5rem);min-width:0;}
 .mvp-shell-brand{display:inline-flex;align-items:center;gap:var(--${p}-spacing-2,0.5rem);font-weight:700;color:var(--${p}-color-ink);white-space:nowrap;}

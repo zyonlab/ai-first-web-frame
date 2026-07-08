@@ -119,4 +119,31 @@ export const tradeGridCss = `
   .${TRADE_GRID_CLASS} [data-area="rail"] { display: none; }
   .${TRADE_GRID_CLASS} .trade-ledger-tabs { grid-template-columns: 1fr; }
 }
+
+/* No-JS/SEO heading. The nav brand + market-header already carry the terminal
+   identity, so compact the storefront-scale <h1> into a muted strapline and
+   keep the description as screen-reader-only copy (no visual billboard). */
+[data-trade-heading] {
+  padding: var(--mvp-spacing-xs) var(--mvp-spacing-sm);
+  background: var(--mvp-color-surface-0);
+  color: var(--mvp-color-text-muted);
+}
+[data-trade-heading] h1 {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mvp-color-text-muted);
+}
+[data-trade-heading] p {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 `.trim();

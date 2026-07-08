@@ -44,9 +44,10 @@ describe("page-vaults layout", () => {
     expect(html).toMatch(/href="\/vaults"[^>]*aria-current="page"/);
   });
 
-  it("defaults data-theme=system + lang en-US with no cookies", async () => {
+  it("defaults data-theme=dark + lang en-US with no cookies", async () => {
+    // The trade terminal's native canvas is dark; system/unset resolves to dark.
     const html = await renderLayout();
-    expect(html).toContain('data-theme="system"');
+    expect(html).toContain('data-theme="dark"');
     expect(html).toContain('lang="en-US"');
   });
 

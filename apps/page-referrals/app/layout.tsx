@@ -3,7 +3,11 @@ import {
   collectAssets,
   createAssetHtmlTags,
 } from "@mvp/assets";
-import { baseResetCss, createAllThemeVariables } from "@mvp/design-system";
+import {
+  baseResetCss,
+  createAllThemeVariables,
+  createTradeAliasVariables,
+} from "@mvp/design-system";
 import { readThemePreference, resolveLocalePreference } from "@mvp/storage";
 import { AppNav, appNavCss } from "@mvp/ui/AppNav";
 import { headers } from "next/headers";
@@ -41,14 +45,23 @@ const assetTags = createAssetHtmlTags(
         order: 2,
       },
       {
+        // D6 bridge: define the `--trade-*` vocabulary the SSR fragments read as
+        // theme-aware aliases of `--mvp-color-*`, and swap the body font to the
+        // sans control stack. Must sort AFTER the token block so its
+        // `--mvp-font-body` override wins. See createTradeAliasVariables.
+        name: "trade-token-bridge",
+        content: createTradeAliasVariables(),
+        order: 3,
+      },
+      {
         name: "app-nav",
         content: appNavCss(),
-        order: 3,
+        order: 4,
       },
       {
         name: "referrals-layout",
         content: referralsLayoutCss,
-        order: 4,
+        order: 5,
       },
     ],
     i18n: [
@@ -56,13 +69,13 @@ const assetTags = createAssetHtmlTags(
         locale: "en-US",
         namespace: "referrals",
         messages: { title: referralsSeoCopy.title },
-        order: 5,
+        order: 6,
       },
       {
         locale: "zh-CN",
         namespace: "referrals",
         messages: { title: "MVP 永续 — 推荐" },
-        order: 6,
+        order: 7,
       },
     ],
   }),
@@ -76,16 +89,23 @@ export default async function RootLayout({
   const cookieHeader = (await headers()).get("cookie") ?? "";
   const theme = readThemePreference(cookieHeader);
   const locale = resolveLocalePreference({ cookieHeader });
+  // The trade terminal's native canvas is dark (Hyperliquid parity): render dark
+  // unless the user explicitly opted into light. `system`/unset → dark.
+  const resolvedTheme = theme === "light" ? "light" : "dark";
 
   return (
-    <html lang={LOCALE_LANG[locale]} data-theme={theme}>
+    <html lang={LOCALE_LANG[locale]} data-theme={resolvedTheme}>
       <head>
         {assetTags.map((tag) => (
           <AssetTag key={assetTagKey(tag)} tag={tag} />
         ))}
       </head>
       <body>
-        <AppNav currentPath="/referrals" theme={theme} locale={locale} />
+        <AppNav
+          currentPath="/referrals"
+          theme={resolvedTheme}
+          locale={locale}
+        />
         {children}
       </body>
     </html>

@@ -29,17 +29,24 @@ describe("page-trade layout", () => {
     cookieHeader = "";
   });
 
-  it("defaults data-theme=system + lang en-US with no cookies", async () => {
+  it("defaults data-theme=dark + lang en-US with no cookies", async () => {
+    // The trade terminal's native canvas is dark; system/unset resolves to dark.
     const html = await renderLayout();
-    expect(html).toContain('data-theme="system"');
+    expect(html).toContain('data-theme="dark"');
     expect(html).toContain('lang="en-US"');
   });
 
-  it("resolves data-theme + lang from the preference cookies", async () => {
-    cookieHeader = "mvp_theme=dark; mvp_locale=zh";
+  it("honors an explicit light preference, otherwise stays dark", async () => {
+    cookieHeader = "mvp_theme=light; mvp_locale=zh";
+    const html = await renderLayout();
+    expect(html).toContain('data-theme="light"');
+    expect(html).toContain('lang="zh-CN"');
+  });
+
+  it("resolves data-theme=dark from an explicit dark cookie", async () => {
+    cookieHeader = "mvp_theme=dark";
     const html = await renderLayout();
     expect(html).toContain('data-theme="dark"');
-    expect(html).toContain('lang="zh-CN"');
   });
 
   it("injects the AppNav stylesheet + design-system tokens into <head>", async () => {

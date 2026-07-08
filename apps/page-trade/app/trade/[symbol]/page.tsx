@@ -52,7 +52,10 @@ export default async function TradePage({ params }: TradePageProps) {
   // The trade page owns its own theme/locale + nav (rendered inside its React
   // tree) so hydration stays byte-consistent (no React #418). currentPath +
   // lastSymbol deep-link Trade to the active symbol.
-  const theme = readThemePreference(cookieHeader);
+  // Terminal defaults to dark (matches the layout's data-theme resolution) so
+  // the nav's theme control reflects the actually-rendered canvas.
+  const theme =
+    readThemePreference(cookieHeader) === "light" ? "light" : "dark";
   const locale = resolveLocalePreference({ cookieHeader });
   const fragmentHtml = await fetchTradeFragmentSlots({
     symbol,
