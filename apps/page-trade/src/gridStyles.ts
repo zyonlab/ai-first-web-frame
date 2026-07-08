@@ -24,11 +24,13 @@ export const tradeGridCss = `
   grid-template-rows:
     auto
     1fr
-    minmax(180px, 30vh)
-    var(--mvp-spacing-xl);
+    minmax(160px, 22vh)
+    auto
+    auto;
   grid-template-areas:
-    "rail   header  book    form"
-    "rail   chart   trades  form"
+    "header header  header  header"
+    "rail   chart   book    form"
+    "rail   trades  book    form"
     "ledger ledger  ledger  ledger"
     "status status  status  status";
   gap: var(--mvp-spacing-xs);
@@ -91,16 +93,16 @@ export const tradeGridCss = `
 @media (max-width: 1023px) {
   .${TRADE_GRID_CLASS} {
     grid-template-columns: minmax(320px, 1fr) var(--mvp-grid-book);
+    grid-template-rows: auto 1fr minmax(160px, 22vh) auto auto auto;
     grid-template-areas:
-      "header     header"
-      "chart      rightstack"
-      "ledger     ledger"
-      "status     status";
+      "header header"
+      "chart  book"
+      "trades book"
+      "form   form"
+      "ledger ledger"
+      "status status";
   }
   .${TRADE_GRID_CLASS} [data-area="rail"] { display: none; }
-  .${TRADE_GRID_CLASS} [data-area="book"],
-  .${TRADE_GRID_CLASS} [data-area="trades"],
-  .${TRADE_GRID_CLASS} [data-area="form"] { grid-area: rightstack; }
 }
 
 /* Mobile < md (768px): single column, tab-folded (01 doc §2.3). */
@@ -120,22 +122,11 @@ export const tradeGridCss = `
   .${TRADE_GRID_CLASS} .trade-ledger-tabs { grid-template-columns: 1fr; }
 }
 
-/* No-JS/SEO heading. The nav brand + market-header already carry the terminal
-   identity, so compact the storefront-scale <h1> into a muted strapline and
-   keep the description as screen-reader-only copy (no visual billboard). */
+/* No-JS/SEO heading kept in the DOM for accessibility + crawlers but visually
+   hidden: the sticky market-header bar (symbol + mark/oracle/funding) is the
+   terminal's on-screen title, so a second visible <h1> is just a storefront
+   billboard that orphaned itself above the grid. */
 [data-trade-heading] {
-  padding: var(--mvp-spacing-xs) var(--mvp-spacing-sm);
-  background: var(--mvp-color-surface-0);
-  color: var(--mvp-color-text-muted);
-}
-[data-trade-heading] h1 {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--mvp-color-text-muted);
-}
-[data-trade-heading] p {
   position: absolute;
   width: 1px;
   height: 1px;
