@@ -1,6 +1,10 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  isRetryableWriteError,
+  loadFileWithHash,
+  writeFileAtomic,
+} from "../platform/fragment-registry/src/atomic-file";
 import {
   booleanFlag,
   parseCliArgs,
@@ -18,7 +22,7 @@ import {
 } from "../platform/fragment-registry/src/mutations";
 
 type RegisterResult = {
-  status: "registered" | "failed";
+  status: "registered" | "failed" | "conflict";
   name: string;
   version?: string;
   channel?: string;
@@ -26,6 +30,7 @@ type RegisterResult = {
   compose?: { service: string; port: number; action: "added" | "unchanged" };
   files: string[];
   error?: string;
+  retry?: boolean;
 };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -62,21 +67,28 @@ function run(argv: string[]): RegisterResult {
 
   try {
     const files: string[] = [];
-    const result = applyRegisterFragment(loadRegistryData(registryPath), input);
+    const registry = loadRegistryData(registryPath);
+    const result = applyRegisterFragment(registry.data, input);
     if (result.changed) {
-      saveRegistryData(registryPath, result.registry);
+      saveRegistryData(registryPath, result.registry, registry.hash);
       files.push(relative(root, registryPath));
     }
 
     let compose: RegisterResult["compose"];
     if (booleanFlag(args, "with-compose")) {
-      if (!existsSync(composePath))
+      const composeFile = loadFileWithHash(composePath);
+      if (composeFile.content === null)
         throw new Error(`compose file not found: ${composePath}`);
-      const composeText = readFileSync(composePath, "utf8");
-      const port = resolvePort(args.flags.port, serviceUrl, composeText);
-      const mutation = addComposeService(composeText, { name, port });
+      const port = resolvePort(
+        args.flags.port,
+        serviceUrl,
+        composeFile.content,
+      );
+      const mutation = addComposeService(composeFile.content, { name, port });
       if (mutation.changed) {
-        writeFileSync(composePath, mutation.text);
+        writeFileAtomic(composePath, mutation.text, {
+          expectedHash: composeFile.hash,
+        });
         files.push(relative(root, composePath));
       }
       compose = {
@@ -96,6 +108,15 @@ function run(argv: string[]): RegisterResult {
       files,
     };
   } catch (error) {
+    if (isRetryableWriteError(error)) {
+      return {
+        status: "conflict",
+        name,
+        files: [],
+        error: error.message,
+        retry: true,
+      };
+    }
     return {
       status: "failed",
       name,

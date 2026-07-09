@@ -38,6 +38,8 @@ pnpm monorepo for an AI-native micro-frontend framework. Shell gateway (4100) co
 4. **Mount** the fragment into a page manifest slot:
    `pnpm exec tsx scripts/mount-slot.mts --page page-home --slot pricePanel --fragment price-panel --strategy dynamic-ssr --channel canary --timeout-ms 200`
    Accept: `"status": "mounted"` and empty `warnings`. Unmount with `--remove` instead of `--fragment ...`.
+   Mounting a fragment that is not in the fragment registry fails (`"status": "failed"`, no write);
+   register it first, or pass `--allow-unregistered` to warn-and-proceed (`--remove` is unaffected).
    Then wire the slot into the page's `src/fragmentSlots.ts` fetch list and page tests.
 5. **Verify** the whole repo (typecheck, lint, format, tests, build, 6 audits; writes `reports/`):
    `pnpm verify`
@@ -50,6 +52,9 @@ pnpm monorepo for an AI-native micro-frontend framework. Shell gateway (4100) co
    Accept: `"status": "rolled-back"`. Fails cleanly when no rollback target is recorded.
 
 All four scripts print structured JSON (`status`/`files`/`error`) and exit 1 on failure without writing files.
+Writes are atomic (temp file + rename) behind a `<file>.lock` advisory lock with an optimistic content-hash
+check: if another agent changed the file since load, the script prints `{"status": "conflict", "retry": true}`
+and exits 1 without writing — just rerun the same command.
 
 ## Common commands
 

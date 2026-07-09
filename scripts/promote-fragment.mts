@@ -1,5 +1,6 @@
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isRetryableWriteError } from "../platform/fragment-registry/src/atomic-file";
 import {
   parseCliArgs,
   stringFlag,
@@ -13,12 +14,13 @@ import {
 } from "../platform/fragment-registry/src/mutations";
 
 type PromoteResult = {
-  status: "promoted" | "unchanged" | "failed";
+  status: "promoted" | "unchanged" | "failed" | "conflict";
   name: string;
   from?: string;
   to?: string;
   files: string[];
   error?: string;
+  retry?: boolean;
 };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -41,14 +43,15 @@ function run(argv: string[]): PromoteResult {
   }
 
   try {
-    const result = applyPromoteFragment(loadRegistryData(registryPath), name);
+    const registry = loadRegistryData(registryPath);
+    const result = applyPromoteFragment(registry.data, name);
     if (!result.changed || !result.release) {
       return { status: "unchanged", name, files: [] };
     }
-    saveRegistryData(registryPath, result.registry);
+    saveRegistryData(registryPath, result.registry, registry.hash);
     const releases = loadReleases(releasesPath);
-    releases.releases.push(result.release);
-    saveReleases(releasesPath, releases);
+    releases.data.releases.push(result.release);
+    saveReleases(releasesPath, releases.data, releases.hash);
     return {
       status: "promoted",
       name,
@@ -57,6 +60,15 @@ function run(argv: string[]): PromoteResult {
       files: [relative(root, registryPath), relative(root, releasesPath)],
     };
   } catch (error) {
+    if (isRetryableWriteError(error)) {
+      return {
+        status: "conflict",
+        name,
+        files: [],
+        error: error.message,
+        retry: true,
+      };
+    }
     return {
       status: "failed",
       name,
@@ -68,4 +80,5 @@ function run(argv: string[]): PromoteResult {
 
 const result = run(process.argv.slice(2));
 console.log(JSON.stringify(result, null, 2));
-process.exitCode = result.status === "failed" ? 1 : 0;
+process.exitCode =
+  result.status === "failed" || result.status === "conflict" ? 1 : 0;

@@ -61,6 +61,34 @@ export function applyMountSlot(
   };
 }
 
+export type FragmentRegistrationCheck =
+  | { ok: true; warnings: string[] }
+  | { ok: false; error: string };
+
+/**
+ * Mount gate (refactor plan §3.5, goal A3): a fragment absent from the
+ * registry is an error unless the caller explicitly opts into the legacy
+ * warn-and-proceed behavior with --allow-unregistered.
+ */
+export function checkFragmentRegistered(
+  registry: { fragments: Record<string, unknown> },
+  fragment: string,
+  allowUnregistered: boolean,
+): FragmentRegistrationCheck {
+  if (registry.fragments[fragment]) return { ok: true, warnings: [] };
+  if (allowUnregistered)
+    return {
+      ok: true,
+      warnings: [
+        `fragment "${fragment}" is not in the fragment registry; proceeding because --allow-unregistered was passed`,
+      ],
+    };
+  return {
+    ok: false,
+    error: `fragment "${fragment}" is not in the fragment registry; run register-fragment (scripts/register-fragment.mts) first, or pass --allow-unregistered to mount it anyway`,
+  };
+}
+
 export function applyUnmountSlot(
   slots: unknown[],
   name: string,
