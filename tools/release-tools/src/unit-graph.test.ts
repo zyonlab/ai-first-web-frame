@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  affectedClosure,
   type BuildUnitGraphInput,
   buildUnitGraph,
   consumersOfDataSource,
+  consumersOfSlice,
   dependenciesOf,
   dependentsOf,
+  producersOfSlice,
   queryRegistry,
   unitsByKind,
 } from "./unit-graph";
@@ -18,6 +21,8 @@ const fixture: BuildUnitGraphInput = {
       renderStrategy: "dynamic-ssr",
       dependsOn: [],
       dataDependencies: ["book.l2.<symbol>"],
+      produces: { slices: ["trade.order-draft.price"] },
+      layoutHint: { shape: "ladder", fills: true, minHeight: 300 },
     },
     {
       name: "order-form",
@@ -25,11 +30,14 @@ const fixture: BuildUnitGraphInput = {
       version: "0.1.0",
       dependsOn: [],
       dataDependencies: ["account"],
+      consumes: { slices: ["trade.order-draft.price", "trade.active-symbol"] },
+      produces: { slices: ["trade.leverage"] },
     },
     {
       name: "market-header",
       owner: "trading-core",
       dataDependencies: ["ticker.<symbol>", "funding.<symbol>"],
+      consumes: { slices: ["trade.active-symbol"] },
     },
   ],
   pages: [
@@ -133,5 +141,65 @@ describe("graph queries", () => {
     const byName = queryRegistry(g, { name: "order-book" });
     expect(byName.units).toHaveLength(1);
     expect(byName.edges.length).toBeGreaterThan(0);
+  });
+});
+
+describe("slices, layout hints & affected closure (Phase 2)", () => {
+  const g = buildUnitGraph(fixture);
+
+  it("emits slice units + consumes/produces edges", () => {
+    expect(unitsByKind(g, "slice").map((u) => u.id)).toEqual(
+      expect.arrayContaining([
+        "trade.active-symbol",
+        "trade.order-draft.price",
+        "trade.leverage",
+      ]),
+    );
+    expect(g.edges).toContainEqual({
+      from: "order-book",
+      to: "trade.order-draft.price",
+      via: "produces-slice",
+    });
+    expect(g.edges).toContainEqual({
+      from: "order-form",
+      to: "trade.order-draft.price",
+      via: "consumes-slice",
+    });
+  });
+
+  it("resolves producers and consumers of a slice", () => {
+    expect(
+      producersOfSlice(g, "trade.order-draft.price").map((u) => u.id),
+    ).toEqual(["order-book"]);
+    expect(
+      consumersOfSlice(g, "trade.active-symbol")
+        .map((u) => u.id)
+        .sort(),
+    ).toEqual(["market-header", "order-form"]);
+  });
+
+  it("attaches the layout hint to its component unit", () => {
+    const ob = g.units.find((u) => u.id === "order-book");
+    expect(ob?.layoutHint).toEqual({
+      shape: "ladder",
+      fills: true,
+      minHeight: 300,
+    });
+  });
+
+  it("affectedClosure walks reverse edges to the full blast radius", () => {
+    // Changing the price slice pulls in its consumer (order-form) and, through
+    // the page mount, the page.
+    const ids = affectedClosure(g, ["trade.order-draft.price"]).map(
+      (u) => u.id,
+    );
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        "trade.order-draft.price",
+        "order-book",
+        "order-form",
+        "page-trade",
+      ]),
+    );
   });
 });

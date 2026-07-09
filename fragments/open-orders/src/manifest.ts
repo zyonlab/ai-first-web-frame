@@ -26,6 +26,7 @@ export const openOrdersManifest = {
     css: ["/assets/open-orders.css"],
   },
   budget: openOrdersBudget,
+  layoutHint: { shape: "table" },
   // User-private realtime data dependency: orders (contract C5, global id).
   dataDependencies: ["orders"],
   metadata: {

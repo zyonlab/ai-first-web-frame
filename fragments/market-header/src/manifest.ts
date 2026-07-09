@@ -40,6 +40,8 @@ export const marketHeaderManifest = {
     css: ["/assets/market-header.css"],
   },
   budget: marketHeaderBudget,
+  consumes: { slices: ["trade.active-symbol"] },
+  layoutHint: { shape: "bar", fills: true, minHeight: 56 },
   dataDependencies: [
     sourceIds.ticker(DEFAULT_SYMBOL),
     sourceIds.funding(DEFAULT_SYMBOL),

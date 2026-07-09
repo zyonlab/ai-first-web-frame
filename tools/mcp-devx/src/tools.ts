@@ -14,6 +14,7 @@
 import { spawnSync } from "node:child_process";
 import { loadUnitGraph } from "../../release-tools/src/load-graph.ts";
 import {
+  affectedClosure,
   queryRegistry,
   type RegistryQuery,
   type UnitKind,
@@ -179,18 +180,20 @@ function runPnpm(root: string, tokens: string[]): ToolResult {
 const queryRegistryTool: ToolDef = {
   name: "query_registry",
   description:
-    "Query the unit dependency graph (routes/pages/components/data-sources). Input: { kind?, name?, dependentsOf?, dependenciesOf?, consumes? }. Returns units + touching edges.",
+    "Query the unit dependency graph (routes/pages/components/data-sources/slices). Input: { kind?, name?, dependentsOf?, dependenciesOf?, consumes? (data source), consumesSlice?, producesSlice? }. Returns units + touching edges.",
   inputSchema: {
     type: "object",
     properties: {
       kind: {
         type: "string",
-        enum: ["route", "page", "component", "data-source"],
+        enum: ["route", "page", "component", "data-source", "slice"],
       },
       name: { type: "string" },
       dependentsOf: { type: "string" },
       dependenciesOf: { type: "string" },
       consumes: { type: "string" },
+      consumesSlice: { type: "string" },
+      producesSlice: { type: "string" },
     },
   },
   handler: async (input, ctx) => {
@@ -201,10 +204,42 @@ const queryRegistryTool: ToolDef = {
       dependentsOf: str(input.dependentsOf),
       dependenciesOf: str(input.dependenciesOf),
       consumesDataSource: str(input.consumes),
+      consumesSlice: str(input.consumesSlice),
+      producesSlice: str(input.producesSlice),
     };
     const result = queryRegistry(graph, query);
     return {
       text: JSON.stringify({ status: "ok", query, ...result }, null, 2),
+    };
+  },
+};
+
+/** Graph-aware blast radius: units to re-verify/redeploy for a set of changes. */
+const affectedUnitsTool: ToolDef = {
+  name: "affected_units",
+  description:
+    "Given directly-changed unit ids, return the full closure that must be re-verified/redeployed by walking reverse graph edges (component→pages, slice/source→consumers). Input: { changed: string[] }.",
+  inputSchema: {
+    type: "object",
+    required: ["changed"],
+    properties: {
+      changed: { type: "array", items: { type: "string" } },
+    },
+  },
+  handler: async (input, ctx) => {
+    const graph = await loadUnitGraph(ctx.root);
+    const changed = Array.isArray(input.changed)
+      ? (input.changed as unknown[]).filter(
+          (v): v is string => typeof v === "string",
+        )
+      : [];
+    const units = affectedClosure(graph, changed);
+    return {
+      text: JSON.stringify(
+        { status: "ok", changed, affected: units.map((u) => u.id), units },
+        null,
+        2,
+      ),
     };
   },
 };
@@ -218,5 +253,5 @@ export function devxTools(): ToolDef[] {
     handler: async (input, ctx) =>
       runPnpm(ctx.root, [...tool.command, ...tool.args(input)]),
   }));
-  return [queryRegistryTool, ...lifecycle];
+  return [queryRegistryTool, affectedUnitsTool, ...lifecycle];
 }

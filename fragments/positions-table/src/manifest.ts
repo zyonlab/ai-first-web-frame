@@ -37,6 +37,7 @@ export const positionsTableManifest = {
     css: ["/assets/positions-table.css"],
   },
   budget: positionsTableBudget,
+  layoutHint: { shape: "table" },
   // Realtime data dependency: the C5 global `positions` source (user-private).
   dataDependencies: ["positions"],
   metadata: {

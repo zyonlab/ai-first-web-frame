@@ -51,6 +51,9 @@ export const chartPanelManifest = {
     css: ["/assets/chart-panel.css"],
   },
   budget: chartPanelBudget,
+  consumes: { slices: ["trade.active-symbol", "trade.chart-interval"] },
+  produces: { slices: ["trade.chart-interval"] },
+  layoutHint: { shape: "chart", fills: true, minHeight: 200 },
   dataDependencies: [
     sourceIds.candlesHistory(DEFAULT_SYMBOL, DEFAULT_INTERVAL),
     sourceIds.candles(DEFAULT_SYMBOL, DEFAULT_INTERVAL),

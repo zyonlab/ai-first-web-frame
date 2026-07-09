@@ -41,6 +41,8 @@ export const accountBarManifest = {
     css: ["/assets/account-bar.css"],
   },
   budget: accountBarBudget,
+  consumes: { slices: ["trade.leverage"] },
+  layoutHint: { shape: "panel" },
   // Shared `account` node (dedupe): order-form + positions-table read the same
   // id; the runtime resolves it once per SSR request.
   dataDependencies: [sourceIds.account],

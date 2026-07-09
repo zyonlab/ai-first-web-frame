@@ -28,6 +28,10 @@ export const orderBookManifest = {
   // dependsOn / dataDependencies use the C5 symbol-scoped book id template.
   dependsOn: [],
   dataDependencies: ["book.l2.<symbol>"],
+  // A row click feeds the order-form price (published on the shared store by the
+  // page's order-book→order-form bridge); modeled here as the slice's producer.
+  produces: { slices: ["trade.order-draft.price"] },
+  layoutHint: { shape: "ladder", fills: true, minHeight: 300 },
   budget: orderBookBudget,
   metadata: {
     category: "trading",

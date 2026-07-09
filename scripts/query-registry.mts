@@ -43,6 +43,8 @@ function parseArgs(argv: string[]): RegistryQuery & { json: boolean } {
     else if (arg === "--dependents-of") q.dependentsOf = value;
     else if (arg === "--dependencies-of") q.dependenciesOf = value;
     else if (arg === "--consumes") q.consumesDataSource = value;
+    else if (arg === "--consumes-slice") q.consumesSlice = value;
+    else if (arg === "--produces-slice") q.producesSlice = value;
     else continue;
     i += 1;
   }

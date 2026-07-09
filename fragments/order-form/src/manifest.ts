@@ -38,6 +38,15 @@ export const orderFormManifest = {
     css: ["/assets/order-form.css"],
   },
   budget: orderFormBudget,
+  consumes: {
+    slices: [
+      "trade.active-symbol",
+      "trade.hovered-price",
+      "trade.order-draft.price",
+    ],
+  },
+  produces: { slices: ["trade.leverage", "trade.order-draft"] },
+  layoutHint: { shape: "panel", fills: true },
   dataDependencies: ["account"],
   metadata: {
     category: "trading",

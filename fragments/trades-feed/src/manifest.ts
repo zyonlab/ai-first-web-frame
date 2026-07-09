@@ -24,6 +24,7 @@ export const tradesFeedManifest = {
     css: ["/assets/trades-feed.css"],
   },
   budget: tradesFeedBudget,
+  layoutHint: { shape: "table", fills: true },
   // Realtime data dependency: trades.<symbol> (contract C5).
   dataDependencies: ["trades.<symbol>"],
   metadata: {
