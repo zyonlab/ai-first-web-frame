@@ -16,6 +16,27 @@ import {
   type UnitGraph,
 } from "./unit-graph";
 
+/** Loads one fragment's `manifest.ts` object (or null if absent). */
+export async function loadFragmentManifest(
+  root: string,
+  name: string,
+): Promise<FragmentManifestLike | null> {
+  const manifestPath = join(root, "fragments", name, "src", "manifest.ts");
+  if (!existsSync(manifestPath)) return null;
+  const mod = (await import(pathToFileURL(manifestPath).href)) as Record<
+    string,
+    unknown
+  >;
+  return (
+    (Object.values(mod).find(
+      (v): v is FragmentManifestLike =>
+        typeof v === "object" &&
+        v !== null &&
+        typeof (v as { name?: unknown }).name === "string",
+    ) as FragmentManifestLike | undefined) ?? null
+  );
+}
+
 /** Loads every fragment's `manifest.ts` and normalizes it to the graph shape. */
 async function loadFragments(root: string): Promise<FragmentManifestLike[]> {
   const dir = join(root, "fragments");
