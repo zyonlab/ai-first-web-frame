@@ -1,0 +1,124 @@
+/**
+ * Runtime/visual contract evaluator (docs/AI_NATIVE_DEVX.md §6).
+ *
+ * The plane that `pnpm verify` can't see: every trade-demo defect this cycle —
+ * fragment CSS not delivered, React #418, the `ticker.ETH` symbol-switch crash,
+ * the 490px layout void — passed the unit gate green and was only visible in a
+ * running browser. This module turns those into machine checks.
+ *
+ * PURE (observations in → verdict out) so it is unit-tested; the playwright
+ * driver in `scripts/verify-runtime.mts` collects the observations and prints
+ * the report.
+ */
+
+export type StaticRequest = { url: string; status: number };
+
+/** One rendered pane and how much of it its content fills. */
+export type PaneObservation = {
+  area: string;
+  areaHeight: number;
+  contentHeight: number;
+};
+
+export type RuntimeObservation = {
+  /** Uncaught page errors (already filtered of benign noise by the driver). */
+  pageErrors: string[];
+  /** console.error lines (filtered). */
+  consoleErrors: string[];
+  /** Requests to /_next/static or /assets (asset-delivery plane). */
+  staticRequests: StaticRequest[];
+  /** Panes (e.g. `[data-area]`) with their fill geometry (layout-fit plane). */
+  panes: PaneObservation[];
+  /** Document horizontal overflow in px (0 = none). */
+  horizontalOverflowPx: number;
+  /** Optional interaction-contract result (e.g. order-book → order-form price). */
+  interaction?: { name: string; ok: boolean; detail?: string };
+};
+
+export type RuntimeCheck = { name: string; ok: boolean; detail?: string };
+
+export type RuntimeThresholds = {
+  /** Max tolerated pane void (areaHeight − contentHeight) before it's a fail. */
+  maxPaneVoidPx: number;
+  /** Max tolerated horizontal document overflow. */
+  maxHorizontalOverflowPx: number;
+};
+
+export const DEFAULT_THRESHOLDS: RuntimeThresholds = {
+  maxPaneVoidPx: 48,
+  maxHorizontalOverflowPx: 2,
+};
+
+const is418 = (s: string) => /#418|Minified React error #418|hydrat/i.test(s);
+
+export function evaluateRuntime(
+  obs: RuntimeObservation,
+  thresholds: RuntimeThresholds = DEFAULT_THRESHOLDS,
+): { checks: RuntimeCheck[]; ok: boolean } {
+  const checks: RuntimeCheck[] = [];
+
+  // Hydration — no uncaught errors at all.
+  const allErrors = [...obs.pageErrors, ...obs.consoleErrors];
+  checks.push({
+    name: "hydration-clean",
+    ok: allErrors.length === 0,
+    detail:
+      allErrors.length === 0
+        ? "0 page/console errors"
+        : `${allErrors.length} error(s): ${allErrors[0]?.slice(0, 120)}`,
+  });
+
+  // React #418 specifically (the shell-wrap hydration mismatch class).
+  const react418 = allErrors.filter(is418);
+  checks.push({
+    name: "no-react-418",
+    ok: react418.length === 0,
+    detail:
+      react418.length === 0
+        ? "no hydration mismatch"
+        : react418[0]?.slice(0, 120),
+  });
+
+  // Asset delivery — no static asset 404s (CSS-not-delivered / chunk-404 class).
+  const badAssets = obs.staticRequests.filter((r) => r.status >= 400);
+  checks.push({
+    name: "assets-delivered",
+    ok: badAssets.length === 0,
+    detail:
+      badAssets.length === 0
+        ? `${obs.staticRequests.length} static request(s) ok`
+        : `${badAssets.length} 4xx/5xx: ${badAssets[0]?.url}`,
+  });
+
+  // Layout fit — no pane strands its content above a large void (the 490px
+  // header-void / 806px empty-rail class).
+  const worstVoid = obs.panes
+    .map((p) => ({ ...p, void: p.areaHeight - p.contentHeight }))
+    .sort((a, b) => b.void - a.void)[0];
+  const voidOk = !worstVoid || worstVoid.void <= thresholds.maxPaneVoidPx;
+  checks.push({
+    name: "layout-fit",
+    ok: voidOk,
+    detail: worstVoid
+      ? `worst pane void ${Math.round(worstVoid.void)}px @ ${worstVoid.area} (max ${thresholds.maxPaneVoidPx})`
+      : "no panes measured",
+  });
+
+  // No horizontal page overflow.
+  checks.push({
+    name: "no-horizontal-overflow",
+    ok: obs.horizontalOverflowPx <= thresholds.maxHorizontalOverflowPx,
+    detail: `${obs.horizontalOverflowPx}px (max ${thresholds.maxHorizontalOverflowPx})`,
+  });
+
+  // Interaction contract (optional).
+  if (obs.interaction) {
+    checks.push({
+      name: `interaction:${obs.interaction.name}`,
+      ok: obs.interaction.ok,
+      detail: obs.interaction.detail,
+    });
+  }
+
+  return { checks, ok: checks.every((c) => c.ok) };
+}
