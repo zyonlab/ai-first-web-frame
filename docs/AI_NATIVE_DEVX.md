@@ -263,9 +263,14 @@ drive the whole loop concurrently, no `CLAUDE.md` reading.
   a GLOBAL rebuild). Only `platform/` and repo-root config still fall back to
   GLOBAL.
 
-Remaining refinements: a mount-time `layoutHint` check in `mount_slot`; the
-interactive `dev:component` drive (needs a client bundler); and wiring
-`verify:runtime` into the CLAUDE.md acceptance flow.
+- **Mount-time `layoutHint` advisory ✅** — `mount-slot` now reads the mounted
+  fragment's `layoutHint` and emits the layout contract as `warnings` (fills →
+  "put it in a stretching cell, not an auto row"; `minHeight`; aspect). The cheap
+  static counterpart to the runtime `layout-fit` check — it flags the 490px-void
+  class at wire time. Pure `layoutAdvisories()`, unit-tested.
+
+Remaining refinements: the interactive `dev:component` drive (needs a client
+bundler); and wiring `verify:runtime` into the CLAUDE.md acceptance flow.
 
 Each phase is independently shippable and valuable.
 

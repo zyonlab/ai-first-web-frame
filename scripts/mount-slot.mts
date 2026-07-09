@@ -12,6 +12,8 @@ import {
   applyUnmountSlot,
   type PageSlot,
 } from "../platform/fragment-registry/src/slots";
+import { layoutAdvisories } from "../tools/release-tools/src/layout-advisories.ts";
+import { loadFragmentManifest } from "../tools/release-tools/src/load-graph.ts";
 
 type MountResult = {
   status: "mounted" | "removed" | "unchanged" | "failed";
@@ -29,7 +31,7 @@ const registryPath = join(
   "platform/fragment-registry/src/registry.data.json",
 );
 
-function run(argv: string[]): MountResult {
+async function run(argv: string[]): Promise<MountResult> {
   const args = parseCliArgs(argv);
   const page = stringFlag(args, "page") ?? "";
   const slotName = stringFlag(args, "slot") ?? "";
@@ -62,6 +64,17 @@ function run(argv: string[]): MountResult {
       if (!registry.fragments[fragment]) {
         warnings.push(
           `fragment "${fragment}" is not in the fragment registry; run register-fragment first unless the slot is static or reserved`,
+        );
+      }
+      // Layout contract: the pane can't be measured here, but the fragment's
+      // manifest layoutHint tells the author what the slot must provide.
+      const manifest = await loadFragmentManifest(root, fragment);
+      if (manifest) {
+        warnings.push(
+          ...layoutAdvisories(manifest.layoutHint, {
+            fragment,
+            slot: slotName,
+          }),
         );
       }
     }
@@ -128,6 +141,6 @@ function buildSlot(
   return slot as PageSlot;
 }
 
-const result = run(process.argv.slice(2));
+const result = await run(process.argv.slice(2));
 console.log(JSON.stringify(result, null, 2));
 process.exitCode = result.status === "failed" ? 1 : 0;
