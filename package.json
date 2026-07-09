@@ -26,6 +26,8 @@
     "graph": "tsx scripts/query-registry.mts",
     "dev:component": "tsx scripts/dev-component.mts",
     "verify:runtime": "tsx scripts/verify-runtime.mts",
+    "affected:graph": "tsx scripts/affected-graph.mts",
+    "deploy:affected": "tsx scripts/deploy-affected.mts",
     "mcp:devx": "tsx tools/mcp-devx/src/server.mts",
     "register:fragment": "tsx scripts/register-fragment.mts",
     "mount:slot": "tsx scripts/mount-slot.mts",

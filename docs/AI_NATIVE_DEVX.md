@@ -238,16 +238,28 @@ drive the whole loop concurrently, no `CLAUDE.md` reading.
    neither changed a contract the other `consumes`. `affected` deploys exactly
    two images.
 
-## 9. Rollout (by ROI)
+## 9. Rollout (by ROI) — status
 
-- **Phase 1 (days) — MCP/skill wrapper over existing scripts + `query_registry`.**
-  Highest leverage, near-zero risk: the scripts already exist and emit JSON.
-  Immediately unblocks "开放接口不友好" and parallel agents.
-- **Phase 2 — manifest consolidation + `affected` wired into verify/deploy.**
-  Add `consumes`/`produces`/`layoutHint`; extend `affected` to the full graph.
-- **Phase 3 — `dev:component` harness.** Delivers "单组件独立调 + 跨组件 mock".
-- **Phase 4 — `verify:runtime` gate.** Closes the plane that hid every defect
-  this cycle; wire into `verify_unit` + CI.
+- **Phase 1 ✅ — MCP/skill wrapper + `query_registry`.** `tools/mcp-devx`
+  (7 tools, dependency-free stdio) + `pnpm graph` over the unit graph
+  (`tools/release-tools/unit-graph.ts`).
+- **Phase 2 ✅ — manifest consolidation + graph closure.** `consumes`/`produces`
+  (C3 slices) + `layoutHint` on the trade fragments; graph emits slice units +
+  `affectedClosure`; `affected_units` MCP tool.
+- **Phase 2b ✅ — affected wired to the pipeline.** `pnpm affected:graph`
+  (git diff → seed units → closure → deployable images + runtime pages) and
+  `pnpm deploy:affected [--runtime]` (rebuild + recreate only affected images,
+  then run the runtime gate on affected pages). Shared-root changes fall back to
+  a conservative GLOBAL rebuild.
+- **Phase 3 ✅ — `dev:component` harness.** `pnpm dev:component <name>` — one
+  fragment, themed + `layoutHint`-sized, with its contract-mocked world.
+- **Phase 4 ✅ — `verify:runtime` gate.** `pnpm verify:runtime` — hydration /
+  asset-delivery / layout-fit / overflow / interaction, on the composed page.
+
+Remaining refinements: model shared-package deps in the graph so `affected`
+narrows `packages/` changes instead of going GLOBAL; a mount-time `layoutHint`
+check in `mount_slot`; the interactive `dev:component` drive (needs a client
+bundler); and wiring `verify:runtime` into the CLAUDE.md acceptance flow.
 
 Each phase is independently shippable and valuable.
 
