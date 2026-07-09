@@ -203,3 +203,55 @@ describe("slices, layout hints & affected closure (Phase 2)", () => {
     );
   });
 });
+
+describe("package units & uses-package edges (Phase 2b refinement)", () => {
+  const g = buildUnitGraph({
+    fragments: [
+      { name: "order-form", packageDependencies: ["@mvp/interaction"] },
+    ],
+    pages: [
+      {
+        name: "page-trade",
+        slots: [{ name: "orderForm", fragment: "order-form" }],
+        packageDependencies: ["@mvp/interaction"],
+      },
+    ],
+    packages: [
+      {
+        name: "@mvp/interaction",
+        dir: "interaction",
+        dependsOn: ["@mvp/contracts"],
+      },
+      { name: "@mvp/contracts", dir: "contracts" },
+    ],
+  });
+
+  it("emits package units carrying their source dir + uses-package edges", () => {
+    const pkg = g.units.find((u) => u.id === "@mvp/interaction");
+    expect(pkg?.kind).toBe("package");
+    expect(pkg?.meta?.dir).toBe("interaction");
+    expect(g.edges).toContainEqual({
+      from: "order-form",
+      to: "@mvp/interaction",
+      via: "uses-package",
+    });
+    expect(g.edges).toContainEqual({
+      from: "@mvp/interaction",
+      to: "@mvp/contracts",
+      via: "uses-package",
+    });
+  });
+
+  it("affectedClosure walks package → dependents (incl. transitive package deps)", () => {
+    // Contracts change → interaction → its users (order-form + page-trade).
+    const ids = affectedClosure(g, ["@mvp/contracts"]).map((u) => u.id);
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        "@mvp/contracts",
+        "@mvp/interaction",
+        "order-form",
+        "page-trade",
+      ]),
+    );
+  });
+});

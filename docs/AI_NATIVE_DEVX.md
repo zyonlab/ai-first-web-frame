@@ -256,10 +256,16 @@ drive the whole loop concurrently, no `CLAUDE.md` reading.
 - **Phase 4 ✅ — `verify:runtime` gate.** `pnpm verify:runtime` — hydration /
   asset-delivery / layout-fit / overflow / interaction, on the composed page.
 
-Remaining refinements: model shared-package deps in the graph so `affected`
-narrows `packages/` changes instead of going GLOBAL; a mount-time `layoutHint`
-check in `mount_slot`; the interactive `dev:component` drive (needs a client
-bundler); and wiring `verify:runtime` into the CLAUDE.md acceptance flow.
+- **Package-dep modeling ✅** — the graph now carries `package` units + a
+  `uses-package` edge per `@mvp/*` dependency (read from each unit's + package's
+  `package.json`); 15 package units / 143 edges live. A `packages/<x>` change is
+  narrowed to just its dependent units (e.g. `@mvp/trade-client` → 5 images, not
+  a GLOBAL rebuild). Only `platform/` and repo-root config still fall back to
+  GLOBAL.
+
+Remaining refinements: a mount-time `layoutHint` check in `mount_slot`; the
+interactive `dev:component` drive (needs a client bundler); and wiring
+`verify:runtime` into the CLAUDE.md acceptance flow.
 
 Each phase is independently shippable and valuable.
 

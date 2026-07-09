@@ -12,13 +12,15 @@ const graph = buildUnitGraph({
       name: "order-book",
       dataDependencies: ["book.l2.<symbol>"],
       produces: { slices: ["trade.order-draft.price"] },
+      packageDependencies: ["@mvp/data"],
     },
     {
       name: "order-form",
       dataDependencies: ["account"],
       consumes: { slices: ["trade.order-draft.price"] },
+      packageDependencies: ["@mvp/interaction"],
     },
-    { name: "promotion-banner" },
+    { name: "promotion-banner", packageDependencies: ["@mvp/runtime"] },
   ],
   pages: [
     {
@@ -27,11 +29,23 @@ const graph = buildUnitGraph({
         { name: "book", fragment: "order-book" },
         { name: "orderForm", fragment: "order-form" },
       ],
+      packageDependencies: ["@mvp/interaction"],
     },
     {
       name: "page-home",
       slots: [{ name: "promo", fragment: "promotion-banner" }],
+      packageDependencies: ["@mvp/runtime"],
     },
+  ],
+  packages: [
+    {
+      name: "@mvp/interaction",
+      dir: "interaction",
+      dependsOn: ["@mvp/contracts"],
+    },
+    { name: "@mvp/data", dir: "data" },
+    { name: "@mvp/runtime", dir: "runtime" },
+    { name: "@mvp/contracts", dir: "contracts" },
   ],
   routes: [
     { path: "/trade/:symbol", page: "page-trade" },
@@ -52,38 +66,60 @@ describe("seedsFromPaths", () => {
     expect(global).toBe(false);
   });
 
-  it("marks shared roots (packages / platform / root config) as global", () => {
-    expect(
-      seedsFromPaths(graph, ["packages/interaction/src/index.ts"]).global,
-    ).toBe(true);
+  it("maps a modeled workspace package to its unit (not global)", () => {
+    const { seeds, global } = seedsFromPaths(graph, [
+      "packages/interaction/src/index.ts",
+    ]);
+    expect(seeds).toEqual(["@mvp/interaction"]);
+    expect(global).toBe(false);
+  });
+
+  it("stays global for platform / root config / unknown packages", () => {
     expect(seedsFromPaths(graph, ["pnpm-lock.yaml"]).global).toBe(true);
     expect(
       seedsFromPaths(graph, ["platform/route-registry/src/registry.ts"]).global,
     ).toBe(true);
+    expect(seedsFromPaths(graph, ["packages/unknown/src/x.ts"]).global).toBe(
+      true,
+    );
   });
 });
 
 describe("affectedFromChangedPaths", () => {
-  it("expands a fragment change to its page + siblings by graph closure", () => {
+  it("expands a fragment change to its page, not siblings", () => {
     const plan = affectedFromChangedPaths(graph, [
       "fragments/order-book/src/render.ts",
     ]);
     expect(plan.global).toBe(false);
-    // order-book → its page; the page mounts order-form too, but order-form is
-    // NOT rebuilt (it didn't change) — only the changed unit + its dependents.
     expect(plan.deployables).toEqual(["order-book", "page-trade"]);
     expect(plan.affectedPages).toEqual(["page-trade"]);
   });
 
-  it("a shared-package change rebuilds everything (+shell)", () => {
+  it("narrows a package change to only its dependents (was GLOBAL before)", () => {
+    // @mvp/interaction is used by order-form + page-trade — NOT order-book
+    // (which uses @mvp/data) or page-home.
     const plan = affectedFromChangedPaths(graph, [
       "packages/interaction/src/index.ts",
     ]);
+    expect(plan.global).toBe(false);
+    expect(plan.deployables).toEqual(["order-form", "page-trade"]);
+    expect(plan.affectedPages).toEqual(["page-trade"]);
+  });
+
+  it("walks transitive package deps (contracts → interaction → its users)", () => {
+    const plan = affectedFromChangedPaths(graph, [
+      "packages/contracts/src/index.ts",
+    ]);
+    expect(plan.global).toBe(false);
+    expect(plan.deployables).toEqual(["order-form", "page-trade"]);
+  });
+
+  it("still rebuilds everything (+shell) on a platform/root change", () => {
+    const plan = affectedFromChangedPaths(graph, ["pnpm-lock.yaml"]);
     expect(plan.global).toBe(true);
     expect(plan.deployables).toContain(SHELL_UNIT);
     expect(plan.deployables).toContain("order-book");
     expect(plan.deployables).toContain("page-home");
-    expect(plan.affectedPages.sort()).toEqual(["page-home", "page-trade"]);
   });
 
   it("an app-only change rebuilds just that page", () => {

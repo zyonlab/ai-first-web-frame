@@ -11,10 +11,26 @@ import { pathToFileURL } from "node:url";
 import {
   buildUnitGraph,
   type FragmentManifestLike,
+  type PackageInput,
   type PageInput,
   type RouteInput,
   type UnitGraph,
 } from "./unit-graph";
+
+/** Reads the `@mvp/*` runtime dependencies from a package.json (or []). */
+function readMvpDeps(pkgJsonPath: string): string[] {
+  if (!existsSync(pkgJsonPath)) return [];
+  try {
+    const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as {
+      dependencies?: Record<string, string>;
+    };
+    return Object.keys(pkg.dependencies ?? {})
+      .filter((d) => d.startsWith("@mvp/"))
+      .sort();
+  } catch {
+    return [];
+  }
+}
 
 /** Loads one fragment's `manifest.ts` object (or null if absent). */
 export async function loadFragmentManifest(
@@ -57,7 +73,11 @@ async function loadFragments(root: string): Promise<FragmentManifestLike[]> {
         v !== null &&
         typeof (v as { name?: unknown }).name === "string",
     );
-    if (manifest) out.push(manifest);
+    if (manifest)
+      out.push({
+        ...manifest,
+        packageDependencies: readMvpDeps(join(dir, name, "package.json")),
+      });
   }
   return out;
 }
@@ -71,7 +91,36 @@ function loadPages(root: string): PageInput[] {
     const slotsPath = join(dir, name, "src", "manifest.slots.json");
     if (!existsSync(slotsPath)) continue;
     const slots = JSON.parse(readFileSync(slotsPath, "utf8"));
-    out.push({ name, slots: Array.isArray(slots) ? slots : [] });
+    out.push({
+      name,
+      slots: Array.isArray(slots) ? slots : [],
+      packageDependencies: readMvpDeps(join(dir, name, "package.json")),
+    });
+  }
+  return out;
+}
+
+/** Reads every workspace package's name + `@mvp/*` deps for the package graph. */
+function loadPackages(root: string): PackageInput[] {
+  const dir = join(root, "packages");
+  if (!existsSync(dir)) return [];
+  const out: PackageInput[] = [];
+  for (const name of readdirSync(dir)) {
+    const pkgPath = join(dir, name, "package.json");
+    if (!existsSync(pkgPath)) continue;
+    try {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as {
+        name?: string;
+      };
+      if (pkg.name)
+        out.push({
+          name: pkg.name,
+          dir: name,
+          dependsOn: readMvpDeps(pkgPath),
+        });
+    } catch {
+      // skip unreadable package.json
+    }
   }
   return out;
 }
@@ -120,6 +169,7 @@ export async function loadUnitGraph(root: string): Promise<UnitGraph> {
     fragments,
     pages: loadPages(root),
     routes,
+    packages: loadPackages(root),
     // biome-ignore lint/suspicious/noExplicitAny: registry JSON shape is consumed defensively by the builder.
     registry: loadRegistry(root) as any,
   });

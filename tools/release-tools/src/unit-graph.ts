@@ -13,7 +13,13 @@
  * touching anything: "what exists", "who depends on X", "who reads this source".
  */
 
-export type UnitKind = "route" | "page" | "component" | "data-source" | "slice";
+export type UnitKind =
+  | "route"
+  | "page"
+  | "component"
+  | "data-source"
+  | "slice"
+  | "package";
 
 /** Machine-readable layout contract (doc §2) — how a pane must size a component. */
 export type LayoutHint = {
@@ -45,7 +51,8 @@ export type EdgeVia =
   | "reads"
   | "depends-on"
   | "consumes-slice"
-  | "produces-slice";
+  | "produces-slice"
+  | "uses-package";
 
 export type Edge = { from: string; to: string; via: EdgeVia };
 
@@ -68,6 +75,8 @@ export type FragmentManifestLike = {
   consumes?: UnitConsumesProduces;
   produces?: UnitConsumesProduces;
   layoutHint?: LayoutHint;
+  /** `@mvp/*` workspace packages this unit depends on (from its package.json). */
+  packageDependencies?: readonly string[];
   metadata?: Record<string, unknown>;
 };
 
@@ -80,9 +89,21 @@ export type PageSlot = {
   required?: boolean;
 };
 
-export type PageInput = { name: string; owner?: string; slots: PageSlot[] };
+export type PageInput = {
+  name: string;
+  owner?: string;
+  slots: PageSlot[];
+  packageDependencies?: readonly string[];
+};
 
 export type RouteInput = { path: string; page: string };
+
+/** A workspace package node: its name, source dir, and `@mvp/*` deps. */
+export type PackageInput = {
+  name: string;
+  dir: string;
+  dependsOn?: readonly string[];
+};
 
 /** One fragment-registry entry: per-channel release records. */
 export type RegistryChannel = { version?: string; serviceUrl?: string };
@@ -92,6 +113,7 @@ export type BuildUnitGraphInput = {
   fragments: FragmentManifestLike[];
   pages: PageInput[];
   routes?: RouteInput[];
+  packages?: PackageInput[];
   registry?: Record<string, RegistryEntry>;
 };
 
@@ -162,13 +184,33 @@ export function buildUnitGraph(input: BuildUnitGraphInput): UnitGraph {
       upsert({ id: slice, kind: "slice", name: slice });
       edges.push({ from: fragment.name, to: slice, via: "produces-slice" });
     }
+    // component --uses-package--> package (@mvp/* workspace deps)
+    for (const pkg of fragment.packageDependencies ?? []) {
+      edges.push({ from: fragment.name, to: pkg, via: "uses-package" });
+    }
   }
 
-  // Pages + page --mounts--> component.
+  // Pages + page --mounts--> component / --uses-package--> package.
   for (const page of input.pages) {
     upsert({ id: page.name, kind: "page", name: page.name, owner: page.owner });
     for (const slot of page.slots) {
       edges.push({ from: page.name, to: slot.fragment, via: "mounts" });
+    }
+    for (const pkg of page.packageDependencies ?? []) {
+      edges.push({ from: page.name, to: pkg, via: "uses-package" });
+    }
+  }
+
+  // Packages + package --uses-package--> package (inter-package @mvp deps).
+  for (const pkg of input.packages ?? []) {
+    upsert({
+      id: pkg.name,
+      kind: "package",
+      name: pkg.name,
+      meta: { dir: pkg.dir },
+    });
+    for (const dep of pkg.dependsOn ?? []) {
+      edges.push({ from: pkg.name, to: dep, via: "uses-package" });
     }
   }
 

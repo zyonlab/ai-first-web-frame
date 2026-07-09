@@ -41,16 +41,28 @@ export function seedsFromPaths(
   const seeds = new Set<string>();
   let global = false;
   const hasUnit = (id: string) => graph.units.some((u) => u.id === id);
+  /** package unit whose source dir matches `packages/<dir>`. */
+  const packageForDir = (dir: string) =>
+    graph.units.find((u) => u.kind === "package" && u.meta?.dir === dir);
   for (const raw of paths) {
     const path = raw.replace(/\\/g, "/").trim();
     if (!path) continue;
     if (IGNORED.test(path) || path.endsWith(".md")) continue;
     const frag = /^fragments\/([^/]+)\//.exec(path);
     const app = /^apps\/([^/]+)\//.exec(path);
+    const pkg = /^packages\/([^/]+)\//.exec(path);
     if (frag && hasUnit(frag[1])) seeds.add(frag[1]);
     else if (app && hasUnit(app[1])) seeds.add(app[1]);
-    else if (/^(packages|platform)\//.test(path) || !path.includes("/"))
-      global = true;
+    else if (pkg) {
+      // Narrow a workspace-package change to the units that depend on it (via
+      // the `uses-package` closure) instead of rebuilding everything.
+      const unit = packageForDir(pkg[1]);
+      if (unit) seeds.add(unit.id);
+      else global = true; // unknown package → conservative
+    }
+    // platform/ (route/fragment registry) is cross-cutting, as is repo-root
+    // config (lockfile, tsconfig, biome): rebuild all.
+    else if (/^platform\//.test(path) || !path.includes("/")) global = true;
   }
   return { seeds: [...seeds].sort(), global };
 }
