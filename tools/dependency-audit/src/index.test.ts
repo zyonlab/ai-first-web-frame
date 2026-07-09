@@ -200,4 +200,107 @@ describe("dependency-audit", () => {
     expect(clientOnly[0].file).toBe("fragments/promo/src/server.ts");
     rmSync(root, { recursive: true, force: true });
   });
+
+  it("fails a non-allowlisted framework package importing domain/product code", () => {
+    const root = tempRoot("layering-fail");
+    write(
+      join(root, "domains/some-domain/package.json"),
+      JSON.stringify({ name: "@mvp/some-domain" }),
+    );
+    write(
+      join(root, "domains/some-domain/src/index.ts"),
+      "export const thing = 1;\n",
+    );
+    write(
+      join(root, "packages/some-pkg/src/index.ts"),
+      'import { thing } from "@mvp/some-domain";\nexport { thing };\n',
+    );
+    write(
+      join(root, "packages/other-pkg/src/index.ts"),
+      'import { relThing } from "../../../domains/some-domain/src/index";\nexport { relThing };\n',
+    );
+    write(
+      join(root, "apps/page-home/package.json"),
+      JSON.stringify({ name: "@mvp/page-home" }),
+    );
+    write(
+      join(root, "packages/uses-app/src/index.ts"),
+      'import { helper } from "@mvp/page-home";\nexport { helper };\n',
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    const layering = report.issues.filter(
+      (issue) => issue.code === "domain-code-in-framework-package",
+    );
+    expect(
+      layering.some((issue) => issue.file === "packages/some-pkg/src/index.ts"),
+    ).toBe(true);
+    expect(
+      layering.some(
+        (issue) => issue.file === "packages/other-pkg/src/index.ts",
+      ),
+    ).toBe(true);
+    expect(
+      layering.some((issue) => issue.file === "packages/uses-app/src/index.ts"),
+    ).toBe(true);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("allowlists the known pre-existing trade-domain leaks in framework packages", () => {
+    const root = tempRoot("layering-allowlist");
+    write(
+      join(root, "domains/trade-chart/package.json"),
+      JSON.stringify({ name: "@mvp/trade-chart" }),
+    );
+    write(
+      join(root, "domains/trade-chart/src/index.ts"),
+      "export const chart = 1;\n",
+    );
+    // Mirrors the real repo's known leaks: packages/trade-client,
+    // packages/interaction/src/trade, packages/data's trade source registry,
+    // packages/storage's trade prefs, and packages/design-system's trade
+    // theme helper. Each imports domain code here to prove the allowlist
+    // suppresses the issue without weakening the check for anything else.
+    write(
+      join(root, "packages/trade-client/src/chart.tsx"),
+      'import { chart } from "@mvp/trade-chart";\nexport { chart };\n',
+    );
+    write(
+      join(root, "packages/interaction/src/trade/slices.ts"),
+      'import { chart } from "@mvp/trade-chart";\nexport { chart };\n',
+    );
+    write(
+      join(root, "packages/data/src/sources/tradeClient.ts"),
+      'import { chart } from "@mvp/trade-chart";\nexport { chart };\n',
+    );
+    write(
+      join(root, "packages/data/src/index.ts"),
+      'import { chart } from "@mvp/trade-chart";\nexport { chart };\n',
+    );
+    write(
+      join(root, "packages/storage/src/prefs/watchlist.ts"),
+      'import { chart } from "@mvp/trade-chart";\nexport { chart };\n',
+    );
+    write(
+      join(root, "packages/design-system/src/themes.ts"),
+      'import { chart } from "@mvp/trade-chart";\nexport { chart };\n',
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    const layering = report.issues.filter(
+      (issue) => issue.code === "domain-code-in-framework-package",
+    );
+    expect(layering).toHaveLength(0);
+    rmSync(root, { recursive: true, force: true });
+  });
 });

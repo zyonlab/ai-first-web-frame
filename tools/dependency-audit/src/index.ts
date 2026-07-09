@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type CliOptions, parseArgs } from "../../_shared/args";
@@ -25,7 +25,8 @@ type AuditIssue = {
     | "page-importing-another-page"
     | "raw-fetch-in-business-code"
     | "server-safe-browser-global"
-    | "client-only-dependency-in-server";
+    | "client-only-dependency-in-server"
+    | "domain-code-in-framework-package";
   severity: "warn" | "fail";
   file?: string;
   packageName?: string;
@@ -58,6 +59,7 @@ export function runDependencyAudit(
   const issues: AuditIssue[] = [];
   issues.push(...auditPackageVersions(root, config));
   issues.push(...auditSourceImports(root, config));
+  issues.push(...auditPackageLayering(root));
 
   const report: DependencyReport = {
     tool: "dependency-audit",
@@ -272,6 +274,114 @@ function auditSourceImports(
         detail:
           "business code must use @mvp/request or @mvp/data instead of raw fetch",
       });
+    }
+  }
+  return issues;
+}
+
+// Layering audit (docs/ARCHITECTURE_REFACTOR_PLAN.md §2.1, goal B3): the
+// framework layer (`packages/**`) must never import "down" into the domain
+// layer (`domains/**`) or the product layer (`apps/**`, `fragments/**`).
+// Imports only point downward: apps/fragments -> domains -> packages.
+//
+// This is scaffolding added ahead of the Phase P1 re-layering migration (see
+// docs/ARCHITECTURE_REFACTOR_PLAN.md §8, Phase P1, and the P1-prep task that
+// added this check). Before that migration lands, `packages/trade-client`,
+// `packages/interaction/src/trade/*` (plus its `export * from "./trade"`
+// facade re-export), the trade source registry appended to
+// `packages/data/src/sources/tradeClient.ts` / `packages/data/src/index.ts`,
+// the trade prefs under `packages/storage/src/prefs/*`, and
+// `createTradeAliasVariables` in `packages/design-system/src/themes.ts` are
+// KNOWN pre-existing leaks of domain code into framework packages. They do
+// not (yet) import from `domains/**`, `apps/**`, or `fragments/**` — the
+// domains/* packages did not exist before this scaffolding — so this
+// allowlist is a forward-looking safety net: once the real P1 migration
+// starts moving code, these paths may temporarily import from their new
+// `domains/*` home during the transition without tripping this check. Do NOT
+// add new entries here for anything other than these already-known leaks;
+// any new violation outside this list must fail.
+const KNOWN_LEAKS = [
+  "packages/trade-client/",
+  "packages/interaction/src/trade/",
+  "packages/data/src/sources/tradeClient.ts",
+  "packages/data/src/index.ts",
+  "packages/storage/src/prefs/",
+  "packages/design-system/src/themes.ts",
+];
+
+function isKnownLeak(relativeFile: string): boolean {
+  return KNOWN_LEAKS.some((prefix) => relativeFile.startsWith(prefix));
+}
+
+// Reads the `name` field of every immediate child package under `<root>/<dir>`
+// (e.g. all `domains/*` or `apps/*` package.json files) so layering violations
+// can be detected both by relative-path target and by published package name.
+function collectPackageNames(root: string, dir: string): string[] {
+  const base = join(root, dir);
+  if (!existsSync(base)) {
+    return [];
+  }
+  const names: string[] = [];
+  for (const entry of readdirSync(base)) {
+    const packageJsonPath = join(base, entry, "package.json");
+    if (!existsSync(packageJsonPath)) continue;
+    const packageJson = readJson<{ name?: string }>(packageJsonPath);
+    if (packageJson.name) names.push(packageJson.name);
+  }
+  return names;
+}
+
+type LayeringTarget = "domains" | "apps" | "fragments";
+
+function classifyLayeringTarget(
+  root: string,
+  file: string,
+  specifier: string,
+  packageNamesByLayer: Record<LayeringTarget, string[]>,
+): LayeringTarget | undefined {
+  if (specifier.startsWith(".")) {
+    const target = relativePosix(root, resolve(dirname(file), specifier));
+    if (target.startsWith("domains/")) return "domains";
+    if (target.startsWith("apps/")) return "apps";
+    if (target.startsWith("fragments/")) return "fragments";
+    return undefined;
+  }
+  for (const layer of ["domains", "apps", "fragments"] as const) {
+    if (packageNamesByLayer[layer].includes(specifier)) return layer;
+  }
+  return undefined;
+}
+
+function auditPackageLayering(root: string): AuditIssue[] {
+  const issues: AuditIssue[] = [];
+  const packageNamesByLayer: Record<LayeringTarget, string[]> = {
+    domains: collectPackageNames(root, "domains"),
+    apps: collectPackageNames(root, "apps"),
+    fragments: collectPackageNames(root, "fragments"),
+  };
+  const files = walkFiles(join(root, "packages"), isSourceFile).filter((file) =>
+    relativePosix(root, file).includes("/src/"),
+  );
+
+  for (const file of files) {
+    const relativeFile = relativePosix(root, file);
+    if (isKnownLeak(relativeFile)) continue;
+    const source = readFileSync(file, "utf8");
+    for (const specifier of parseImports(source)) {
+      const target = classifyLayeringTarget(
+        root,
+        file,
+        specifier,
+        packageNamesByLayer,
+      );
+      if (target) {
+        issues.push({
+          code: "domain-code-in-framework-package",
+          severity: "fail",
+          file: relativeFile,
+          detail: `packages/** must not import ${target} code (imports "${specifier}")`,
+        });
+      }
     }
   }
   return issues;

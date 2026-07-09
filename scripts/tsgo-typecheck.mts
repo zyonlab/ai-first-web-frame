@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const roots = ["apps", "fragments", "packages", "tools"];
+const roots = ["apps", "domains", "fragments", "packages", "tools"];
 const projects: string[] = [];
 
 for (const root of roots) {

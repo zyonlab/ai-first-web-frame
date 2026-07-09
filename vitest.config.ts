@@ -17,6 +17,7 @@ export default defineConfig({
         "./packages/design-tokens/src/index.ts",
       ),
       "@mvp/interaction": pathFromRoot("./packages/interaction/src/index.ts"),
+      "@mvp/islands": pathFromRoot("./packages/islands/src/index.ts"),
       "@mvp/trade-client": pathFromRoot("./packages/trade-client/src/index.ts"),
       // Trade-demo patch-only fragment entry points (pure DOM-patch functions,
       // page-trade bundles them into the realtime hydration layer).
@@ -52,6 +53,14 @@ export default defineConfig({
       ),
       "@mvp/runtime": pathFromRoot("./packages/runtime/src/index.ts"),
       "@mvp/storage": pathFromRoot("./packages/storage/src/index.ts"),
+      "@mvp/store": pathFromRoot("./packages/store/src/index.ts"),
+      "@mvp/trade-chart": pathFromRoot("./domains/trade-chart/src/index.ts"),
+      "@mvp/trade-contracts": pathFromRoot(
+        "./domains/trade-contracts/src/index.ts",
+      ),
+      "@mvp/trade-data": pathFromRoot("./domains/trade-data/src/index.ts"),
+      "@mvp/trade-prefs": pathFromRoot("./domains/trade-prefs/src/index.ts"),
+      "@mvp/trade-theme": pathFromRoot("./domains/trade-theme/src/index.ts"),
       "@mvp/ui/AppNav": pathFromRoot("./packages/ui/src/AppNav/index.ts"),
       "@mvp/ui/shadcn": pathFromRoot("./packages/ui/src/shadcn/index.ts"),
       "@mvp/ui": pathFromRoot("./packages/ui/src/index.ts"),
@@ -74,6 +83,8 @@ export default defineConfig({
     // forks pool instead of relying on the default.
     pool: "forks",
     include: [
+      "domains/**/*.test.ts",
+      "domains/**/*.test.tsx",
       "packages/**/*.test.ts",
       "packages/**/*.test.tsx",
       "tools/**/*.test.ts",
