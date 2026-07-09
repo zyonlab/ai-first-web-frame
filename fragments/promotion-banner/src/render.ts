@@ -110,6 +110,8 @@ export function createPromotionFallback(reason: string) {
     metadata: {
       name: promotionBannerManifest.name,
       version: promotionBannerManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

@@ -173,6 +173,8 @@ export function createTradesFeedFallback(reason: string) {
     metadata: {
       name: tradesFeedManifest.name,
       version: tradesFeedManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

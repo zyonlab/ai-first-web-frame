@@ -150,6 +150,8 @@ export function createFundingBarFallback(reason: string) {
     metadata: {
       name: fundingBarManifest.name,
       version: fundingBarManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

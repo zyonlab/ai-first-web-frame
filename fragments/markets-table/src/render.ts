@@ -187,6 +187,8 @@ export function createMarketsTableFallback(reason: string) {
     metadata: {
       name: marketsTableManifest.name,
       version: marketsTableManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

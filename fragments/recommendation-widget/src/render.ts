@@ -104,6 +104,8 @@ export function createRecommendationFallback(reason: string) {
     metadata: {
       name: recommendationWidgetManifest.name,
       version: recommendationWidgetManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

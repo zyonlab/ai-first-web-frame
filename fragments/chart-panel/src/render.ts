@@ -271,6 +271,8 @@ export function createChartPanelFallback(
     metadata: {
       name: chartPanelManifest.name,
       version: chartPanelManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

@@ -9,13 +9,17 @@ import {
   DataDependencySchema,
   FragmentManifestSchema,
   FragmentRegistrySchema,
+  FragmentRenderResponseSchema,
   I18nManifestSchema,
   loadDefaultBudget,
   mergeBudget,
+  normalizeRenderStrategy,
   OptimizationFindingSchema,
   PageManifestSchema,
   PerformanceBudgetSchema,
+  parseFragmentRenderRequest,
   ReleaseManifestSchema,
+  RenderStrategySchema,
   RequestContextSchema,
   RequestPolicySchema,
   StoragePolicySchema,
@@ -261,5 +265,80 @@ describe("@mvp/contracts", () => {
         recommendation: "dedupe through @mvp/data",
       }).category,
     ).toBe("network");
+  });
+
+  it("accepts ttl-cache as canonical strategy and keeps isr as deprecated alias", () => {
+    expect(RenderStrategySchema.parse("ttl-cache")).toBe("ttl-cache");
+    expect(RenderStrategySchema.parse("isr")).toBe("isr");
+    expect(normalizeRenderStrategy("isr")).toBe("ttl-cache");
+    expect(normalizeRenderStrategy("ttl-cache")).toBe("ttl-cache");
+    expect(normalizeRenderStrategy("dynamic-ssr")).toBe("dynamic-ssr");
+    expect(normalizeRenderStrategy("cached-ssr")).toBe("cached-ssr");
+    expect(normalizeRenderStrategy("static")).toBe("static");
+  });
+
+  it("marks fallback render responses via metadata.fallback", () => {
+    const response = {
+      html: "<section>ok</section>",
+      assets: { js: [], css: [] },
+      cache: { ttl: 0, tags: [] },
+      metadata: { name: "promotion-banner", version: "0.1.0" },
+    };
+    // Absent flag = not a fallback (backwards compatible).
+    expect(
+      FragmentRenderResponseSchema.parse(response).metadata.fallback,
+    ).toBeUndefined();
+    expect(
+      FragmentRenderResponseSchema.parse({
+        ...response,
+        metadata: { ...response.metadata, fallback: true },
+      }).metadata.fallback,
+    ).toBe(true);
+    expect(() =>
+      FragmentRenderResponseSchema.parse({
+        ...response,
+        metadata: { ...response.metadata, fallback: "yes" },
+      }),
+    ).toThrow();
+  });
+
+  it("parses well-formed /render bodies strictly and adapts partial envelopes", () => {
+    const strict = parseFragmentRenderRequest({
+      ctx,
+      props: { scene: "home" },
+    });
+    expect(strict.ok).toBe(true);
+    if (strict.ok) {
+      expect(strict.strict).toBe(true);
+      expect(strict.request.props).toEqual({ scene: "home" });
+    }
+
+    // Partial envelopes (missing props / subset ctx) are adapted, not rejected:
+    // fragments own graceful degradation for missing props.
+    for (const body of [
+      {},
+      { props: { scene: "home" } },
+      { ctx: {} },
+      { ctx: { locale: "en-US", traceId: "e2e-trace" } },
+      undefined,
+    ]) {
+      const lenient = parseFragmentRenderRequest(body);
+      expect(lenient.ok).toBe(true);
+      if (lenient.ok) expect(lenient.strict).toBe(false);
+    }
+  });
+
+  it("rejects malformed /render envelopes with schema-naming issues", () => {
+    for (const body of [
+      { ctx: "nope" },
+      { props: 42 },
+      [],
+      "html",
+      { ctx: { locale: 5 } },
+    ]) {
+      const parsed = parseFragmentRenderRequest(body);
+      expect(parsed.ok).toBe(false);
+      if (!parsed.ok) expect(parsed.issues.length).toBeGreaterThan(0);
+    }
   });
 });

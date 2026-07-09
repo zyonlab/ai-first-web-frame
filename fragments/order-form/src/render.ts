@@ -194,6 +194,8 @@ export function createOrderFormFallback(reason: string) {
     metadata: {
       name: orderFormManifest.name,
       version: orderFormManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

@@ -6,6 +6,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { openOrdersBudget } from "../src/budget";
 import { validateOpenOrdersManifest } from "../src/manifest";
+import { createOpenOrdersFallback } from "../src/render";
 import { buildServer } from "../src/server";
 
 afterEach(() => {
@@ -151,5 +152,25 @@ describe("open-orders fragment service", () => {
     const names = exported[0].nodes.map((node) => node.name);
     expect(names).toContain("request:/render");
     expect(names).toContain("render:open-orders");
+  });
+
+  it("/render rejects a malformed envelope with a structured 400", async () => {
+    const server = buildServer();
+    const response = await server.inject({
+      method: "POST",
+      url: "/render",
+      payload: { ctx: "not-an-object" },
+    });
+    expect(response.statusCode).toBe(400);
+    const body = response.json();
+    expect(body.error.code).toBe("invalid-render-request");
+    expect(Array.isArray(body.error.issues)).toBe(true);
+    expect(body.error.issues.length).toBeGreaterThan(0);
+  });
+
+  it("stamps metadata.fallback on the degraded render path", () => {
+    const fallback = createOpenOrdersFallback("test-reason");
+    expect(fallback.metadata.fallback).toBe(true);
+    expect(fallback.html).toContain('data-fallback="true"');
   });
 });

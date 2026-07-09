@@ -6,6 +6,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { orderFormBudget } from "../src/budget";
 import { validateOrderFormManifest } from "../src/manifest";
+import { createOrderFormFallback } from "../src/render";
 import { buildServer } from "../src/server";
 
 afterEach(() => {
@@ -134,5 +135,25 @@ describe("order-form fragment service", () => {
       scope: "fragment",
       maxFragmentLatencyMs: 200,
     });
+  });
+
+  it("/render rejects a malformed envelope with a structured 400", async () => {
+    const server = buildServer();
+    const response = await server.inject({
+      method: "POST",
+      url: "/render",
+      payload: { ctx: "not-an-object" },
+    });
+    expect(response.statusCode).toBe(400);
+    const body = response.json();
+    expect(body.error.code).toBe("invalid-render-request");
+    expect(Array.isArray(body.error.issues)).toBe(true);
+    expect(body.error.issues.length).toBeGreaterThan(0);
+  });
+
+  it("stamps metadata.fallback on the degraded render path", () => {
+    const fallback = createOrderFormFallback("test-reason");
+    expect(fallback.metadata.fallback).toBe(true);
+    expect(fallback.html).toContain('data-fallback="true"');
   });
 });

@@ -187,6 +187,8 @@ export function createOrderBookFallback(reason: string) {
     metadata: {
       name: orderBookManifest.name,
       version: orderBookManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }
