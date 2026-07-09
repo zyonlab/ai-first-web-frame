@@ -23,6 +23,8 @@
     "e2e": "pnpm exec playwright test",
     "smoke": "tsx scripts/docker-smoke.mts",
     "affected": "tsx scripts/affected.mts",
+    "graph": "tsx scripts/query-registry.mts",
+    "mcp:devx": "tsx tools/mcp-devx/src/server.mts",
     "register:fragment": "tsx scripts/register-fragment.mts",
     "mount:slot": "tsx scripts/mount-slot.mts",
     "promote:fragment": "tsx scripts/promote-fragment.mts",
