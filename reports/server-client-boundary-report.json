@@ -9,6 +9,7 @@
     "apps/page-home/app/page.tsx",
     "apps/page-home/next-env.d.ts",
     "apps/page-home/src/budget.ts",
+    "apps/page-home/src/fragmentSlots.gen.ts",
     "apps/page-home/src/fragmentSlots.ts",
     "apps/page-home/src/interactionContracts.ts",
     "apps/page-home/src/manifest.ts",

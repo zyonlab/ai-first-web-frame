@@ -37,13 +37,24 @@ pnpm monorepo for an AI-native micro-frontend framework. Shell gateway (4100) co
    Accept: `"status": "registered"`; rerun prints `"action": "unchanged"` (idempotent).
    Env override convention: `PRICE_PANEL_URL` rewrites serviceUrl/manifestUrl at runtime.
 4. **Mount** the fragment into a page manifest slot:
-   `pnpm exec tsx scripts/mount-slot.mts --page page-home --slot pricePanel --fragment price-panel --strategy dynamic-ssr --channel canary --timeout-ms 200`
+   `pnpm exec tsx scripts/mount-slot.mts --page page-home --slot pricePanel --fragment price-panel --strategy dynamic-ssr --channel canary --timeout-ms 200 [--props <json>] [--cache-policy <json>] [--data-dependencies <json-array>] [--static-html <string>] [--required]`
    Accept: `"status": "mounted"` and empty `warnings`. Unmount with `--remove` instead of `--fragment ...`.
    Mounting a fragment that is not in the fragment registry fails (`"status": "failed"`, no write);
    register it first, or pass `--allow-unregistered` to warn-and-proceed (`--remove` is unaffected).
-   Then wire the slot into the page's `src/fragmentSlots.ts` fetch list and page tests.
-   `pnpm test`/`pnpm verify` now catch `manifest.slots.json` vs. runtime slots array drift per page
-   (`@mvp/registry`'s `packages/registry/src/slots.ts` `diffManifestAgainstRuntime` + each `tests/manifestSync.test.ts`).
+   **Status: codegen piloted on page-home (P2).** For page-home, `mount-slot` now also
+   regenerates `src/fragmentSlots.gen.ts` (a `FragmentSlotDefinition[]` built straight from
+   `manifest.slots.json`) after every successful mount/unmount — no hand-editing
+   `fragmentSlots.ts`'s slot array. Run `mount-slot --page <page> --check` (writes nothing) to
+   verify the gen file is still in sync; `pnpm verify:manifest-gen` runs this for every page that
+   has a `.gen.ts` file and is wired into `pnpm verify`. `page-product`, `page-markets`,
+   `page-portfolio`, and `page-trade` are **not yet on this path** — for those, still hand-wire
+   the slot into the page's `src/fragmentSlots.ts` fetch list and JSX (`<FragmentSlot>` from
+   `@mvp/runtime/react` is available to use there too, but the page's `fragmentSlots.ts` isn't
+   generated yet) and page tests.
+   `pnpm test`/`pnpm verify` catch `manifest.slots.json` vs. runtime slots array drift per hand-wired
+   page (`@mvp/registry`'s `packages/registry/src/slots.ts` `diffManifestAgainstRuntime` + each
+   `tests/manifestSync.test.ts`); page-home's gen file makes that class of drift structurally
+   impossible instead of merely detected.
 5. **Verify** the whole repo (typecheck, lint, format, tests, build, 6 audits; writes `reports/`):
    `pnpm verify`
    Accept: exit 0. Never ship with a failing audit or budget.

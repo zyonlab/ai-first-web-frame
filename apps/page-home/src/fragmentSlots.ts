@@ -10,9 +10,11 @@ import {
   executeFragmentSlots,
   type FragmentSlotDefinition,
   type FragmentSlotResult,
+  type FragmentSlotsExecution,
   type PageHealth,
   type SchedulerHint,
 } from "@mvp/runtime";
+import { fragmentSlots as generatedHomeSlots } from "./fragmentSlots.gen";
 
 const FEATURED_CONTENT_ID = "home-featured-content";
 
@@ -41,6 +43,10 @@ export type HomeFragmentHtml = {
     hints: SchedulerHint[];
   };
   traceLog: string;
+  // Raw scheduler output, keyed by slot name — feeds `<FragmentSlot>`
+  // (`@mvp/runtime/react`) directly so `app/page.tsx` never hand-writes a
+  // per-slot `dangerouslySetInnerHTML` block (refactor plan §3.3).
+  execution: FragmentSlotsExecution;
 };
 
 type FetchFragmentSlotsOptions = {
@@ -50,53 +56,23 @@ type FetchFragmentSlotsOptions = {
 };
 
 /**
- * The page-home runtime slots array, factored out of `fetchHomeFragmentSlots`
- * so it can be diffed against `manifest.slots.json` without making a real
- * network call (refactor plan §3.4 drift check; see
- * `apps/page-home/tests/manifestSync.test.ts`).
+ * The page-home runtime slots array. The static shape (fragment, channel,
+ * strategy, props, cachePolicy, dataDependencies, staticHtml, required) is
+ * generated from `manifest.slots.json` by `scripts/mount-slot.mts`
+ * (refactor plan §3.2 — see `./fragmentSlots.gen.ts`, regenerate via
+ * `pnpm exec tsx scripts/mount-slot.mts --page page-home --slot <name>
+ * --fragment <fragment> [...flags]`); this wrapper only adds the one thing
+ * that isn't a manifest fact — the per-request timeout override callers pass
+ * to `fetchHomeFragmentSlots` (tests use a short timeout to keep failure
+ * cases fast). Static slots never fetch over the network, so they never
+ * carry a timeout.
  */
 export function buildHomeSlotDefinitions(
   timeoutMs = 200,
 ): FragmentSlotDefinition[] {
-  return [
-    {
-      name: "staticEditorial",
-      fragment: "static-editorial-note",
-      strategy: "static",
-      staticHtml:
-        '<section data-fragment="static-editorial-note" data-render-strategy="static"><h2>Static SSG sample</h2><p>This editorial block is emitted without a runtime fragment service call.</p></section>',
-    },
-    {
-      name: "promotion",
-      fragment: "promotion-banner",
-      channel: "stable",
-      strategy: "cached-ssr",
-      timeoutMs,
-      // Required: if the promotion fragment fails the whole page is reported
-      // as unhealthy (a required capability is missing), not merely degraded.
-      required: true,
-      // Depends on the shared featured-content data node, so the scheduler
-      // resolves that data once and gates this slot behind it.
-      dataDependencies: [FEATURED_CONTENT_ID],
-      props: { scene: "home", campaignId: "summer" },
-      cachePolicy: {
-        ttl: 60,
-        tags: ["promotion", "home"],
-        vary: ["tenant", "locale", "experiment", "props"],
-      },
-    },
-    {
-      name: "recommendations",
-      fragment: "recommendation-widget",
-      channel: "stable",
-      strategy: "dynamic-ssr",
-      timeoutMs,
-      // Optional: a failure here only degrades the page and renders a
-      // fallback; it never marks the page unhealthy.
-      required: false,
-      props: { scene: "home", limit: 3 },
-    },
-  ];
+  return generatedHomeSlots.map((slot) =>
+    slot.strategy === "static" ? slot : { ...slot, timeoutMs },
+  );
 }
 
 export async function fetchHomeFragmentSlots({
@@ -197,6 +173,7 @@ export async function fetchHomeFragmentSlots({
       hints: execution.hints,
     },
     traceLog: trace.toDependencyGraphLog(),
+    execution,
   };
 }
 

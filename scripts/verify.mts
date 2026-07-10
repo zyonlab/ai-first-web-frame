@@ -5,6 +5,9 @@ const commands = [
   { cmd: "pnpm", args: ["typecheck"], timeoutMs: 60_000 },
   { cmd: "pnpm", args: ["lint"], timeoutMs: 60_000 },
   { cmd: "pnpm", args: ["check"], timeoutMs: 60_000 },
+  // Refactor plan §3.4/§3.2: fails the same way a lint error would when a
+  // page's `fragmentSlots.gen.ts` has drifted from `manifest.slots.json`.
+  { cmd: "pnpm", args: ["verify:manifest-gen"], timeoutMs: 60_000 },
   { cmd: "pnpm", args: ["test"], timeoutMs: 60_000 },
   { cmd: "pnpm", args: ["build"], timeoutMs: 120_000 },
   { cmd: "pnpm", args: ["audit:similarity"], timeoutMs: 60_000 },

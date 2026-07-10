@@ -1,23 +1,11 @@
+import { FragmentSlot } from "@mvp/runtime/react";
 import { headers } from "next/headers";
-import type { ReactNode } from "react";
 import { fetchHomeFragmentSlots } from "../src/fragmentSlots";
 import { computeRealtimeSnapshot } from "../src/realtimeInsights";
 import { homeSeoCopy } from "../src/render";
 import { RealtimeInsights } from "./RealtimeInsights";
 
 export const dynamic = "force-dynamic";
-
-function FragmentHtml({
-  html,
-  fallback,
-}: {
-  html: string | null;
-  fallback: ReactNode;
-}) {
-  if (!html) return fallback;
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: fragment HTML is returned by trusted internal SSR fragment services.
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
-}
 
 export default async function HomePage() {
   const fragmentHtml = await fetchHomeFragmentSlots({
@@ -83,16 +71,18 @@ export default async function HomePage() {
         <h2>Request trace</h2>
         <pre>{fragmentHtml.traceLog}</pre>
       </section>
-      <FragmentHtml
-        html={fragmentHtml.staticEditorial}
+      <FragmentSlot
+        name="staticEditorial"
+        execution={fragmentHtml.execution}
         fallback={
           <section data-fragment="static-editorial-note" data-fallback="true">
             Static editorial is unavailable.
           </section>
         }
       />
-      <FragmentHtml
-        html={fragmentHtml.promotion}
+      <FragmentSlot
+        name="promotion"
+        execution={fragmentHtml.execution}
         fallback={
           <section data-fragment="promotion-banner" data-fallback="true">
             Featured offers are loading.
@@ -107,8 +97,9 @@ export default async function HomePage() {
           products without requiring client JavaScript.
         </p>
       </section>
-      <FragmentHtml
-        html={fragmentHtml.recommendations}
+      <FragmentSlot
+        name="recommendations"
+        execution={fragmentHtml.execution}
         fallback={
           <section data-fragment="recommendation-widget" data-fallback="true">
             Recommendations are loading.

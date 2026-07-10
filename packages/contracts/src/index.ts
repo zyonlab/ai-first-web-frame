@@ -389,6 +389,11 @@ export const PageManifestSchema = z.object({
       staticHtml: z.string().optional(),
       cachePolicy: CachePolicySchema.optional(),
       dependsOn: z.array(z.string()).default([]).optional(),
+      // ids referencing the page's data-source registry (mirrors
+      // `@mvp/runtime`'s `FragmentSlotDefinition.dataDependencies`; refactor
+      // plan §3.1 — manifest-driven composition needs this to codegen the
+      // scheduler's data-dependency graph, not just the fragment slot list).
+      dataDependencies: z.array(z.string()).default([]).optional(),
       required: z.boolean().optional(),
     }),
   ),
