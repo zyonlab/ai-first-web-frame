@@ -10,6 +10,7 @@ import {
 import { createRequestContext } from "@mvp/request-context";
 import {
   executeFragmentSlots,
+  type FragmentSlotDefinition,
   type FragmentSlotResult,
   type PageHealth,
   type SchedulerHint,
@@ -76,6 +77,125 @@ type FetchTradeFragmentSlotsOptions = {
 export function normalizeSymbol(symbol: string | undefined | null): string {
   const trimmed = (symbol ?? "").trim();
   return (trimmed === "" ? "BTC" : trimmed).toUpperCase();
+}
+
+/**
+ * The page-trade runtime slots array, factored out of
+ * `fetchTradeFragmentSlots` so it can be diffed against
+ * `manifest.slots.json` without making a real network call (refactor plan
+ * §3.4 drift check; see `apps/page-trade/tests/manifestSync.test.ts`). `props`
+ * only
+ * carries the per-request symbol and is outside the manifest-comparable
+ * contract, so a default symbol is fine for the drift check.
+ */
+export function buildTradeSlotDefinitions(
+  timeoutMs = 200,
+  props: { symbol: string } = { symbol: "BTC" },
+): FragmentSlotDefinition[] {
+  return [
+    {
+      name: "marketHeader",
+      fragment: "market-header",
+      channel: "canary",
+      strategy: "cached-ssr",
+      timeoutMs,
+      // Required: the header carries mark/oracle/funding — if it fails the
+      // page is reported unhealthy, not merely degraded.
+      required: true,
+      props,
+      cachePolicy: {
+        ttl: 5,
+        tags: ["ticker", "trade"],
+        vary: ["tenant", "locale", "props"],
+      },
+    },
+    {
+      name: "chart",
+      fragment: "chart-panel",
+      channel: "canary",
+      strategy: "isr",
+      timeoutMs,
+      required: false,
+      props,
+      cachePolicy: {
+        ttl: 60,
+        tags: ["candles", "trade"],
+        vary: ["locale", "props"],
+      },
+    },
+    {
+      name: "book",
+      fragment: "order-book",
+      channel: "canary",
+      strategy: "dynamic-ssr",
+      timeoutMs,
+      required: false,
+      props,
+    },
+    {
+      name: "trades",
+      fragment: "trades-feed",
+      channel: "canary",
+      strategy: "dynamic-ssr",
+      timeoutMs,
+      required: false,
+      props,
+    },
+    {
+      name: "orderForm",
+      fragment: "order-form",
+      channel: "canary",
+      strategy: "dynamic-ssr",
+      timeoutMs,
+      required: false,
+      // Shares the account read with positions + account-bar.
+      dataDependencies: [ACCOUNT_DATA_ID],
+      props,
+    },
+    {
+      name: "positions",
+      fragment: "positions-table",
+      channel: "canary",
+      strategy: "dynamic-ssr",
+      timeoutMs,
+      required: false,
+      dataDependencies: [ACCOUNT_DATA_ID],
+      props,
+    },
+    {
+      name: "openOrders",
+      fragment: "open-orders",
+      channel: "canary",
+      strategy: "dynamic-ssr",
+      timeoutMs,
+      required: false,
+      props,
+    },
+    {
+      name: "accountBar",
+      fragment: "account-bar",
+      channel: "canary",
+      strategy: "dynamic-ssr",
+      timeoutMs,
+      required: false,
+      dataDependencies: [ACCOUNT_DATA_ID],
+      props,
+    },
+    {
+      name: "fundingBar",
+      fragment: "funding-bar",
+      channel: "canary",
+      strategy: "cached-ssr",
+      timeoutMs,
+      required: false,
+      props,
+      cachePolicy: {
+        ttl: 30,
+        tags: ["funding", "trade"],
+        vary: ["locale", "props"],
+      },
+    },
+  ];
 }
 
 export async function fetchTradeFragmentSlots({
@@ -147,110 +267,7 @@ export async function fetchTradeFragmentSlots({
       accountReads.second = second;
       return first.data;
     },
-    slots: [
-      {
-        name: "marketHeader",
-        fragment: "market-header",
-        channel: "canary",
-        strategy: "cached-ssr",
-        timeoutMs,
-        // Required: the header carries mark/oracle/funding — if it fails the
-        // page is reported unhealthy, not merely degraded.
-        required: true,
-        props,
-        cachePolicy: {
-          ttl: 5,
-          tags: ["ticker", "trade"],
-          vary: ["tenant", "locale", "props"],
-        },
-      },
-      {
-        name: "chart",
-        fragment: "chart-panel",
-        channel: "canary",
-        strategy: "isr",
-        timeoutMs,
-        required: false,
-        props,
-        cachePolicy: {
-          ttl: 60,
-          tags: ["candles", "trade"],
-          vary: ["locale", "props"],
-        },
-      },
-      {
-        name: "book",
-        fragment: "order-book",
-        channel: "canary",
-        strategy: "dynamic-ssr",
-        timeoutMs,
-        required: false,
-        props,
-      },
-      {
-        name: "trades",
-        fragment: "trades-feed",
-        channel: "canary",
-        strategy: "dynamic-ssr",
-        timeoutMs,
-        required: false,
-        props,
-      },
-      {
-        name: "orderForm",
-        fragment: "order-form",
-        channel: "canary",
-        strategy: "dynamic-ssr",
-        timeoutMs,
-        required: false,
-        // Shares the account read with positions + account-bar.
-        dataDependencies: [ACCOUNT_DATA_ID],
-        props,
-      },
-      {
-        name: "positions",
-        fragment: "positions-table",
-        channel: "canary",
-        strategy: "dynamic-ssr",
-        timeoutMs,
-        required: false,
-        dataDependencies: [ACCOUNT_DATA_ID],
-        props,
-      },
-      {
-        name: "openOrders",
-        fragment: "open-orders",
-        channel: "canary",
-        strategy: "dynamic-ssr",
-        timeoutMs,
-        required: false,
-        props,
-      },
-      {
-        name: "accountBar",
-        fragment: "account-bar",
-        channel: "canary",
-        strategy: "dynamic-ssr",
-        timeoutMs,
-        required: false,
-        dataDependencies: [ACCOUNT_DATA_ID],
-        props,
-      },
-      {
-        name: "fundingBar",
-        fragment: "funding-bar",
-        channel: "canary",
-        strategy: "cached-ssr",
-        timeoutMs,
-        required: false,
-        props,
-        cachePolicy: {
-          ttl: 30,
-          tags: ["funding", "trade"],
-          vary: ["locale", "props"],
-        },
-      },
-    ],
+    slots: buildTradeSlotDefinitions(timeoutMs, props),
   });
 
   const slots = execution.slots;

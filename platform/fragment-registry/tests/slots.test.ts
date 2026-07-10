@@ -3,6 +3,8 @@ import {
   applyMountSlot,
   applyUnmountSlot,
   checkFragmentRegistered,
+  diffManifestAgainstRuntime,
+  type RuntimeSlotContract,
   validatePageSlots,
 } from "../src/slots";
 
@@ -134,5 +136,107 @@ describe("checkFragmentRegistered", () => {
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toContain("price-panel");
     expect(result.warnings[0]).toContain("--allow-unregistered");
+  });
+});
+
+describe("diffManifestAgainstRuntime", () => {
+  const manifestSlots = [
+    {
+      name: "promotion",
+      fragment: "promotion-banner",
+      channel: "stable",
+      strategy: "cached-ssr",
+      timeoutMs: 200,
+      required: true,
+    },
+    {
+      name: "price-panel",
+      fragment: "price-panel",
+      channel: "stable",
+      required: false,
+      reserved: true,
+    },
+  ];
+
+  const runtimeSlots: RuntimeSlotContract[] = [
+    {
+      name: "promotion",
+      fragment: "promotion-banner",
+      channel: "stable",
+      strategy: "cached-ssr",
+      timeoutMs: 200,
+      required: true,
+    },
+  ];
+
+  it("reports no drift when a reserved manifest slot is correctly absent from the runtime array", () => {
+    expect(diffManifestAgainstRuntime(manifestSlots, runtimeSlots)).toEqual([]);
+  });
+
+  it("flags drift when a reserved manifest slot is wired into the runtime array", () => {
+    const result = diffManifestAgainstRuntime(manifestSlots, [
+      ...runtimeSlots,
+      { name: "price-panel", fragment: "price-panel", channel: "stable" },
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toContain("price-panel");
+    expect(result[0]).toContain("reserved");
+  });
+
+  it("flags drift on a required mismatch", () => {
+    const result = diffManifestAgainstRuntime(manifestSlots, [
+      { ...runtimeSlots[0], required: false },
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toContain("promotion");
+    expect(result[0]).toContain("required");
+  });
+
+  it("flags drift when a non-reserved manifest slot has no runtime entry", () => {
+    const result = diffManifestAgainstRuntime(manifestSlots, []);
+    expect(result).toContain(
+      'slot "promotion" is declared in the manifest but missing from the runtime slots array',
+    );
+  });
+
+  it("flags drift when a runtime slot has no corresponding manifest entry", () => {
+    const result = diffManifestAgainstRuntime(manifestSlots, [
+      ...runtimeSlots,
+      { name: "recommendations", fragment: "recommendation-widget" },
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toContain("recommendations");
+    expect(result[0]).toContain("missing from the manifest");
+  });
+
+  it("reports no drift for fully matching slots, applying runtime defaults for omitted fields", () => {
+    const matchingManifest = [
+      { name: "staticEditorial", fragment: "static-editorial-note" },
+    ];
+    const matchingRuntime: RuntimeSlotContract[] = [
+      { name: "staticEditorial", fragment: "static-editorial-note" },
+    ];
+    expect(
+      diffManifestAgainstRuntime(matchingManifest, matchingRuntime),
+    ).toEqual([]);
+  });
+
+  it("flags drift on fragment/channel/strategy/timeoutMs mismatches", () => {
+    const result = diffManifestAgainstRuntime(
+      [
+        {
+          name: "promotion",
+          fragment: "promotion-banner",
+          channel: "canary",
+          strategy: "dynamic-ssr",
+          timeoutMs: 500,
+          required: true,
+        },
+      ],
+      [{ ...runtimeSlots[0] }],
+    );
+    expect(result.some((message) => message.includes("channel"))).toBe(true);
+    expect(result.some((message) => message.includes("strategy"))).toBe(true);
+    expect(result.some((message) => message.includes("timeoutMs"))).toBe(true);
   });
 });

@@ -3,6 +3,7 @@ import { createRequestTrace } from "@mvp/observability";
 import { createRequestContext } from "@mvp/request-context";
 import {
   executeFragmentSlots,
+  type FragmentSlotDefinition,
   type FragmentSlotResult,
   type PageHealth,
   type SchedulerHint,
@@ -45,6 +46,49 @@ const PORTFOLIO_SLOT_KEYS: PortfolioSlotKey[] = [
 ];
 
 /**
+ * The page-portfolio runtime slots array, factored out of
+ * `fetchPortfolioFragmentSlots` so it can be diffed against
+ * `manifest.slots.json` without making a real network call (refactor plan
+ * §3.4 drift check; see `apps/page-portfolio/tests/manifestSync.test.ts`).
+ */
+export function buildPortfolioSlotDefinitions(
+  timeoutMs = 200,
+): FragmentSlotDefinition[] {
+  return [
+    {
+      name: "portfolioSummary",
+      fragment: "portfolio-summary",
+      channel: "canary",
+      strategy: "dynamic-ssr",
+      timeoutMs,
+      // Required: equity/margin/PnL is the page headline — if it fails the
+      // page is reported degraded/unhealthy, not silently empty.
+      required: true,
+      cachePolicy: {
+        ttl: 0,
+        tags: ["portfolio", "account"],
+        vary: ["tenant", "props"],
+      },
+    },
+    {
+      name: "pnlChart",
+      fragment: "pnl-chart",
+      channel: "canary",
+      strategy: "isr",
+      timeoutMs,
+      // Optional: a missing chart degrades to a placeholder without failing
+      // the page.
+      required: false,
+      cachePolicy: {
+        ttl: 60,
+        tags: ["portfolio", "pnl"],
+        vary: ["tenant", "locale", "props"],
+      },
+    },
+  ];
+}
+
+/**
  * Compose the portfolio page's two fragment slots through the runtime
  * scheduler (doc 01 §4.4):
  *
@@ -82,38 +126,7 @@ export async function fetchPortfolioFragmentSlots({
     timeoutMs,
     trace,
     onRequiredFailure: "fallback",
-    slots: [
-      {
-        name: "portfolioSummary",
-        fragment: "portfolio-summary",
-        channel: "canary",
-        strategy: "dynamic-ssr",
-        timeoutMs,
-        // Required: equity/margin/PnL is the page headline — if it fails the
-        // page is reported degraded/unhealthy, not silently empty.
-        required: true,
-        cachePolicy: {
-          ttl: 0,
-          tags: ["portfolio", "account"],
-          vary: ["tenant", "props"],
-        },
-      },
-      {
-        name: "pnlChart",
-        fragment: "pnl-chart",
-        channel: "canary",
-        strategy: "isr",
-        timeoutMs,
-        // Optional: a missing chart degrades to a placeholder without failing
-        // the page.
-        required: false,
-        cachePolicy: {
-          ttl: 60,
-          tags: ["portfolio", "pnl"],
-          vary: ["tenant", "locale", "props"],
-        },
-      },
-    ],
+    slots: buildPortfolioSlotDefinitions(timeoutMs),
   });
 
   const slots = {} as Record<PortfolioSlotKey, string | null>;
