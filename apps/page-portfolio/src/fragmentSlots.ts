@@ -6,9 +6,11 @@ import {
   executeFragmentSlots,
   type FragmentSlotDefinition,
   type FragmentSlotResult,
+  type FragmentSlotsExecution,
   type PageHealth,
   type SchedulerHint,
 } from "@mvp/runtime";
+import { fragmentSlots as generatedPortfolioSlots } from "./fragmentSlots.gen";
 
 /** Slot keys composed on the portfolio page. */
 export type PortfolioSlotKey = "portfolioSummary" | "pnlChart";
@@ -30,6 +32,11 @@ export type PortfolioFragmentHtml = {
     hints: SchedulerHint[];
   };
   traceLog: string;
+  // Raw scheduler output, keyed by slot name — feeds `<FragmentSlot>`
+  // (`@mvp/runtime/react`) directly so `app/portfolio/page.tsx` never
+  // hand-writes a per-slot `dangerouslySetInnerHTML` block (refactor plan
+  // §3.3).
+  execution: FragmentSlotsExecution;
 };
 
 type FetchPortfolioFragmentSlotsOptions = {
@@ -46,46 +53,24 @@ const PORTFOLIO_SLOT_KEYS: PortfolioSlotKey[] = [
 ];
 
 /**
- * The page-portfolio runtime slots array, factored out of
- * `fetchPortfolioFragmentSlots` so it can be diffed against
+ * The page-portfolio runtime slots array. The static shape (fragment,
+ * channel, strategy, cachePolicy, required) is generated from
+ * `manifest.slots.json` by `scripts/mount-slot.mts` (refactor plan §3.2 —
+ * see `./fragmentSlots.gen.ts`, regenerate via `pnpm exec tsx
+ * scripts/mount-slot.mts --page page-portfolio --slot <name> --fragment
+ * <fragment> [...flags]`); this wrapper only adds the one thing that isn't a
+ * manifest fact — the per-request timeout override callers pass to
+ * `fetchPortfolioFragmentSlots` (tests use a short timeout to keep failure
+ * cases fast). Kept as a named export so it can still be diffed against
  * `manifest.slots.json` without making a real network call (refactor plan
  * §3.4 drift check; see `apps/page-portfolio/tests/manifestSync.test.ts`).
  */
 export function buildPortfolioSlotDefinitions(
   timeoutMs = 200,
 ): FragmentSlotDefinition[] {
-  return [
-    {
-      name: "portfolioSummary",
-      fragment: "portfolio-summary",
-      channel: "canary",
-      strategy: "dynamic-ssr",
-      timeoutMs,
-      // Required: equity/margin/PnL is the page headline — if it fails the
-      // page is reported degraded/unhealthy, not silently empty.
-      required: true,
-      cachePolicy: {
-        ttl: 0,
-        tags: ["portfolio", "account"],
-        vary: ["tenant", "props"],
-      },
-    },
-    {
-      name: "pnlChart",
-      fragment: "pnl-chart",
-      channel: "canary",
-      strategy: "isr",
-      timeoutMs,
-      // Optional: a missing chart degrades to a placeholder without failing
-      // the page.
-      required: false,
-      cachePolicy: {
-        ttl: 60,
-        tags: ["portfolio", "pnl"],
-        vary: ["tenant", "locale", "props"],
-      },
-    },
-  ];
+  return generatedPortfolioSlots.map((slot) =>
+    slot.strategy === "static" ? slot : { ...slot, timeoutMs },
+  );
 }
 
 /**
@@ -145,6 +130,7 @@ export async function fetchPortfolioFragmentSlots({
       hints: execution.hints,
     },
     traceLog: trace.toDependencyGraphLog(),
+    execution,
   };
 }
 

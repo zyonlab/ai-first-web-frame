@@ -1,3 +1,4 @@
+import { FragmentSlot } from "@mvp/runtime/react";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import {
@@ -8,18 +9,6 @@ import { PORTFOLIO_LAYOUT_CLASS } from "../../src/gridStyles";
 import { portfolioSeoCopy } from "../../src/render";
 
 export const dynamic = "force-dynamic";
-
-function FragmentHtml({
-  html,
-  fallback,
-}: {
-  html: string | null;
-  fallback: ReactNode;
-}) {
-  if (!html) return fallback;
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: fragment HTML is returned by trusted internal SSR fragment services (registry serviceUrl), never user input.
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
-}
 
 /** No-JS-readable fallback for a degraded/absent slot body. */
 function PanelFallback({
@@ -40,7 +29,6 @@ export default async function PortfolioPage() {
   const fragmentHtml = await fetchPortfolioFragmentSlots({
     headers: await headers(),
   });
-  const slots = fragmentHtml.slots;
 
   const diagnosticsList = Object.entries(fragmentHtml.diagnostics) as [
     PortfolioSlotKey,
@@ -64,8 +52,9 @@ export default async function PortfolioPage() {
 
         {/* Overview: equity / margin usage / PnL — request-time SSR fragment. */}
         <div data-area="portfolio-summary" data-slot="portfolioSummary">
-          <FragmentHtml
-            html={slots.portfolioSummary}
+          <FragmentSlot
+            name="portfolioSummary"
+            execution={fragmentHtml.execution}
             fallback={
               <PanelFallback fragment="portfolio-summary">
                 Portfolio summary is loading.
@@ -76,8 +65,9 @@ export default async function PortfolioPage() {
 
         {/* Cumulative PnL chart — ISR fragment (cache-friendly series). */}
         <div data-area="portfolio-chart" data-slot="pnlChart">
-          <FragmentHtml
-            html={slots.pnlChart}
+          <FragmentSlot
+            name="pnlChart"
+            execution={fragmentHtml.execution}
             fallback={
               <PanelFallback fragment="pnl-chart">
                 PnL chart is loading.
