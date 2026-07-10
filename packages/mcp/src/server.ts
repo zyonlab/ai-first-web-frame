@@ -1,16 +1,21 @@
+#!/usr/bin/env node
 /**
- * mcp-devx — a minimal, dependency-free MCP stdio server exposing the framework
- * DevX tools (docs/AI_NATIVE_DEVX.md §7). Implements just enough of the MCP
- * JSON-RPC surface (`initialize`, `tools/list`, `tools/call`) over newline-
- * delimited stdio, so it needs no `@modelcontextprotocol/sdk` dependency.
+ * @mvp/mcp — a minimal, dependency-free MCP stdio server exposing the
+ * framework's DevX tools (docs/AI_NATIVE_DEVX.md §7,
+ * docs/ARCHITECTURE_REFACTOR_PLAN.md §7 item 3). Implements just enough of
+ * the MCP JSON-RPC surface (`initialize`, `tools/list`, `tools/call`) over
+ * newline-delimited stdio, so it needs no `@modelcontextprotocol/sdk`
+ * dependency.
  *
- * Run:  pnpm exec tsx tools/mcp-devx/src/server.mts
- * Wire it into an agent's MCP config as a stdio server with that command.
+ * Run inside this repo:  pnpm mcp   (== pnpm --filter @mvp/mcp start)
+ * Run once published:    npx @mvp/mcp   (the package's `bin`, built by
+ *                         `pnpm --filter @mvp/mcp build`)
+ * Wire either into an agent's MCP config as a stdio server command.
  */
 
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { devxTools } from "./tools.ts";
+import { devxTools } from "./tools";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const TOOLS = devxTools();
@@ -44,7 +49,7 @@ async function handle(msg: RpcMessage): Promise<void> {
     reply(id, {
       protocolVersion: PROTOCOL_VERSION,
       capabilities: { tools: {} },
-      serverInfo: { name: "mcp-devx", version: "0.1.0" },
+      serverInfo: { name: "@mvp/mcp", version: "0.1.0" },
     });
     return;
   }
