@@ -1,7 +1,7 @@
 # Server Client Boundary Report
 
 Status: warn
-Checked files: 235
+Checked files: 236
 
 | Severity | Code | File | Detail |
 | --- | --- | --- | --- |

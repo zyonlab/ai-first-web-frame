@@ -27,6 +27,7 @@
       "@mvp/request-context": ["./packages/request-context/src/index.ts"],
       "@mvp/routes": ["./packages/routes/src/index.ts"],
       "@mvp/runtime": ["./packages/runtime/src/index.ts"],
+      "@mvp/runtime/react": ["./packages/runtime/src/react.tsx"],
       "@mvp/storage": ["./packages/storage/src/index.ts"],
       "@mvp/store": ["./packages/store/src/index.ts"],
       "@mvp/trade-chart": ["./domains/trade-chart/src/index.ts"],

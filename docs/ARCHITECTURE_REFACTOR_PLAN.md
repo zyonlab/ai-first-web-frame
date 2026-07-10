@@ -207,6 +207,55 @@ the only slot declaration, with generated runtime wiring.
 **Gate:** A1 measured — mounting the next new fragment touches 0 hand-edited
 files besides JSX placement; the two known drifts are gone; e2e still green.
 
+**Status: piloted on page-home (P2).** Items 1–3 above are implemented and
+exercised end-to-end on exactly one page, on purpose, to prove the pattern
+before rolling it out further:
+
+- `PageManifestSchema.slots` (`packages/contracts/src/index.ts`) gained
+  `dataDependencies: string[]` (mirroring `@mvp/runtime`'s
+  `FragmentSlotDefinition.dataDependencies`); `props`, `cachePolicy`,
+  `staticHtml`, `dependsOn`, `required` already existed on the schema and now
+  actually get populated by `mount-slot` instead of only living hand-written
+  in `fragmentSlots.ts`.
+- `scripts/mount-slot.mts` gained a codegen step: after every successful
+  mount/unmount it regenerates `apps/<page>/src/fragmentSlots.gen.ts` — a
+  `FragmentSlotDefinition[]` built directly from `manifest.slots.json` (pure
+  transform in `packages/registry/src/codegen.ts`, run through `biome format`
+  before writing so it's always `pnpm check`-clean) — and only touches the
+  file when its content actually changed. A new `--check` flag loads the
+  current manifest, computes what the gen file should be, and diffs it
+  against disk without writing anything, returning `{status: "fresh" |
+  "stale", ...}` and exiting 1 when stale.
+- `<FragmentSlot>` (`packages/runtime/src/react.tsx`, published as
+  `@mvp/runtime/react` so the Node-safe core never pulls React into non-React
+  consumers) replaces the hand-written `<FragmentHtml html fallback>` pattern:
+  `<FragmentSlot name="promotion" execution={execution} fallback={...} />`
+  looks a slot up by name in a full `executeFragmentSlots` result (or accepts
+  an already-resolved `FragmentRenderResponse` directly) and renders
+  `dangerouslySetInnerHTML` or the fallback — byte-for-byte the same rendered
+  output as before.
+- `apps/page-home/src/fragmentSlots.ts` now imports the generated static slot
+  config from `./fragmentSlots.gen.ts` and only hand-writes what isn't a
+  manifest fact: the per-request `timeoutMs` override and the
+  `resolveData`/data-client glue. `apps/page-home/app/page.tsx` uses
+  `<FragmentSlot>` for all three slots instead of a local `FragmentHtml`
+  helper. Rendered output, `data-*` attributes, and every existing test
+  (including `apps/page-home/tests/manifestSync.test.ts`) are unchanged.
+- `pnpm verify:manifest-gen` (`scripts/verify-manifest-gen.mts`) runs
+  `mount-slot --page <page> --check` for every page that already has a
+  `fragmentSlots.gen.ts` (today: page-home only) and is wired into
+  `pnpm verify`'s gate list, so a stale generated file fails CI the same way
+  a lint error would.
+
+**Deliberately not done yet:** `page-product`, `page-markets`,
+`page-portfolio`, and `page-trade` remain fully hand-wired — their
+`fragmentSlots.ts`/`page.tsx` are untouched. Item 4's manifest↔runtime
+drift-check (`diffManifestAgainstRuntime`) still runs unchanged for the
+hand-wired pages; rolling codegen out to them is the next increment, at which
+point their drift checks become redundant with `--check` and can be retired.
+Item 5 (mount-slot hardening) was already shipped in P0 and is unaffected by
+this phase.
+
 ## 4. Delivery plane (🎯B, 🎯C)
 
 ### 4.1 Narrow affected for registry writes

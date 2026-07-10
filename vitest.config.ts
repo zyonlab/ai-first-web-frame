@@ -52,6 +52,7 @@ export default defineConfig({
         "./packages/request-context/src/index.ts",
       ),
       "@mvp/routes": pathFromRoot("./packages/routes/src/index.ts"),
+      "@mvp/runtime/react": pathFromRoot("./packages/runtime/src/react.tsx"),
       "@mvp/runtime": pathFromRoot("./packages/runtime/src/index.ts"),
       "@mvp/storage": pathFromRoot("./packages/storage/src/index.ts"),
       "@mvp/store": pathFromRoot("./packages/store/src/index.ts"),
