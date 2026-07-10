@@ -11,11 +11,13 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { dirname, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   type AffectedPlan,
   affectedFromChangedPaths,
+  type RegistryFileReader,
 } from "../tools/release-tools/src/affected-graph.ts";
 import { loadUnitGraph } from "../tools/release-tools/src/load-graph.ts";
 
@@ -52,13 +54,45 @@ export function changedPaths(base: string, head?: string): string[] {
   return out ? out.split("\n").filter(Boolean) : [];
 }
 
+/** Content of `path` at `ref`, or `undefined` if it didn't exist there. */
+function fileContentAt(ref: string, path: string): string | undefined {
+  const proc = spawnSync("git", ["show", `${ref}:${path}`], {
+    cwd: ROOT,
+    encoding: "utf8",
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  return proc.status === 0 ? proc.stdout : undefined;
+}
+
+/** Current on-disk content of `path`, or `undefined` if it doesn't exist. */
+function workingTreeContent(path: string): string | undefined {
+  const abs = join(ROOT, path);
+  return existsSync(abs) ? readFileSync(abs, "utf8") : undefined;
+}
+
+/**
+ * Builds the §4.1 registry-diff content reader: "before" always comes from
+ * the resolved diff base; "after" comes from `head` when diffing a fixed
+ * range, otherwise from the working tree (matching how `changedPaths` picks
+ * its diff target).
+ */
+function registryFileReader(base: string, head?: string): RegistryFileReader {
+  return (path) => ({
+    before: fileContentAt(base, path),
+    after: head ? fileContentAt(head, path) : workingTreeContent(path),
+  });
+}
+
 export async function computeAffectedPlan(
   base?: string,
   head?: string,
 ): Promise<AffectedPlan> {
   const graph = await loadUnitGraph(ROOT);
-  const paths = changedPaths(resolveBase(base), head);
-  return affectedFromChangedPaths(graph, paths);
+  const resolvedBase = resolveBase(base);
+  const paths = changedPaths(resolvedBase, head);
+  return affectedFromChangedPaths(graph, paths, {
+    getRegistryFileContent: registryFileReader(resolvedBase, head),
+  });
 }
 
 async function main() {
