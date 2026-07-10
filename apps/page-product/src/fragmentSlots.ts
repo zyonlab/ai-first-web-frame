@@ -6,6 +6,7 @@ import {
   executeFragmentSlots,
   type FragmentSlotDefinition,
   type FragmentSlotResult,
+  type FragmentSlotsExecution,
   type PageHealth,
   type SchedulerHint,
 } from "@mvp/runtime";
@@ -13,6 +14,7 @@ import {
   enqueueProductStatsJob,
   getProductStatsWorker,
 } from "./backgroundJobs";
+import { fragmentSlots as generatedProductSlots } from "./fragmentSlots.gen";
 import {
   type RecentlyViewedResult,
   trackRecentlyViewed,
@@ -45,6 +47,11 @@ export type ProductFragmentHtml = {
     stats: { queued: number; running: number; deadLetters: number };
   };
   traceLog: string;
+  // Raw scheduler output, keyed by slot name — feeds `<FragmentSlot>`
+  // (`@mvp/runtime/react`) directly so `app/product/[id]/page.tsx` never
+  // hand-writes a per-slot `dangerouslySetInnerHTML` block (refactor plan
+  // §3.3, additive field mirroring page-home's `execution`).
+  execution: FragmentSlotsExecution;
 };
 
 type FetchProductFragmentSlotsOptions = {
@@ -59,50 +66,28 @@ type FetchProductFragmentSlotsOptions = {
 };
 
 /**
- * The page-product runtime slots array, factored out of
- * `fetchProductFragmentSlots` so it can be diffed against
- * `manifest.slots.json` without making a real network call (refactor plan
- * §3.4 drift check; see `apps/page-product/tests/manifestSync.test.ts`).
+ * The page-product runtime slots array. The static shape (fragment, channel,
+ * strategy, props, cachePolicy, dataDependencies, staticHtml, required) is
+ * generated from `manifest.slots.json` by `scripts/mount-slot.mts` (refactor
+ * plan §3.2 — see `./fragmentSlots.gen.ts`, regenerate via
+ * `pnpm exec tsx scripts/mount-slot.mts --page page-product --slot <name>
+ * --fragment <fragment> [...flags]`); this wrapper only adds the one thing
+ * that isn't a manifest fact — the per-request timeout override callers pass
+ * to `fetchProductFragmentSlots`. Static slots never fetch over the network,
+ * so they never carry a timeout.
  *
  * Deliberately does NOT include `price-panel`: the manifest marks it
  * `reserved: true` because it is hand-rendered as a static aside in
- * `app/product/[id]/page.tsx`, not fetched through the runtime scheduler.
+ * `app/product/[id]/page.tsx`, not fetched through the runtime scheduler —
+ * the codegen in `packages/registry/src/codegen.ts` already drops `reserved`
+ * slots from `fragmentSlots.gen.ts`.
  */
 export function buildProductSlotDefinitions(
   timeoutMs = 200,
 ): FragmentSlotDefinition[] {
-  return [
-    {
-      name: "staticProof",
-      fragment: "static-product-proof",
-      strategy: "static",
-      staticHtml:
-        '<section data-fragment="static-product-proof" data-render-strategy="static"><h2>Static product proof</h2><p>This proof block is safe to prerender as static HTML.</p></section>',
-    },
-    {
-      name: "promotion",
-      fragment: "promotion-banner",
-      channel: "stable",
-      strategy: "isr",
-      timeoutMs,
-      dataDependencies: ["product-promotion"],
-      props: { scene: "product", campaignId: "product-launch" },
-      cachePolicy: {
-        ttl: 300,
-        tags: ["promotion", "product"],
-        vary: ["tenant", "locale", "experiment", "props"],
-      },
-    },
-    {
-      name: "recommendations",
-      fragment: "recommendation-widget",
-      channel: "stable",
-      strategy: "dynamic-ssr",
-      timeoutMs,
-      dataDependencies: ["product-price"],
-      props: { scene: "product", limit: 3 },
-    },
-  ];
+  return generatedProductSlots.map((slot) =>
+    slot.strategy === "static" ? slot : { ...slot, timeoutMs },
+  );
 }
 
 export async function fetchProductFragmentSlots({
@@ -226,5 +211,6 @@ export async function fetchProductFragmentSlots({
       stats: worker.stats(),
     },
     traceLog: trace.toDependencyGraphLog(),
+    execution,
   };
 }
