@@ -348,6 +348,64 @@ declaring a `bus?`/`props.bus` escape hatch, preventing recurrence.
 **Gate:** composed home page streams (shell HTML first byte before slowest slot
 resolves) with e2e-verified fallback semantics unchanged.
 
+**Status: items 2–3 implemented, piloted on page-home only (item 1 — the
+`isr` → `ttl-cache` rename — is out of scope for this phase, already tracked
+as a separate low-value cosmetic follow-up).**
+
+- Item 2: `packages/runtime/src/index.ts` gained `streamFragmentSlots`, which
+  runs the same DAG-aware scheduling `executeFragmentSlots` always has, but
+  returns *immediately* — a `Promise<FragmentRenderResponse>` per declared
+  slot plus one `Promise<FragmentSlotsExecution>` aggregate — instead of one
+  barrier `await`. `executeFragmentSlots` is now built on top of it (awaits
+  `.result`), so the two stay behaviorally identical by construction; every
+  other page's `executeFragmentSlots`/`fetchFragmentSlots` call site is
+  untouched. `packages/runtime/src/react.tsx` gained `<FragmentSlotStream
+  slotPromise fallback>`, an async Server Component that awaits its own
+  slot's promise and renders through the same helper `<FragmentSlot>` uses,
+  so `<Suspense fallback={...}><FragmentSlotStream .../></Suspense>` streams
+  that slot in the moment its own promise settles. `apps/page-home` (the
+  only page touched this phase, matching how P2 was piloted) now renders a
+  static shell with no await, three `<Suspense>`+`<FragmentSlotStream>`
+  boundaries (one per fragment slot), and a fourth `<Suspense>` boundary
+  around the scheduler-health/hints/trace-log diagnostics section (which
+  inherently needs the full aggregate and so still resolves last — correct,
+  not a regression). Every `data-*` attribute and fallback string is
+  unchanged from the pre-streaming markup. Proof: an automated test
+  (`packages/runtime/src/index.test.ts`, "streamFragmentSlots streaming
+  order") shows a fast slot's promise settling strictly before a
+  deliberately delayed slow slot's promise, using real timers; a manual
+  check — real `next dev` server for `page-home`, two fake fragment
+  backends (one instant, one delayed under the per-slot timeout), `fetch()`
+  reading the chunked response — showed the shell + fast slot's HTML
+  arriving in one flush (~15ms after headers) and the slow slot's HTML (plus
+  the diagnostics section that depends on it) arriving in a distinctly later
+  second flush (~150ms after the first, matching the artificial delay),
+  confirmed via `Transfer-Encoding: chunked` with no `Content-Length`. Plain
+  `react-dom/server` (no Next.js RSC pipeline) cannot render async Server
+  Components at all in this stack (confirmed empirically: it throws
+  "Objects are not valid as a React child (found: [object Promise])"), so a
+  from-scratch `renderToReadableStream`/`renderToPipeableStream` unit test
+  bypassing Next.js was not possible — the manual `next dev` check stands in
+  for that per the plan's own fallback guidance.
+- Item 3: audited all five composed pages' `manifest.slots.json` against the
+  `page-vaults`/`page-referrals` `force-static`/`revalidate` pattern. None
+  qualify, for two independent reasons: (a) every page's `page.tsx` calls
+  `headers()` to build its per-request `RequestContext` (fresh trace/request
+  ID, tenant, locale, session on every request) — a genuine dynamic API
+  usage, not incidental; (b) four of the five pages also declare at least
+  one `dynamic-ssr` slot backed by real per-request data (recommendations,
+  portfolio account state, trade positions/orders) that would go stale under
+  page-level ISR. `page-markets` (single `cached-ssr` slot, 5s TTL) came
+  closest but is still disqualified by (a) — a "near-realtime ticker" is the
+  wrong candidate for an hours-long page-level revalidate window regardless.
+  No `revalidate`/`force-static` was applied anywhere; freshness semantics
+  are unchanged. Incidental finding, not acted on (out of scope — page-home
+  only this phase): `page-vaults`'s own `revalidate = 3600` is inert in
+  practice — its shared layout also calls `headers()` for a theme cookie,
+  and `next build`'s route table reports `/vaults` as `ƒ (Dynamic)`, not
+  `○ (Static)` like `/referrals` (which uses `force-static`, not
+  `revalidate`, and has no dynamic-API call in its layout).
+
 ## 5. Maturity alignment matrix (adopt/adapt/skip)
 
 Aligning generic capabilities with proven designs to reach production-ready
