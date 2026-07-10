@@ -11,6 +11,18 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "README.md",
+    "AGENT.md"
+  ],
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/proxicat/ai-first-web-frame.git",
+    "directory": "packages/design-tokens"
+  },
+  "homepage": "https://github.com/proxicat/ai-first-web-frame#readme",
   "scripts": {
     "test": "pnpm -w exec vitest run packages/design-tokens/src",
     "test:watch": "pnpm -w exec vitest packages/design-tokens/src",

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.4/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [],
+  "linked": [],
+  "access": "restricted",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "@mvp/page-*",
+    "@mvp/shell-gateway",
+    "@mvp/fragment-*",
+    "@mvp/trade-*",
+    "@mvp/bundle-budget-check",
+    "@mvp/component-similarity-check",
+    "@mvp/css-budget-check",
+    "@mvp/dependency-audit",
+    "@mvp/optimization-audit",
+    "@mvp/server-client-boundary-check"
+  ]
+}

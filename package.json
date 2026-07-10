@@ -40,10 +40,14 @@
     "audit:deps": "pnpm --filter @mvp/dependency-audit start -- --ci",
     "audit:optimizer": "pnpm --filter @mvp/optimization-audit start -- --ci",
     "audit:boundary": "pnpm --filter @mvp/server-client-boundary-check start -- --ci",
-    "verify": "tsx scripts/verify.mts"
+    "verify": "tsx scripts/verify.mts",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "changeset publish"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.6",
+    "@changesets/cli": "^2.31.0",
     "@playwright/test": "^1.45.3",
     "@testing-library/jest-dom": "^6.4.6",
     "@testing-library/react": "^16.0.0",

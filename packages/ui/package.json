@@ -47,6 +47,18 @@
     "./shadcn/globals.css": "./src/shadcn/globals.css",
     "./tailwind.config": "./tailwind.config.ts"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "AGENT.md"
+  ],
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/proxicat/ai-first-web-frame.git",
+    "directory": "packages/ui"
+  },
+  "homepage": "https://github.com/proxicat/ai-first-web-frame#readme",
   "scripts": {
     "test": "pnpm -w exec vitest run packages/ui/src",
     "test:watch": "pnpm -w exec vitest packages/ui/src",
