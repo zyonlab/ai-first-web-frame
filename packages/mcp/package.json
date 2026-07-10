@@ -14,6 +14,18 @@
   "bin": {
     "mvp-mcp": "./dist/server.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "AGENT.md"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/proxicat/ai-first-web-frame.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/proxicat/ai-first-web-frame#readme",
   "scripts": {
     "start": "pnpm -w exec tsx packages/mcp/src/server.ts",
     "test": "pnpm -w exec vitest run packages/mcp/src",
@@ -23,5 +35,8 @@
   },
   "devDependencies": {
     "tsdown": "^0.11.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

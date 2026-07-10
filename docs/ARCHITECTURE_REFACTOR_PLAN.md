@@ -206,15 +206,23 @@ vs. `./react` subpath) everywhere they're used — no package in this list had
 `AGENT.md` (where present — absent files in `files` are a confirmed silent
 no-op, not an error), and `package.json` in every tarball; no `node_modules`,
 no source `.test.ts` leakage.
-**Two decisions are explicitly left to the repo owner, not made here:**
-(1) `"license": "UNLICENSED"` is a placeholder on all 17 packages — this repo
-has no LICENSE file and never had a license field before; picking a real
-open-source license is a business decision this task did not make on the
-owner's behalf. (2) No `publishConfig` (registry/access) was added to any
-package — access/registry configuration is deferred alongside the license
-choice. `tools/release-tools` and `tools/mcp-devx` (§7.3's future `@mvp/mcp`)
-are unaffected by this pass — both stay `private: true`/unbuilt, tracked as
-a separate increment per the parallel MCP-packaging task. `packages/assets`/
+**Status: license + publish access decided by the repo owner.** MIT was
+chosen (root `LICENSE` file, copyright Joe Wong 2026) — the permissive,
+zero-friction default for a framework meant for broad external adoption
+(including by AI-agent consumers, per the plan's audience note in §0), with
+no signal favoring a copyleft or patent-grant license instead. All 17
+packages' `"license"` field is now `"MIT"` (was the `"UNLICENSED"`
+placeholder), each gained `"publishConfig": {"access": "public"}` (required
+for a scoped `@mvp/*` package to publish without a paid npm org), and
+`.changeset/config.json`'s top-level `"access"` was flipped from
+`"restricted"` to `"public"` to match. `packages/mcp` (§7.3's `@mvp/mcp`,
+packaged from the former `tools/mcp-devx` in a parallel task) wasn't in the
+original 17-package batch and got the same `"license": "MIT"` +
+`publishConfig` treatment applied here, for consistency. `tools/release-tools`
+is unaffected by this pass — it stays `private: true`/unbuilt; the lifecycle
+scripts it contains are consumed via `tsx`/child-process invocation, not as
+an installable package, so it has no publish-readiness need today.
+`packages/assets`/
 `packages/workers` exist as unmarked-private workspace packages not
 mentioned by this plan's publish/not-published lists, so they were left
 untouched by both the `package.json` changes and the changesets `ignore`

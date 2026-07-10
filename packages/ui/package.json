@@ -55,7 +55,7 @@
     "README.md",
     "AGENT.md"
   ],
-  "license": "UNLICENSED",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/proxicat/ai-first-web-frame.git",
@@ -93,5 +93,8 @@
     "react-dom": "^18.3.1",
     "tailwindcss": "^4.3.2",
     "tsdown": "^0.11.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
