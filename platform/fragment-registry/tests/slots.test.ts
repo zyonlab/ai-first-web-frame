@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyMountSlot,
   applyUnmountSlot,
+  checkFragmentRegistered,
   validatePageSlots,
 } from "../src/slots";
 
@@ -106,5 +107,32 @@ describe("applyUnmountSlot", () => {
     const result = applyUnmountSlot(baseSlots, "missing");
     expect(result.changed).toBe(false);
     expect(result.slots).toHaveLength(2);
+  });
+});
+
+describe("checkFragmentRegistered", () => {
+  const registry = { fragments: { "promotion-banner": {} } };
+
+  it("passes for registered fragments with no warnings", () => {
+    const result = checkFragmentRegistered(registry, "promotion-banner", false);
+    expect(result).toEqual({ ok: true, warnings: [] });
+  });
+
+  it("refuses unregistered fragments with an actionable error", () => {
+    const result = checkFragmentRegistered(registry, "price-panel", false);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected a failed check");
+    expect(result.error).toContain('"price-panel"');
+    expect(result.error).toContain("register-fragment");
+    expect(result.error).toContain("--allow-unregistered");
+  });
+
+  it("warns but proceeds when allowUnregistered is set", () => {
+    const result = checkFragmentRegistered(registry, "price-panel", true);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected a passing check");
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain("price-panel");
+    expect(result.warnings[0]).toContain("--allow-unregistered");
   });
 });

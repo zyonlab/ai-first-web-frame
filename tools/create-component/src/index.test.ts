@@ -47,6 +47,28 @@ describe("@mvp/create-component", () => {
     ).toContain("node");
   });
 
+  it("scaffolds a fragment manifest with a layoutHint skeleton", () => {
+    const root = tempRoot();
+    const result = runCreateComponent({
+      root,
+      positional: ["ThrowawayPanel"],
+      type: "fragment",
+      ci: false,
+      warnOnly: false,
+      force: false,
+    });
+    expect(result.status).toBe("created");
+    const manifest = readFileSync(
+      join(root, "fragments/throwaway-panel/src/manifest.ts"),
+      "utf8",
+    );
+    expect(manifest).toContain(
+      'layoutHint: { shape: "panel", minHeight: 120, fills: false }',
+    );
+    // The skeleton tells the agent to replace the placeholder geometry.
+    expect(manifest).toContain("Adjust shape/minHeight/fills");
+  });
+
   it("does not overwrite existing components unless forced and rejects illegal names", () => {
     const root = tempRoot();
     expect(

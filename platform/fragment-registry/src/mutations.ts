@@ -1,4 +1,3 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import {
   type FragmentRegistry,
   FragmentRegistrySchema,
@@ -7,6 +6,7 @@ import {
   type ReleaseManifest,
   ReleaseManifestSchema,
 } from "../../../packages/contracts/src/index";
+import { loadFileWithHash, writeFileAtomic } from "./atomic-file";
 
 export type FragmentRegistryData = FragmentRegistry;
 
@@ -203,26 +203,51 @@ function latestStableRelease(
     );
 }
 
-export function loadRegistryData(path: string): FragmentRegistryData {
-  return FragmentRegistrySchema.parse(JSON.parse(readFileSync(path, "utf8")));
+/**
+ * Loaders return the content hash captured at read time; savers require it so
+ * a concurrent writer surfaces as a FileConflictError instead of a lost update.
+ */
+export type LoadedRegistry = { data: FragmentRegistryData; hash: string };
+
+export type LoadedReleases = { data: ReleasesFile; hash: string };
+
+export function loadRegistryData(path: string): LoadedRegistry {
+  const loaded = loadFileWithHash(path);
+  if (loaded.content === null)
+    throw new Error(`registry file not found: ${path}`);
+  return {
+    data: FragmentRegistrySchema.parse(JSON.parse(loaded.content)),
+    hash: loaded.hash,
+  };
 }
 
 export function saveRegistryData(
   path: string,
   data: FragmentRegistryData,
+  expectedHash: string,
 ): void {
-  writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+  writeFileAtomic(path, `${JSON.stringify(data, null, 2)}\n`, {
+    expectedHash,
+  });
 }
 
-export function loadReleases(path: string): ReleasesFile {
-  if (!existsSync(path)) return { releases: [] };
-  const parsed = JSON.parse(readFileSync(path, "utf8")) as ReleasesFile;
+export function loadReleases(path: string): LoadedReleases {
+  const loaded = loadFileWithHash(path);
+  if (loaded.content === null)
+    return { data: { releases: [] }, hash: loaded.hash };
+  const parsed = JSON.parse(loaded.content) as ReleasesFile;
   for (const release of parsed.releases) ReleaseManifestSchema.parse(release);
-  return parsed;
+  return { data: parsed, hash: loaded.hash };
 }
 
-export function saveReleases(path: string, file: ReleasesFile): void {
-  writeFileSync(path, `${JSON.stringify(file, null, 2)}\n`);
+export function saveReleases(
+  path: string,
+  file: ReleasesFile,
+  expectedHash: string,
+): void {
+  writeFileAtomic(path, `${JSON.stringify(file, null, 2)}\n`, {
+    expectedHash,
+  });
 }
 
 function deepEqual(a: unknown, b: unknown): boolean {

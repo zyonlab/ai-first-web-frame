@@ -1,9 +1,17 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { FileConflictError, MISSING_FILE_HASH } from "../src/atomic-file";
 import {
   applyPromoteFragment,
   applyRegisterFragment,
   applyRollbackFragment,
+  loadRegistryData,
+  loadReleases,
   type ReleaseRecord,
+  saveRegistryData,
+  saveReleases,
 } from "../src/mutations";
 
 const baseRegistry = {
@@ -225,5 +233,67 @@ describe("applyRollbackFragment", () => {
         "9.9.9",
       ),
     ).toThrow(/9\.9\.9/);
+  });
+});
+
+describe("registry persistence with optimistic concurrency", () => {
+  function tempRegistryPath(): string {
+    const dir = mkdtempSync(join(tmpdir(), "mvp-registry-"));
+    const path = join(dir, "registry.data.json");
+    writeFileSync(path, `${JSON.stringify(baseRegistry, null, 2)}\n`);
+    return path;
+  }
+
+  it("load returns data plus a content hash and save round-trips atomically", () => {
+    const path = tempRegistryPath();
+    const loaded = loadRegistryData(path);
+    expect(loaded.data.fragments["promotion-banner"]).toBeDefined();
+    expect(loaded.hash).not.toBe(MISSING_FILE_HASH);
+    const mutated = applyRegisterFragment(loaded.data, {
+      name: "price-panel",
+      version: "0.1.0",
+      serviceUrl: "http://localhost:4203",
+      channel: "canary",
+    });
+    saveRegistryData(path, mutated.registry, loaded.hash);
+    expect(loadRegistryData(path).data.fragments["price-panel"]).toBeDefined();
+  });
+
+  it("save refuses when another writer changed the registry since load", () => {
+    const path = tempRegistryPath();
+    const loaded = loadRegistryData(path);
+    const other = applyRegisterFragment(loaded.data, {
+      name: "other-panel",
+      version: "0.1.0",
+      serviceUrl: "http://localhost:4204",
+    });
+    writeFileSync(path, `${JSON.stringify(other.registry, null, 2)}\n`);
+    const mine = applyRegisterFragment(loaded.data, {
+      name: "price-panel",
+      version: "0.1.0",
+      serviceUrl: "http://localhost:4203",
+    });
+    expect(() => saveRegistryData(path, mine.registry, loaded.hash)).toThrow(
+      FileConflictError,
+    );
+    // The concurrent writer's content survives untouched.
+    const after = loadRegistryData(path);
+    expect(after.data.fragments["other-panel"]).toBeDefined();
+    expect(after.data.fragments["price-panel"]).toBeUndefined();
+  });
+
+  it("loadReleases tolerates a missing file and its hash lets the first save create it", () => {
+    const dir = mkdtempSync(join(tmpdir(), "mvp-releases-"));
+    const path = join(dir, "releases.json");
+    const loaded = loadReleases(path);
+    expect(loaded.data).toEqual({ releases: [] });
+    expect(loaded.hash).toBe(MISSING_FILE_HASH);
+    const promoted = applyPromoteFragment(baseRegistry, "promotion-banner");
+    saveReleases(
+      path,
+      { releases: [promoted.release as ReleaseRecord] },
+      loaded.hash,
+    );
+    expect(loadReleases(path).data.releases).toHaveLength(1);
   });
 });

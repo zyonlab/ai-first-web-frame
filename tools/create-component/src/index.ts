@@ -130,7 +130,7 @@ function createFragment(
   );
   writeText(
     files[2],
-    `import { loadDefaultBudget } from "@mvp/contracts";\n\nexport const manifest = { name: "${kebab}", version: "0.1.0", owner: "generated", renderMode: "ssr", fallback: "<section>${name}</section>", assets: { js: [], css: [] }, budget: loadDefaultBudget("fragment", "${kebab}") } as const;\n`,
+    `import { loadDefaultBudget } from "@mvp/contracts";\n\nexport const manifest = {\n  name: "${kebab}",\n  version: "0.1.0",\n  owner: "generated",\n  renderMode: "ssr",\n  fallback: "<section>${name}</section>",\n  assets: { js: [], css: [] },\n  // Adjust shape/minHeight/fills to this fragment's real rendered geometry\n  // (shape: "bar" | "ladder" | "table" | "chart" | "panel"; see LayoutHint in tools/release-tools/src/unit-graph.ts).\n  layoutHint: { shape: "panel", minHeight: 120, fills: false },\n  budget: loadDefaultBudget("fragment", "${kebab}"),\n} as const;\n`,
   );
   writeText(
     files[3],
