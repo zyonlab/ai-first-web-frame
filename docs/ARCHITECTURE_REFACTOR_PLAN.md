@@ -375,7 +375,8 @@ agents are the normal case, not the edge case.
    then `manifest.assets.js` is explicitly documented as "served for standalone
    demos, not consumed by composition".
 
-**Status: implemented (items 1–2; item 3 remains out of scope this phase).**
+**Status: implemented (items 1–2; item 3 — see the C3 spike status note at
+the end of this section).**
 `packages/islands/src/index.ts`'s `IslandSnapshot` now carries optional
 `fragment`/`version`/`contractHash` alongside `props`/`slice`; `registerIsland`
 takes an optional third `{ expectedVersion, expectedContractHash }` argument,
@@ -399,6 +400,152 @@ bus into all three read-mostly islands. A new `tools/dependency-audit`
 regex-heuristic check (`island-bus-without-escape-hatch`) fails any
 `fragments/*/src/island.tsx` that calls `createInteractionBus` without also
 declaring a `bus?`/`props.bus` escape hatch, preventing recurrence.
+
+**Status: item 3 (C3) — spike, validated on one fragment
+(`spike/p3-c3-island-import-map`, not merged to main).** A risk-controlled
+spike, scoped to exactly one React island (`order-form`), proved the
+mechanism works end to end in a real browser without touching the other
+three islands' production (build-time static import) path. Findings, in the
+order a go/no-go call needs them:
+
+- **What was built.** `fragments/order-form/src/island.browser.ts` is a new
+  tsdown entry (`pnpm --filter @mvp/fragment-order-form run
+  build:island-browser`, chained into that package's `build` script) that
+  bundles `island.tsx` + its exclusive local logic (`islandLogic.ts`,
+  `placeOrderFlow.ts`) plus a thin `mountOrderFormIsland(el, props)` wrapper
+  (`createRoot(el).render(...)`, the moral equivalent of `@mvp/islands`'
+  `mountIsland` for a module reached outside the page's own bundle) into
+  ~4.6KB minified browser ESM. `fragments/order-form/src/server.ts` gained a
+  real `GET /assets/order-form.island.js` route serving that built file byte
+  for byte (`no-store` cache — an unversioned path, see limitations below).
+  `apps/page-trade` gained a `tsdown.vendor.config.ts` build
+  (`build:spike-vendor`, chained into `next build`) producing a shared
+  vendor chunk in `public/spike-vendor/` (Next's static asset serving — the
+  simplest self-hosted option, no new server code needed), and a new
+  `<script type="importmap">` + `SpikeOrderFormLoader` client component
+  (`apps/page-trade/src/hydrateSpike.tsx`) rendered ADDITIVELY alongside the
+  existing `TradeHydrator` in `app/trade/[symbol]/page.tsx` — mounted into
+  its own sandbox DOM node, never the production `data-island="orderForm"`
+  node, so the existing path was never at risk. `FragmentRegistryEntrySchema`
+  (`packages/contracts/src/index.ts`) gained an optional `assetsUrl` field
+  (threaded through `@mvp/registry`'s types/mutations and
+  `register-fragment.mts --assets-url`); order-form's registry entry is the
+  only one that sets it — every other fragment's entry is byte-identical to
+  before.
+- **1. Standalone browser bundle, externals excluded — validated, with a
+  correction to the plan's own assumption.** `island.tsx`'s only actual
+  runtime imports beyond local files are `react`, `@mvp/trade-contracts`
+  (value exports), and `@mvp/ui/shadcn`'s `Slider` — confirmed by inspecting
+  the real build output, not assumed. `@mvp/store` turned out to be a
+  type-only import (erased at build time, nothing to externalize) and
+  `@mvp/islands` is never imported by `island.tsx` at all (only by the
+  page's hydration bootstrap) — both named in this plan's original C3
+  wording, neither actually needed action. tsdown/rolldown's default
+  library-bundling behavior already externalizes every bare `node_modules`
+  specifier with zero `--external` flags (confirmed empirically); the
+  explicit flags in `build:island-browser` are self-documentation, not load
+  -bearing. `@mvp/ui/shadcn` (not one of the four originally-named
+  externals) had to be resolved somehow since it's externalized by that same
+  default and the island can't render without it — added to the shared
+  chunk rather than force-bundled, one more `noExternal` vendor entry.
+- **2. Real HTTP-served bundle — validated.** `curl`/browser network trace
+  both confirm `GET http://localhost:4205/assets/order-form.island.js`
+  returns real JS with `content-type: text/javascript`, not manifest
+  metadata.
+- **3. Shared chunk, built once, self-hosted — validated, with a build
+  -tooling pitfall worth recording.** `noExternal: () => true` (not the
+  boolean shorthand `true` — reading tsdown's own `ExternalPlugin` source
+  showed `true` is compared to a string id with `===` and so silently never
+  matches, falling through to normal externalization with no error) plus
+  multi-entry code-splitting produces exactly one physical React module
+  shared by every vendor entry point (`react.js`/`react-dom-client.js`/
+  `react-jsx-runtime.js`/`ui-shadcn.js` all import the same relative chunk —
+  confirmed by reading the built output, not assumed). A second pitfall,
+  found only by loading the page in a real browser: `export * from
+  "<cjs-package>"` does **not** reliably produce static ESM named exports
+  when re-exporting a CommonJS-shaped package (`react`, `react/jsx-runtime`,
+  `react-dom/client`) — the build reported success with no warning, but the
+  resulting chunk had no static `export {...}` at all, so every named import
+  from it failed at runtime (`does not provide an export named 'jsxs'`).
+  Fixed by naming every export explicitly (`export { jsx, jsxs, Fragment }
+  from "react/jsx-runtime"`) instead of wildcard-exporting; real ESM
+  packages (`@mvp/trade-contracts`, `@mvp/ui/shadcn` — both workspace source,
+  not CJS) never hit this. `minify: true` + `define: {
+  "process.env.NODE_ENV": '"production"' }` were needed too — without them
+  the chunk shipped React's full development build (734KB unminified vs.
+  191KB total after both fixes).
+- **4. Import map + runtime `import()` — validated, plus a real deployment
+  problem this spike exists to surface.** The emitted `<script
+  type="importmap">` and the dynamic `import(moduleUrl)` (a non-literal
+  argument, so bundlers/Turbopack cannot statically inline it — confirmed by
+  reading the actual network trace, which shows a genuine runtime fetch of
+  `http://localhost:4205/assets/order-form.island.js` from the
+  `localhost:4103` page) both work as designed. What was NOT anticipated
+  going in: order-form's asset lives on a different origin than the
+  consuming page, and an ES module fetch — including one reached via dynamic
+  `import()` — is always performed in CORS mode. Without an
+  `Access-Control-Allow-Origin` header the browser blocked the import
+  outright with an opaque-response error; `curl` and a Vitest unit test both
+  missed this entirely (neither enforces CORS) — only loading the real page
+  in a real browser caught it. Fixed with a permissive `*` header on the one
+  new route (fine for a public, non-credentialed static asset; a real
+  rollout should scope it to known consumer origins instead).
+- **5. Real, observable, end-to-end proof — validated in a real browser,
+  method documented.** `curl` confirmed the static HTML contract (import map
+  JSON, loader markup). Beyond that, `next dev` (page-trade) + the real
+  `order-form`/`market-header`/`chart-panel`/`account-bar`/`order-book`/
+  `trades-feed`/`positions-table`/`open-orders`/`funding-bar` fragment
+  services were started for real and driven with the `chrome-devtools` MCP
+  tool against `http://localhost:4103/trade/BTC`: the network log shows the
+  cross-origin `order-form.island.js` fetch and all five `spike-vendor/*.js`
+  chunks resolving `200`; the console was clean (no "React is not defined",
+  no duplicate-instance/invalid-hook-call warnings — the only entries were
+  an unrelated `/favicon.ico` 404 and a pre-existing accessibility note);
+  `evaluate_script` confirmed the loader's own status text reached `"mounted
+  via import map + runtime dynamic import()"` with the full rendered form
+  (including the Radix `Slider`) inside the sandbox node. Strongest proof:
+  dispatching a real click on an order-book price cell moved BOTH the
+  production order-form's price input AND the spike-mounted sandbox's price
+  input to the same clicked price in the same event — the signature
+  cross-island flow, working identically through both loading paths at
+  once, because both mount against the exact same shared `getTradeStore()`
+  instance (confirmed both by the browser check and by a Vitest test in
+  `apps/page-trade/src/hydrateSpike.test.tsx` asserting `deps.store ===
+  getTradeStore()`).
+- **6. Registry schema — validated, minimal, backward-compatible.**
+  `assetsUrl` is `z.string().url().optional()`; every other fragment's
+  registry entry is byte-for-byte unchanged; `FragmentVersion`/
+  `RegisterFragmentInput` thread it through as an optional field throughout
+  `@mvp/registry`.
+- **What a full rollout to all four React islands would additionally need**
+  (none of this was needed for a one-fragment spike, all of it would be for
+  a real cutover): (a) per-fragment vendor-chunk *composition* — this spike
+  hand-built one shared chunk for one island's exact dependency set; three
+  more islands sharing overlapping-but-not-identical dependencies (each
+  fragment's own slice of `@mvp/ui/shadcn`, for instance) needs a real
+  dependency-graph-driven chunk builder, not a hand-maintained entry list;
+  (b) immutable, versioned asset URLs — today's `/assets/order-form.island.js`
+  is a stable, unversioned path with `Cache-Control: no-store`; a real
+  rollout needs a content-hashed or version-segmented URL so it can be
+  cached aggressively and so two live versions can coexist during a
+  canary/stable split (the registry's `versions` map already has room for
+  this — `assetsUrl` just needs to vary per version); (c) CORS policy
+  scoped to known consumer origins instead of `*`; (d) wiring
+  `tools/bundle-budget-check`'s `stats.json` to the real built artifact size
+  instead of the declarative-only `budget.ts` numbers it compares today
+  (noted in `fragments/order-form/src/budget.ts`); (e) an env-override story
+  for `assetsUrl` mirroring the existing `serviceUrl`/`manifestUrl`
+  `<NAME>_URL` override convention (today's `withOverride` in
+  `packages/registry/src/registry.ts` passes `assetsUrl` through unchanged
+  even when the service URL is overridden — fine for a single-fragment
+  spike, wrong for multi-environment deploys); (f) a decision on whether the
+  import map is built once per page-load (as here) or cached/shared across
+  navigations, and whether every page needs its own vendor chunk or a
+  shell-level one is shared across pages entirely (out of scope for a
+  single-page, single-fragment spike). None of these are blockers — they're
+  exactly the kind of follow-up work a stretch-goal spike is supposed to
+  surface before a real investment decision, and every one of them is
+  additive to what this spike already proved works.
 
 ### 4.4 Rendering: streaming + SSG (🎯C for content freshness, plus UX)
 1. Rename slot strategy `isr` → `ttl-cache` (A4). One-line codemod + schema alias

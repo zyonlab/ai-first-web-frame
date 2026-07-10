@@ -1,13 +1,18 @@
 /**
  * order-form fragment budget (hard gate, spine §5/§13).
  *
- * The fragment ships NO React/Radix of its own: React, the shadcn Slider/Tabs/
- * Select, and the store client all live in the shared `@mvp/trade-client` +
- * `@mvp/ui/shadcn` chunks (declared in the manifest's `assets.js` as shared
- * dependencies, deduped by `@mvp/assets`). The fragment's own JS is only the
- * island glue that reads the inline snapshot and calls `mountIsland` — well
- * under the shared 30KB fragment JS budget. CSS is the scoped form stylesheet
- * only. Both budgets match the promotion-banner reference gate (30KB / 10KB).
+ * The fragment ships NO React/Radix of its own: the tsdown browser build of
+ * `island.browser.ts` (C3 spike, §4.3.3) externalizes `react`,
+ * `react/jsx-runtime`, `react-dom/client`, `@mvp/trade-contracts`, and
+ * `@mvp/ui/shadcn` — they resolve at runtime via `apps/page-trade`'s shared
+ * vendor chunk + import map, not this bundle. The fragment's own JS is only
+ * its island glue (islandLogic/placeOrderFlow + the OrderFormIsland
+ * component itself): ~4.6KB minified as measured
+ * (`dist-browser/island.browser.js`), well under this 30KB budget. Note this
+ * `jsBytes`/`cssBytes` pair is declarative only — `tools/bundle-budget-check`
+ * compares a root `stats.json` against `budget.json`, not this file's
+ * numbers against the real built artifact; wiring the two together is a
+ * real gap a full C3 rollout would need to close (spike finding, §4.3.3).
  */
 export const orderFormBudget = {
   scope: "fragment",

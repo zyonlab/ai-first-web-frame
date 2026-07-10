@@ -49,7 +49,7 @@ function run(argv: string[]): RegisterResult {
       name,
       files: [],
       error:
-        "usage: register-fragment --name <kebab-name> --version <semver> --service-url <url> [--manifest-url <url>] [--channel stable|canary|preview] [--port <n>] [--with-compose]",
+        "usage: register-fragment --name <kebab-name> --version <semver> --service-url <url> [--manifest-url <url>] [--assets-url <url>] [--channel stable|canary|preview] [--port <n>] [--with-compose]",
     };
   }
 
@@ -58,6 +58,10 @@ function run(argv: string[]): RegisterResult {
     version,
     serviceUrl,
     manifestUrl: stringFlag(args, "manifest-url"),
+    // Optional runtime island asset URL (C3 spike, §4.3.3) — a fragment's
+    // browser-loadable island module, dynamically `import()`-able via an
+    // import map instead of a build-time static import.
+    assetsUrl: stringFlag(args, "assets-url"),
     channel: (stringFlag(args, "channel") ??
       "canary") as RegisterFragmentInput["channel"],
   };

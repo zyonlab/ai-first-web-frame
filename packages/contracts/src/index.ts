@@ -418,6 +418,16 @@ export const FragmentRegistryEntrySchema = z.object({
   version: z.string().min(1),
   serviceUrl: z.string().url(),
   manifestUrl: z.string().url(),
+  /**
+   * Optional URL to the fragment's browser-loadable island asset
+   * (docs/ARCHITECTURE_REFACTOR_PLAN.md §4.3.3 C3 spike: "runtime island
+   * assets"). When present, a page can dynamically `import()` this module at
+   * runtime via an import map instead of statically bundling the island
+   * component at build time. Optional and backward-compatible: every
+   * existing registry entry (and every fragment the C3 spike didn't touch)
+   * omits it and keeps resolving exactly as before.
+   */
+  assetsUrl: z.string().url().optional(),
 });
 
 export const FragmentRegistrySchema = z.object({

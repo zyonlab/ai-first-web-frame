@@ -121,6 +121,13 @@ function isSourceFile(path: string): boolean {
     /\.(ts|tsx|js|jsx)$/.test(path) &&
     !/\/\.next\//.test(path) &&
     !/\/dist\//.test(path) &&
+    // Generated build outputs, same convention as `dist/` above: a fragment's
+    // browser island bundle (C3 spike, docs/ARCHITECTURE_REFACTOR_PLAN.md
+    // §4.3.3) and a page's self-hosted shared vendor chunk. Both are minified
+    // third-party/vendor code re-emitted by a build step, not hand-written
+    // server/client source this check is meant to audit.
+    !/\/dist-browser\//.test(path) &&
+    !/\/public\/spike-vendor\//.test(path) &&
     !/\.(test|spec)\.(ts|tsx|js|jsx)$/.test(path)
   );
 }

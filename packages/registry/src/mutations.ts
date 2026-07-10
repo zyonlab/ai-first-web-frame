@@ -21,6 +21,8 @@ export type RegisterFragmentInput = {
   version: string;
   serviceUrl: string;
   manifestUrl?: string;
+  /** Optional runtime island asset URL (C3 spike, §4.3.3). */
+  assetsUrl?: string;
   channel?: ReleaseChannel;
 };
 
@@ -59,6 +61,7 @@ export function applyRegisterFragment(
     version: input.version,
     serviceUrl: input.serviceUrl,
     manifestUrl: input.manifestUrl ?? `${input.serviceUrl}/manifest`,
+    ...(input.assetsUrl ? { assetsUrl: input.assetsUrl } : {}),
   };
   const next = structuredClone(data);
   const entry = next.fragments[input.name] ?? {};

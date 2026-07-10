@@ -143,14 +143,18 @@ describe("order-form budget (hard gate, React on shared chunk)", () => {
   });
 
   it("self-audit: fragment JS ships only island glue; React/Radix are shared", async () => {
-    // The fragment's own emitted JS asset is the island glue only; React and the
-    // Radix Slider ship via the shared @mvp/trade-client + @mvp/ui/shadcn chunks.
+    // The fragment's own emitted JS asset is the island glue only (C3 spike,
+    // §4.3.3): React, react-dom/client, @mvp/trade-contracts, and the Radix
+    // Slider (@mvp/ui/shadcn) are all externalized out of
+    // `island.browser.ts`'s tsdown build and resolved at runtime via
+    // apps/page-trade's shared vendor chunk + import map — not bundled here,
+    // and no longer represented by placeholder package-name strings that
+    // nothing ever actually resolved (the pre-spike `@mvp/trade-client` +
+    // `@mvp/ui/shadcn` entries were exactly that: `@mvp/trade-client` had
+    // even stopped existing as a package at all).
     const { orderFormManifest } = await import("../src/manifest");
-    expect(orderFormManifest.assets.js).toContain("@mvp/trade-client");
-    expect(orderFormManifest.assets.js).toContain("@mvp/ui/shadcn");
-    const ownGlue = orderFormManifest.assets.js.filter((a) =>
-      a.startsWith("/assets/"),
-    );
-    expect(ownGlue).toEqual(["/assets/order-form.island.js"]);
+    expect(orderFormManifest.assets.js).toEqual([
+      "/assets/order-form.island.js",
+    ]);
   });
 });

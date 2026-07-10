@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev --turbopack -p 4103",
     "start": "next start -p 4103",
-    "build": "next build",
+    "build:spike-vendor": "tsdown --config tsdown.vendor.config.ts",
+    "build": "pnpm run build:spike-vendor && next build",
     "test": "pnpm -w exec vitest run apps/page-trade/tests apps/page-trade/src",
     "test:watch": "pnpm -w exec vitest apps/page-trade/tests apps/page-trade/src",
     "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
@@ -38,5 +39,8 @@
     "next": "^15.3.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "tsdown": "^0.11.0"
   }
 }

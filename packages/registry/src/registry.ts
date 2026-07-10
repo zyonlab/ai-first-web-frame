@@ -8,6 +8,8 @@ export type FragmentVersion = {
   version: string;
   serviceUrl: string;
   manifestUrl: string;
+  /** Optional runtime island asset URL (C3 spike, §4.3.3). */
+  assetsUrl?: string;
 };
 
 export type FragmentChannels = Partial<
@@ -61,6 +63,12 @@ function withOverride(
     version: entry.version,
     serviceUrl: override,
     manifestUrl: `${override}/manifest`,
+    // Not rewritten relative to the overridden host — an env override points
+    // serviceUrl/manifestUrl at a different host, but assetsUrl (when
+    // present) still points at wherever it was registered. Known limitation,
+    // documented in the C3 spike findings (§4.3.3): a real rollout needs
+    // assetsUrl to derive from the same override, not just serviceUrl.
+    ...(entry.assetsUrl ? { assetsUrl: entry.assetsUrl } : {}),
   };
 }
 
