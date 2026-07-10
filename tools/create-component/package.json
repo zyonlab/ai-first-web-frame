@@ -1,11 +1,30 @@
 {
   "name": "@mvp/create-component",
-  "private": true,
   "version": "0.1.0",
   "type": "module",
+  "bin": {
+    "create-component": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "AGENT.md"
+  ],
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/proxicat/ai-first-web-frame.git",
+    "directory": "tools/create-component"
+  },
+  "homepage": "https://github.com/proxicat/ai-first-web-frame#readme",
   "scripts": {
     "start": "pnpm -w exec tsx tools/create-component/src/index.ts",
+    "build": "tsdown src/index.ts --format esm --platform node --dts",
     "test": "pnpm -w exec vitest run tools/create-component/src/index.test.ts",
-    "test:watch": "pnpm -w exec vitest tools/create-component/src/index.test.ts"
+    "test:watch": "pnpm -w exec vitest tools/create-component/src/index.test.ts",
+    "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "tsdown": "^0.11.0"
   }
 }

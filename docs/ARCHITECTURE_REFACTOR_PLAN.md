@@ -179,6 +179,51 @@ Rules:
   similarity/budget/boundary audits run in CI on the published surface to keep
   the API honest.
 
+**Status: implemented for the 17 non-MCP, non-release-tools packages (P5a).**
+`@changesets/cli` is a root devDependency (`pnpm exec changeset` /
+`version-packages` / `release` scripts; `release` runs `changeset publish` and
+is not wired into any CI trigger — it stays a manual, human-run command).
+`.changeset/config.json` sets `baseBranch: "main"` and an `ignore` list
+(`@mvp/page-*`, `@mvp/shell-gateway`, `@mvp/fragment-*`, `@mvp/trade-*`, and
+the non-publishable `tools/*` audit CLIs) so `apps/*`/`fragments/*`/`domains/*`
+are excluded from versioning even though `domains/*` packages don't carry
+`"private": true`. `@mvp/contracts`, `runtime`, `request`, `request-context`,
+`data`, `storage`, `store`, `islands`, `interaction`, `observability`,
+`optimizer`, `registry`, `routes`, `ui`, `design-system`, `design-tokens`, and
+`create-component` (now unmarked `private`, with a `bin` entry and a `tsdown`
+build producing a self-contained bin script) each carry a `files: ["dist",
+"README.md", "AGENT.md"]` allow-list, `repository`/`homepage` pointing at this
+repo, and `zod-to-json-schema`-backed `toJsonSchema()` plus ready-made
+`FragmentManifestJsonSchema`/`PageManifestJsonSchema`/`FragmentRegistryJsonSchema`/
+`FragmentRenderRequestJsonSchema`/`FragmentRenderResponseJsonSchema`/
+`RequestContextJsonSchema` exports on `@mvp/contracts`. `react`/`react-dom`
+were already peerDependencies (with `peerDependenciesMeta.optional` where the
+package's non-React entry point doesn't need them, e.g. `@mvp/runtime`'s core
+vs. `./react` subpath) everywhere they're used — no package in this list had
+`react`/`next`/`fastify` as a regular `dependency` to move. `pnpm pack
+--dry-run` for all 17 (`npm pack --dry-run`, since this pnpm version has no
+`--dry-run` flag) shows only `dist/`, `README.md` (where present),
+`AGENT.md` (where present — absent files in `files` are a confirmed silent
+no-op, not an error), and `package.json` in every tarball; no `node_modules`,
+no source `.test.ts` leakage.
+**Two decisions are explicitly left to the repo owner, not made here:**
+(1) `"license": "UNLICENSED"` is a placeholder on all 17 packages — this repo
+has no LICENSE file and never had a license field before; picking a real
+open-source license is a business decision this task did not make on the
+owner's behalf. (2) No `publishConfig` (registry/access) was added to any
+package — access/registry configuration is deferred alongside the license
+choice. `tools/release-tools` and `tools/mcp-devx` (§7.3's future `@mvp/mcp`)
+are unaffected by this pass — both stay `private: true`/unbuilt, tracked as
+a separate increment per the parallel MCP-packaging task. Also noted in
+passing, not acted on: `packages/ui`'s `exports` map still points
+`./shadcn/globals.css` at `./src/shadcn/globals.css`, which is outside the
+new `files` allow-list — that subpath export would 404 for a real npm
+consumer until either the CSS file moves under `dist/` or `files` grows a
+`src/shadcn/globals.css` entry; and `packages/assets`/`packages/workers`
+exist as unmarked-private workspace packages not mentioned by this plan's
+publish/not-published lists, so they were left untouched by both the
+`package.json` changes and the changesets `ignore` list.
+
 ## 3. Manifest-driven composition (🎯A — the biggest single win)
 
 Kill the two-sources-of-truth problem by making `manifest.slots.json` (extended)

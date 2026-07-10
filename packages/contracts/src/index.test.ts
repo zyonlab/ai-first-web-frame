@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
   ApiEndpointPolicySchema,
   AssetManifestSchema,
@@ -7,23 +8,30 @@ import {
   CookiePolicySchema,
   createBudgetReport,
   DataDependencySchema,
+  FragmentManifestJsonSchema,
   FragmentManifestSchema,
+  FragmentRegistryJsonSchema,
   FragmentRegistrySchema,
+  FragmentRenderRequestJsonSchema,
+  FragmentRenderResponseJsonSchema,
   FragmentRenderResponseSchema,
   I18nManifestSchema,
   loadDefaultBudget,
   mergeBudget,
   normalizeRenderStrategy,
   OptimizationFindingSchema,
+  PageManifestJsonSchema,
   PageManifestSchema,
   PerformanceBudgetSchema,
   parseFragmentRenderRequest,
   ReleaseManifestSchema,
   RenderStrategySchema,
+  RequestContextJsonSchema,
   RequestContextSchema,
   RequestPolicySchema,
   StoragePolicySchema,
   ThemeManifestSchema,
+  toJsonSchema,
   WorkerManifestSchema,
 } from "./index";
 
@@ -340,5 +348,50 @@ describe("@mvp/contracts", () => {
       expect(parsed.ok).toBe(false);
       if (!parsed.ok) expect(parsed.issues.length).toBeGreaterThan(0);
     }
+  });
+
+  // §2.3 "npm distribution shape": non-TS agents validate against generated
+  // JSON Schema, not just the Zod schemas TypeScript consumers use.
+  describe("toJsonSchema", () => {
+    it("produces a parseable JSON Schema document for an arbitrary schema", () => {
+      const schema = z.object({ name: z.string(), count: z.number() });
+      const json = toJsonSchema(schema, "Simple");
+      // Round-trips through JSON (proves it's plain-serializable, not a
+      // class instance or something with cycles/functions on it).
+      const roundTripped = JSON.parse(JSON.stringify(json));
+      expect(roundTripped).toBeTypeOf("object");
+      // Named schemas are emitted as a $ref into `definitions`.
+      expect(roundTripped.$ref).toBe("#/definitions/Simple");
+      expect(roundTripped.definitions.Simple.type).toBe("object");
+      expect(roundTripped.definitions.Simple.properties).toHaveProperty("name");
+      expect(roundTripped.definitions.Simple.properties).toHaveProperty(
+        "count",
+      );
+    });
+
+    it("produces a schema-shaped object (no name) with a type/properties field", () => {
+      const schema = z.object({ ok: z.boolean() });
+      const json = toJsonSchema(schema) as Record<string, unknown>;
+      expect(json.type).toBe("object");
+      expect(json.properties).toHaveProperty("ok");
+    });
+
+    it.each([
+      ["FragmentManifestJsonSchema", FragmentManifestJsonSchema],
+      ["PageManifestJsonSchema", PageManifestJsonSchema],
+      ["FragmentRegistryJsonSchema", FragmentRegistryJsonSchema],
+      ["FragmentRenderRequestJsonSchema", FragmentRenderRequestJsonSchema],
+      ["FragmentRenderResponseJsonSchema", FragmentRenderResponseJsonSchema],
+      ["RequestContextJsonSchema", RequestContextJsonSchema],
+    ])("%s is a ready-made, JSON-serializable JSON Schema with a $ref + definitions entry", (name, jsonSchema) => {
+      const roundTripped = JSON.parse(JSON.stringify(jsonSchema));
+      expect(roundTripped).toBeTypeOf("object");
+      expect(typeof roundTripped.$ref).toBe("string");
+      expect(roundTripped.$ref).toMatch(/^#\/definitions\//);
+      const definitionName = roundTripped.$ref.replace("#/definitions/", "");
+      expect(roundTripped.definitions).toHaveProperty(definitionName);
+      expect(roundTripped.definitions[definitionName].type).toBe("object");
+      expect(name).toBeTruthy();
+    });
   });
 });

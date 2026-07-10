@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const ReleaseChannelSchema = z.enum(["stable", "canary", "preview"]);
 export type ReleaseChannel = z.infer<typeof ReleaseChannelSchema>;
@@ -495,6 +496,53 @@ export const FragmentRenderResponseSchema = z.object({
 export type FragmentRenderResponse = z.infer<
   typeof FragmentRenderResponseSchema
 >;
+
+/**
+ * Converts a Zod schema into a plain JSON Schema object (draft-07 by
+ * default, per `zod-to-json-schema`'s default target) so non-TypeScript
+ * agents/tools that only speak JSON Schema can validate against the same
+ * contracts TypeScript consumers get via `z.infer`
+ * (docs/ARCHITECTURE_REFACTOR_PLAN.md §2.3: "contracts export both Zod
+ * schemas and generated JSON Schema so non-TS agents can validate").
+ *
+ * @param schema - any Zod schema exported from this package.
+ * @param name - optional schema name; when provided, the result is wrapped
+ *   with a `$ref` pointing at a `definitions` entry named after it (the
+ *   `zod-to-json-schema` "named schema" convention), which is useful when
+ *   embedding the result inside a larger combined schema payload.
+ */
+export function toJsonSchema(schema: z.ZodTypeAny, name?: string): object {
+  return zodToJsonSchema(schema, name);
+}
+
+// Ready-made JSON Schema exports for the schemas most relevant to non-TS
+// agents validating framework boundaries (fragment manifests, page
+// manifests, the fragment registry, /render request+response bodies, and
+// the per-request context every framework boundary is stamped with).
+export const FragmentManifestJsonSchema = toJsonSchema(
+  FragmentManifestSchema,
+  "FragmentManifest",
+);
+export const PageManifestJsonSchema = toJsonSchema(
+  PageManifestSchema,
+  "PageManifest",
+);
+export const FragmentRegistryJsonSchema = toJsonSchema(
+  FragmentRegistrySchema,
+  "FragmentRegistry",
+);
+export const FragmentRenderRequestJsonSchema = toJsonSchema(
+  FragmentRenderRequestSchema,
+  "FragmentRenderRequest",
+);
+export const FragmentRenderResponseJsonSchema = toJsonSchema(
+  FragmentRenderResponseSchema,
+  "FragmentRenderResponse",
+);
+export const RequestContextJsonSchema = toJsonSchema(
+  RequestContextSchema,
+  "RequestContext",
+);
 
 const defaultBudgets = {
   component: {
