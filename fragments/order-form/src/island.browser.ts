@@ -1,7 +1,7 @@
 "use client";
 
 import { createElement } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { createRoot } from "react-dom/client";
 import { OrderFormIsland, type OrderFormIslandComponentProps } from "./island";
 
 export type {
@@ -36,8 +36,6 @@ export type {
  */
 export { OrderFormIsland } from "./island";
 
-const roots = new WeakMap<Element, Root>();
-
 /**
  * Mounts the order-form island into `el` using a fresh `react-dom/client`
  * root. Returns an `unmount` teardown. This is the function the page's
@@ -52,10 +50,8 @@ export function mountOrderFormIsland(
   props: OrderFormIslandComponentProps,
 ): () => void {
   const root = createRoot(el);
-  roots.set(el, root);
   root.render(createElement(OrderFormIsland, props));
   return () => {
     root.unmount();
-    roots.delete(el);
   };
 }
