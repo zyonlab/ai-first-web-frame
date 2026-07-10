@@ -85,6 +85,148 @@ describe("seedsFromPaths", () => {
   });
 });
 
+const REGISTRY_DATA_PATH = "platform/fragment-registry/src/registry.data.json";
+const RELEASES_PATH = "platform/fragment-registry/releases.json";
+
+/** Builds a `getRegistryFileContent` resolver from a fixed before/after map,
+ * mirroring what the CLI wires up from `git show <base>:<path>` + the
+ * working tree (see scripts/affected-graph.mts). */
+function registryReader(content: {
+  [path: string]: { before?: string; after?: string };
+}) {
+  return (path: string) => ({
+    before: content[path]?.before,
+    after: content[path]?.after,
+  });
+}
+
+const orderBookStable = {
+  version: "0.1.0",
+  serviceUrl: "http://localhost:4204",
+  manifestUrl: "http://localhost:4204/manifest",
+};
+const orderBookCanary = {
+  version: "0.2.0-beta.1",
+  serviceUrl: "http://localhost:4204",
+  manifestUrl: "http://localhost:4204/manifest",
+};
+
+describe("seedsFromPaths — registry data narrowing (§4.1)", () => {
+  it("registering a brand-new fragment seeds only that fragment, not GLOBAL", () => {
+    const before = JSON.stringify({
+      fragments: { "order-book": { canary: orderBookCanary } },
+    });
+    const after = JSON.stringify({
+      fragments: {
+        "order-book": { canary: orderBookCanary },
+        "order-form": { canary: orderBookCanary },
+      },
+    });
+    const { seeds, global } = seedsFromPaths(graph, [REGISTRY_DATA_PATH], {
+      getRegistryFileContent: registryReader({
+        [REGISTRY_DATA_PATH]: { before, after },
+      }),
+    });
+    expect(global).toBe(false);
+    expect(seeds).toEqual(["order-form"]);
+  });
+
+  it("promoting a fragment (channel/version change) seeds only that fragment", () => {
+    const before = JSON.stringify({
+      fragments: {
+        "order-book": { canary: orderBookCanary },
+        "order-form": { canary: orderBookCanary },
+      },
+    });
+    const after = JSON.stringify({
+      fragments: {
+        "order-book": { stable: orderBookStable, canary: orderBookCanary },
+        "order-form": { canary: orderBookCanary },
+      },
+    });
+    const { seeds, global } = seedsFromPaths(graph, [REGISTRY_DATA_PATH], {
+      getRegistryFileContent: registryReader({
+        [REGISTRY_DATA_PATH]: { before, after },
+      }),
+    });
+    expect(global).toBe(false);
+    expect(seeds).toEqual(["order-book"]);
+  });
+
+  it("falls back to GLOBAL when registry.data.json is malformed at either revision", () => {
+    const validAfter = JSON.stringify({
+      fragments: { "order-book": { canary: orderBookCanary } },
+    });
+    const malformedBefore = seedsFromPaths(graph, [REGISTRY_DATA_PATH], {
+      getRegistryFileContent: registryReader({
+        [REGISTRY_DATA_PATH]: { before: "{not json", after: validAfter },
+      }),
+    });
+    expect(malformedBefore.global).toBe(true);
+
+    const malformedAfter = seedsFromPaths(graph, [REGISTRY_DATA_PATH], {
+      getRegistryFileContent: registryReader({
+        [REGISTRY_DATA_PATH]: { before: validAfter, after: "{not json" },
+      }),
+    });
+    expect(malformedAfter.global).toBe(true);
+  });
+
+  it("falls back to GLOBAL when no content resolver is supplied", () => {
+    const { global } = seedsFromPaths(graph, [REGISTRY_DATA_PATH]);
+    expect(global).toBe(true);
+  });
+
+  it("a code change under registry.ts (not the data file) still triggers GLOBAL", () => {
+    const { global } = seedsFromPaths(graph, [
+      "platform/fragment-registry/src/registry.ts",
+    ]);
+    expect(global).toBe(true);
+  });
+
+  it("a releases.json change seeds only the fragment(s) with a new release record", () => {
+    const before = JSON.stringify({ releases: [] });
+    const after = JSON.stringify({
+      releases: [
+        {
+          unit: "fragment",
+          name: "order-book",
+          version: "0.1.0",
+          channel: "stable",
+          smokeTests: [],
+          releasedAt: "2026-07-10T00:00:00.000Z",
+        },
+      ],
+    });
+    const { seeds, global } = seedsFromPaths(graph, [RELEASES_PATH], {
+      getRegistryFileContent: registryReader({
+        [RELEASES_PATH]: { before, after },
+      }),
+    });
+    expect(global).toBe(false);
+    expect(seeds).toEqual(["order-book"]);
+  });
+
+  it("narrowly-seeded registry changes still pull in the mounting page via affectedClosure", () => {
+    const before = JSON.stringify({
+      fragments: { "order-book": { canary: orderBookCanary } },
+    });
+    const after = JSON.stringify({
+      fragments: {
+        "order-book": { stable: orderBookStable, canary: orderBookCanary },
+      },
+    });
+    const plan = affectedFromChangedPaths(graph, [REGISTRY_DATA_PATH], {
+      getRegistryFileContent: registryReader({
+        [REGISTRY_DATA_PATH]: { before, after },
+      }),
+    });
+    expect(plan.global).toBe(false);
+    expect(plan.deployables).toEqual(["order-book", "page-trade"]);
+    expect(plan.affectedPages).toEqual(["page-trade"]);
+  });
+});
+
 describe("affectedFromChangedPaths", () => {
   it("expands a fragment change to its page, not siblings", () => {
     const plan = affectedFromChangedPaths(graph, [
