@@ -1,0 +1,57 @@
+# ai-first-web-frame
+
+> AI-native micro-frontend framework: a shell gateway composes Next.js pages,
+> which fetch independently-deployable SSR fragments through a typed
+> (Zod-schema) fragment registry. Consumers are AI agents operating the
+> lifecycle CLIs, not humans reading prose — every doc below favors exact
+> signatures, JSON envelopes, and copy-paste `Accept:` commands.
+
+## Docs
+
+- [docs/OPERATIONS.md](docs/OPERATIONS.md): the fragment lifecycle
+  (scaffold -> implement+test -> register -> mount -> verify -> promote ->
+  rollback) as exact commands, flags, and JSON result envelopes. Consult this
+  first for any lifecycle operation on a fragment.
+- [docs/ARCHITECTURE_REFACTOR_PLAN.md](docs/ARCHITECTURE_REFACTOR_PLAN.md):
+  the current structural refactor plan (package re-layering, npm
+  distribution, manifest-driven composition, this documentation system).
+  Consult to understand what is stable vs. actively moving before depending
+  on an API.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): request flow and deployable
+  unit topology (shell gateway, pages, fragments, registries). Consult for a
+  map of how a request traverses the system.
+- [docs/COMPONENT_CONTRACT.md](docs/COMPONENT_CONTRACT.md): the Zod schema
+  set in `@mvp/contracts` and the rule that all manifests must be
+  schema-validated. Consult before hand-writing any manifest or contract
+  object.
+- [docs/RELEASE_MODEL.md](docs/RELEASE_MODEL.md): the CI/CD release chain per
+  deployable unit, with each pipeline stage marked implemented or planned.
+  Consult before assuming a deployment stage exists.
+
+## Package AGENT.md (stable packages; API not part of the current refactor)
+
+- [packages/contracts/AGENT.md](packages/contracts/AGENT.md): Zod schemas for
+  every framework boundary (manifests, registry, `/render`, request context,
+  budgets). Consult to validate or construct any cross-boundary object.
+- [packages/runtime/AGENT.md](packages/runtime/AGENT.md): page-side fragment
+  slot composition/scheduling engine (`executeFragmentSlots`). Consult when
+  composing a page from fragment slots and data dependencies.
+- [packages/request/AGENT.md](packages/request/AGENT.md): the only
+  policy-gated HTTP client for business code (`createRequestClient`).
+  Consult before making any outbound API call.
+- [packages/request-context/AGENT.md](packages/request-context/AGENT.md):
+  builds/serializes the per-request `RequestContext` from headers. Consult at
+  any request edge (page, fragment, gateway) that needs locale/tenant/user.
+- [packages/observability/AGENT.md](packages/observability/AGENT.md): request
+  tracing (`createRequestTrace`) and metrics (`createMetricsRegistry`) plus
+  trace exporters. Consult to instrument a new code path or export traces.
+- [packages/optimizer/AGENT.md](packages/optimizer/AGENT.md): turns trace
+  snapshots into actionable `OptimizationFinding`s (duplicate calls,
+  waterfalls, low cache hit rate, static-rendering candidates). Consult when
+  investigating performance regressions or running `audit:optimizer`.
+- [packages/ui/AGENT.md](packages/ui/AGENT.md): server-safe React component
+  library (`AppNav`, `Button`, `Card`, `Section`, `ProductCardBase`, ...).
+  Consult before building a new UI component, to reuse instead of duplicate.
+- [packages/design-tokens/AGENT.md](packages/design-tokens/AGENT.md): raw
+  design token values and CSS-custom-property generation. Consult for any
+  color/spacing/radius/font/z-index value instead of hard-coding one.

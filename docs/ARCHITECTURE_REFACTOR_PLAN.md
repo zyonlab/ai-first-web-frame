@@ -313,6 +313,16 @@ Three tiers, all generated or verified in CI so they cannot rot:
    lifecycle calls) published as `@mvp/mcp` so downstream agents connect
    instead of reading docs at all.
 
+> **P5-prep status:** `AGENT.md` now exists for the 8 packages whose public API
+> is not part of the current refactor (`packages/contracts`, `packages/runtime`,
+> `packages/request`, `packages/request-context`, `packages/observability`,
+> `packages/optimizer`, `packages/ui`, `packages/design-tokens`), and root
+> `docs/OPERATIONS.md` + `llms.txt` are drafted covering the full lifecycle and
+> doc index. A future pass just needs to extend `AGENT.md` coverage to the
+> remaining packages (`interaction`, `data`, `storage`, `design-system`,
+> `trade-client`, the new `domains/*`/`registry`/`store`/`islands` packages)
+> once the P1 migration settles their APIs.
+
 Doc pages to write/complete, in priority order: `OPERATIONS.md` (lifecycle),
 `COMPOSITION.md` (slots/strategies/streaming semantics incl. the two-tier
 independence table), `CONTRACTS.md` (schema index, generated), `INTERACTION.md`
