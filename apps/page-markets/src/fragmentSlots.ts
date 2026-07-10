@@ -6,9 +6,11 @@ import {
   executeFragmentSlots,
   type FragmentSlotDefinition,
   type FragmentSlotResult,
+  type FragmentSlotsExecution,
   type PageHealth,
   type SchedulerHint,
 } from "@mvp/runtime";
+import { fragmentSlots as generatedMarketsSlots } from "./fragmentSlots.gen";
 
 /** Slot keys composed on the markets page (single main fragment). */
 export type MarketsSlotKey = "marketsTable";
@@ -30,6 +32,11 @@ export type MarketsFragmentHtml = {
     hints: SchedulerHint[];
   };
   traceLog: string;
+  // Raw scheduler output, keyed by slot name — feeds `<FragmentSlot>`
+  // (`@mvp/runtime/react`) directly so `app/markets/page.tsx` never
+  // hand-writes a per-slot `dangerouslySetInnerHTML` block (refactor plan
+  // §3.3).
+  execution: FragmentSlotsExecution;
 };
 
 type FetchMarketsFragmentSlotsOptions = {
@@ -43,31 +50,23 @@ type FetchMarketsFragmentSlotsOptions = {
 const MARKETS_SLOT_KEYS: MarketsSlotKey[] = ["marketsTable"];
 
 /**
- * The page-markets runtime slots array, factored out of
- * `fetchMarketsFragmentSlots` so it can be diffed against
- * `manifest.slots.json` without making a real network call (refactor plan
- * §3.4 drift check; see `apps/page-markets/tests/manifestSync.test.ts`).
+ * The page-markets runtime slots array. The static shape (fragment, channel,
+ * strategy, cachePolicy, required) is generated from `manifest.slots.json`
+ * by `scripts/mount-slot.mts` (refactor plan §3.2 — see
+ * `./fragmentSlots.gen.ts`, regenerate via `pnpm exec tsx
+ * scripts/mount-slot.mts --page page-markets --slot <name> --fragment
+ * <fragment> [...flags]`); this wrapper only adds the one thing that isn't a
+ * manifest fact — the per-request timeout override callers pass to
+ * `fetchMarketsFragmentSlots` (tests use a short timeout to keep failure
+ * cases fast). Static slots never fetch over the network, so they never
+ * carry a timeout.
  */
 export function buildMarketsSlotDefinitions(
   timeoutMs = 200,
 ): FragmentSlotDefinition[] {
-  return [
-    {
-      name: "marketsTable",
-      fragment: "markets-table",
-      channel: "canary",
-      strategy: "cached-ssr",
-      timeoutMs,
-      // Required: the table is the page's only content — if it fails the page
-      // is reported degraded/unhealthy, not silently empty.
-      required: true,
-      cachePolicy: {
-        ttl: 5,
-        tags: ["markets", "ticker"],
-        vary: ["tenant", "locale", "props"],
-      },
-    },
-  ];
+  return generatedMarketsSlots.map((slot) =>
+    slot.strategy === "static" ? slot : { ...slot, timeoutMs },
+  );
 }
 
 /**
@@ -115,6 +114,7 @@ export async function fetchMarketsFragmentSlots({
       hints: execution.hints,
     },
     traceLog: trace.toDependencyGraphLog(),
+    execution,
   };
 }
 
