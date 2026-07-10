@@ -26,6 +26,7 @@ import {
   resolveFragment,
   resolveRoute,
   type SchedulerHint,
+  streamFragmentSlots,
   withTimeout,
 } from "./index";
 
@@ -1092,5 +1093,165 @@ describe("@mvp/runtime", () => {
         },
       ]),
     ).toEqual({ js: ["/a.js", "/b.js"], css: ["/a.css"] });
+  });
+});
+
+// Refactor plan §4.4 gate: prove `streamFragmentSlots` genuinely exposes
+// out-of-order resolution — a fast slot's promise settles before a
+// deliberately delayed slow slot's promise, using real timers and elapsed
+// wall-clock time (not just "the code compiles and both eventually
+// resolve"). This is the mechanism `<FragmentSlotStream>` + `<Suspense>`
+// build on: a Suspense boundary streams the instant its own promise settles,
+// so if the underlying promise here settles independently and early, the
+// composed page does too.
+describe("streamFragmentSlots streaming order", () => {
+  const streamRegistry: FragmentRegistry = {
+    fragments: {
+      "fast-fragment": {
+        stable: {
+          version: "0.1.0",
+          serviceUrl: "http://localhost:5301",
+          manifestUrl: "http://localhost:5301/manifest",
+        },
+      },
+      "slow-fragment": {
+        stable: {
+          version: "0.1.0",
+          serviceUrl: "http://localhost:5302",
+          manifestUrl: "http://localhost:5302/manifest",
+        },
+      },
+    },
+  };
+
+  const SLOW_DELAY_MS = 150;
+
+  function delayedFetchImpl(): typeof fetch {
+    return (async (url: string | URL | Request) => {
+      const isSlow = String(url).includes("5302");
+      const name = isSlow ? "slow-fragment" : "fast-fragment";
+      const body = JSON.stringify({
+        html: `<section data-fragment="${name}">${name} live</section>`,
+        assets: { js: [], css: [] },
+        cache: { ttl: 0, tags: [name] },
+        metadata: { name, version: "0.1.0" },
+      });
+      if (isSlow) {
+        await new Promise((resolve) => setTimeout(resolve, SLOW_DELAY_MS));
+      }
+      return new Response(body);
+    }) as unknown as typeof fetch;
+  }
+
+  it("returns immediately (synchronously) with a promise per slot, before either fetch settles", () => {
+    const start = Date.now();
+    const stream = streamFragmentSlots({
+      registry: streamRegistry,
+      ctx,
+      fetchImpl: delayedFetchImpl(),
+      timeoutMs: 1000,
+      slots: [
+        { name: "fast", fragment: "fast-fragment", strategy: "dynamic-ssr" },
+        { name: "slow", fragment: "slow-fragment", strategy: "dynamic-ssr" },
+      ],
+    });
+
+    // The call above must not have awaited anything: it hands back promise
+    // objects, not resolved values, and does so well under the slow
+    // fragment's artificial delay.
+    expect(Date.now() - start).toBeLessThan(SLOW_DELAY_MS / 2);
+    expect(stream.slots.fast).toBeInstanceOf(Promise);
+    expect(stream.slots.slow).toBeInstanceOf(Promise);
+    expect(stream.result).toBeInstanceOf(Promise);
+  });
+
+  it("resolves the fast slot's promise strictly before the slow slot's promise settles", async () => {
+    const start = Date.now();
+    const settledAt: Record<string, number> = {};
+
+    const stream = streamFragmentSlots({
+      registry: streamRegistry,
+      ctx,
+      fetchImpl: delayedFetchImpl(),
+      timeoutMs: 1000,
+      slots: [
+        { name: "fast", fragment: "fast-fragment", strategy: "dynamic-ssr" },
+        { name: "slow", fragment: "slow-fragment", strategy: "dynamic-ssr" },
+      ],
+    });
+
+    stream.slots.fast.then(() => {
+      settledAt.fast = Date.now() - start;
+    });
+    stream.slots.slow.then(() => {
+      settledAt.slow = Date.now() - start;
+    });
+
+    // Race the fast slot's own promise against a timer set to well under the
+    // slow fragment's artificial delay: if `streamFragmentSlots` only ever
+    // resolved everything together (the old barrier behavior), this would
+    // observe "timeout" instead of "fast", because nothing would settle
+    // until the slow fetch also finished.
+    const raceResult = await Promise.race([
+      stream.slots.fast.then(() => "fast"),
+      new Promise((resolve) =>
+        setTimeout(() => resolve("timeout"), SLOW_DELAY_MS / 2),
+      ),
+    ]);
+    expect(raceResult).toBe("fast");
+
+    // At the moment the fast slot resolved, the slow slot must still be
+    // pending — genuine out-of-order arrival, not a coincidence of ordering
+    // within one microtask queue flush.
+    expect(settledAt.slow).toBeUndefined();
+
+    const fastResponse = await stream.slots.fast;
+    expect(fastResponse.html).toContain("fast-fragment live");
+
+    const slowResponse = await stream.slots.slow;
+    expect(slowResponse.html).toContain("slow-fragment live");
+
+    expect(settledAt.fast).toBeLessThan(SLOW_DELAY_MS / 2);
+    expect(settledAt.slow).toBeGreaterThanOrEqual(SLOW_DELAY_MS - 20);
+    expect(settledAt.fast).toBeLessThan(settledAt.slow);
+  });
+
+  it("only resolves the full aggregate once the slowest slot is done", async () => {
+    const start = Date.now();
+    const stream = streamFragmentSlots({
+      registry: streamRegistry,
+      ctx,
+      fetchImpl: delayedFetchImpl(),
+      timeoutMs: 1000,
+      slots: [
+        { name: "fast", fragment: "fast-fragment", strategy: "dynamic-ssr" },
+        { name: "slow", fragment: "slow-fragment", strategy: "dynamic-ssr" },
+      ],
+    });
+
+    const execution = await stream.result;
+    const elapsed = Date.now() - start;
+
+    expect(elapsed).toBeGreaterThanOrEqual(SLOW_DELAY_MS - 20);
+    expect(execution.slots.fast.status).toBe("ok");
+    expect(execution.slots.slow.status).toBe("ok");
+    expect(execution.health).toBe("ok");
+  });
+
+  it("executeFragmentSlots stays behaviorally identical when built on streamFragmentSlots", async () => {
+    const slots: FragmentSlotDefinition[] = [
+      { name: "fast", fragment: "fast-fragment", strategy: "dynamic-ssr" },
+      { name: "slow", fragment: "slow-fragment", strategy: "dynamic-ssr" },
+    ];
+    const execution = await executeFragmentSlots({
+      registry: streamRegistry,
+      ctx,
+      fetchImpl: delayedFetchImpl(),
+      timeoutMs: 1000,
+      slots,
+    });
+    expect(execution.slots.fast.response.html).toContain("fast-fragment live");
+    expect(execution.slots.slow.response.html).toContain("slow-fragment live");
+    expect(execution.health).toBe("ok");
   });
 });

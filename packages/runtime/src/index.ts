@@ -11,7 +11,7 @@ import {
 } from "@mvp/contracts";
 import { serializeContext } from "@mvp/request-context";
 
-export type { ReleaseChannel } from "@mvp/contracts";
+export type { FragmentRenderResponse, ReleaseChannel } from "@mvp/contracts";
 
 /** The strategy used when a slot does not declare one. */
 export const DEFAULT_RENDER_STRATEGY: RenderStrategy = "dynamic-ssr";
@@ -298,7 +298,54 @@ export async function fetchFragmentSlots(
 
 const DATA_TIMEOUT = Symbol("data-timeout");
 
-export async function executeFragmentSlots({
+function createDeferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+} {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+export type FragmentSlotStreamHandle = {
+  /**
+   * One promise per declared slot (keyed by slot name), each resolving to
+   * that slot's `FragmentRenderResponse` the moment ITS OWN DAG level
+   * finishes — independent of slots scheduled in later levels and
+   * independent of `result` below. Always resolves, never rejects: a failed
+   * or skipped slot resolves to the same fallback `FragmentRenderResponse`
+   * `executeFragmentSlots` has always produced, so a consumer never needs an
+   * error boundary just to render a slot. Feed one of these directly to
+   * `<FragmentSlotStream>` (`@mvp/runtime/react`) inside a `<Suspense>`
+   * boundary to stream that slot's HTML in as soon as it's ready.
+   */
+  slots: Record<string, Promise<FragmentRenderResponse>>;
+  /**
+   * The full aggregate — byte-identical in shape to what
+   * `executeFragmentSlots` returns — settling only once every level
+   * (including the slowest slot and every data dependency) is done. Feed
+   * this to a section that inherently needs the whole picture (page health,
+   * scheduler hints, per-slot diagnostics, the request trace log).
+   */
+  result: Promise<FragmentSlotsExecution>;
+};
+
+/**
+ * Kicks off the same DAG-aware scheduling `executeFragmentSlots` performs
+ * (§4.4 of the refactor plan) but returns IMMEDIATELY — before level 0 has
+ * even started — exposing a promise per slot plus one aggregate promise, so
+ * a caller (e.g. a Next.js page composing several `<Suspense>` boundaries)
+ * can start awaiting/rendering each slot independently instead of blocking
+ * on one barrier for the whole page.
+ *
+ * This owns the one scheduling implementation: `executeFragmentSlots` below
+ * is now built on top of it (just awaits `result`), so the two stay
+ * behaviorally identical by construction rather than by two copies of the
+ * same loop drifting apart.
+ */
+export function streamFragmentSlots({
   slots,
   registry,
   ctx,
@@ -312,7 +359,7 @@ export async function executeFragmentSlots({
   dataTimeoutMs,
   onRequiredFailure = "fallback",
   maxSerialLevels,
-}: FetchFragmentSlotsOptions): Promise<FragmentSlotsExecution> {
+}: FetchFragmentSlotsOptions): FragmentSlotStreamHandle {
   const { levels, hints } = createSlotDataExecutionPlan({
     slots,
     dataDependencies,
@@ -336,6 +383,24 @@ export async function executeFragmentSlots({
   const propagatedFailures = new Set<string>();
   const failedRequiredSlots: string[] = [];
   let degraded = false;
+
+  // One deferred promise per declared slot, created eagerly — before the
+  // scheduler runs a single level — so the caller receives every slot's
+  // promise up front and can start awaiting/rendering it right away. This is
+  // the mechanism that lets a Suspense boundary stream ahead of siblings:
+  // `settleSlot` resolves the matching deferred the instant that slot's own
+  // node finishes, not when the whole `levels` loop below completes.
+  const slotDeferreds = new Map<
+    string,
+    ReturnType<typeof createDeferred<FragmentRenderResponse>>
+  >();
+  for (const slot of slots)
+    slotDeferreds.set(slot.name, createDeferred<FragmentRenderResponse>());
+
+  function settleSlot(name: string, result: FragmentSlotResult) {
+    slotResults[name] = result;
+    slotDeferreds.get(name)?.resolve(result.response);
+  }
 
   function recordSlotFailure(slot: FragmentSlotDefinition) {
     degraded = true;
@@ -394,16 +459,16 @@ export async function executeFragmentSlots({
         trace,
         parentSpanId: schedulerSpanId,
       });
-      slotResults[slot.name] = result;
+      settleSlot(slot.name, result);
       if (result.status !== "ok") recordSlotFailure(slot);
     } catch {
-      slotResults[slot.name] = {
+      settleSlot(slot.name, {
         slot,
         strategy: slot.strategy ?? DEFAULT_RENDER_STRATEGY,
         source: "fallback",
         status: "fallback",
         response: createFallbackResponse(slot.fragment, "fallback", "error"),
-      };
+      });
       recordSlotFailure(slot);
     }
   }
@@ -425,7 +490,7 @@ export async function executeFragmentSlots({
       return;
     }
     const slot = node.slot;
-    slotResults[slot.name] = {
+    settleSlot(slot.name, {
       slot,
       strategy: slot.strategy ?? DEFAULT_RENDER_STRATEGY,
       source: "fallback",
@@ -435,7 +500,7 @@ export async function executeFragmentSlots({
         "fallback",
         "skipped-dependency",
       ),
-    };
+    });
     const spanId = trace?.startSpan(`slot:${slot.name}`, "fragment", {
       parentId: schedulerSpanId,
       attributes: {
@@ -452,34 +517,53 @@ export async function executeFragmentSlots({
     }
   }
 
-  for (const level of levels) {
-    const runnable: ScheduledNode[] = [];
-    for (const node of level) {
-      const blockedBy = directDependencyKeys(node).filter((dependency) =>
-        propagatedFailures.has(dependency),
+  const result = (async (): Promise<FragmentSlotsExecution> => {
+    for (const level of levels) {
+      const runnable: ScheduledNode[] = [];
+      for (const node of level) {
+        const blockedBy = directDependencyKeys(node).filter((dependency) =>
+          propagatedFailures.has(dependency),
+        );
+        if (blockedBy.length > 0) skipNode(node, blockedBy);
+        else runnable.push(node);
+      }
+      await Promise.all(
+        runnable.map((node) =>
+          node.type === "data" ? runDataNode(node) : runSlotNode(node),
+        ),
       );
-      if (blockedBy.length > 0) skipNode(node, blockedBy);
-      else runnable.push(node);
     }
-    await Promise.all(
-      runnable.map((node) =>
-        node.type === "data" ? runDataNode(node) : runSlotNode(node),
-      ),
-    );
-  }
 
-  const health: PageHealth =
-    failedRequiredSlots.length > 0 ? "unhealthy" : degraded ? "degraded" : "ok";
-  trace?.endSpan(schedulerSpanId ?? "", {
-    status: health === "unhealthy" ? "fallback" : "ok",
-    attributes: { health, failedRequiredSlots },
-  });
-  if (onRequiredFailure === "throw" && failedRequiredSlots.length > 0) {
-    throw new Error(
-      `required fragment slots failed: ${failedRequiredSlots.join(", ")}`,
-    );
-  }
-  return { slots: slotResults, data: dataResults, health, hints };
+    const health: PageHealth =
+      failedRequiredSlots.length > 0
+        ? "unhealthy"
+        : degraded
+          ? "degraded"
+          : "ok";
+    trace?.endSpan(schedulerSpanId ?? "", {
+      status: health === "unhealthy" ? "fallback" : "ok",
+      attributes: { health, failedRequiredSlots },
+    });
+    if (onRequiredFailure === "throw" && failedRequiredSlots.length > 0) {
+      throw new Error(
+        `required fragment slots failed: ${failedRequiredSlots.join(", ")}`,
+      );
+    }
+    return { slots: slotResults, data: dataResults, health, hints };
+  })();
+
+  return {
+    slots: Object.fromEntries(
+      [...slotDeferreds].map(([name, deferred]) => [name, deferred.promise]),
+    ),
+    result,
+  };
+}
+
+export async function executeFragmentSlots(
+  options: FetchFragmentSlotsOptions,
+): Promise<FragmentSlotsExecution> {
+  return streamFragmentSlots(options).result;
 }
 
 function directDependencyKeys(node: ScheduledNode): string[] {

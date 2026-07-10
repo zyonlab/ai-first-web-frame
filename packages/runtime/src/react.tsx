@@ -1,5 +1,5 @@
 import type { FragmentRenderResponse } from "@mvp/contracts";
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import type { FragmentSlotResult, FragmentSlotsExecution } from "./index";
 
 /**
@@ -35,7 +35,30 @@ export function FragmentSlot(props: FragmentSlotProps): ReactNode {
     "response" in props
       ? props.response?.html
       : resolveSlotHtml(props.execution, props.name);
-  if (!html) return props.fallback;
+  return renderFragmentSlotHtml(html, props.fallback);
+}
+
+/**
+ * Shared rendering core (refactor plan §4.4): HTML present ->
+ * `dangerouslySetInnerHTML`; otherwise -> fallback. Used by both the
+ * synchronous `<FragmentSlot>` above (an already-resolved
+ * `execution`/`response`) and the async `<FragmentSlotStream>` below (which
+ * awaits its own per-slot promise first) so the two produce byte-identical
+ * markup regardless of which one a page uses.
+ *
+ * Generic over the fallback type so `<FragmentSlotStream>` — an async Server
+ * Component — can pass a narrower `ReactElement` fallback and get back a
+ * `ReactElement` result: `@types/react`'s JSX-element check for async
+ * components only accepts resolved values assignable to `AwaitedReactNode`
+ * (a strict subset of the full `ReactNode` union), so returning the wider
+ * `ReactNode` from an async component fails to type-check even though it's
+ * fine for the synchronous `<FragmentSlot>`.
+ */
+function renderFragmentSlotHtml<Fallback extends ReactNode>(
+  html: string | undefined,
+  fallback: Fallback,
+): ReactElement | Fallback {
+  if (!html) return fallback;
   // biome-ignore lint/security/noDangerouslySetInnerHtml: fragment HTML is returned by trusted internal SSR fragment services.
   return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
@@ -61,4 +84,40 @@ function isFragmentSlotsExecution(
   value: FragmentSlotsExecution | Record<string, FragmentSlotResult>,
 ): value is FragmentSlotsExecution {
   return "health" in value && "data" in value && "slots" in value;
+}
+
+/**
+ * `<FragmentSlotStream>` (refactor plan §4.4) — the Suspense-compatible
+ * counterpart to `<FragmentSlot>`. Instead of an already-resolved
+ * `execution`/`response`, it takes ONE slot's own promise — as returned
+ * per-slot by `streamFragmentSlots` (`@mvp/runtime`) — and `await`s it
+ * itself: since this is an async Server Component, wrapping it in
+ * `<Suspense fallback={...}>` streams that slot's HTML into the response the
+ * moment ITS OWN promise resolves, independent of sibling slots or of the
+ * page's full diagnostics aggregate. Renders through the same
+ * `renderFragmentSlotHtml` helper `<FragmentSlot>` uses, so the HTML/fallback
+ * markup is byte-identical to the synchronous component.
+ *
+ * `fallback` is typed `ReactElement` (narrower than `<FragmentSlot>`'s
+ * `ReactNode`) so this async component's inferred return type stays
+ * assignable to `AwaitedReactNode` — see `renderFragmentSlotHtml`'s doc
+ * comment. Every real fallback in this codebase is already a JSX element
+ * (a `<section data-fragment=... data-fallback="true">` block), so this is
+ * not a practical restriction.
+ */
+export type FragmentSlotStreamProps = {
+  slotPromise: Promise<FragmentRenderResponse>;
+  fallback: ReactElement;
+};
+
+// No explicit return-type annotation: letting TypeScript infer
+// `Promise<ReactElement>` from `renderFragmentSlotHtml`'s generic result is
+// what keeps this assignable to `AwaitedReactNode` for the JSX-element check;
+// spelling out `Promise<ReactNode>` explicitly re-introduces the mismatch.
+export async function FragmentSlotStream({
+  slotPromise,
+  fallback,
+}: FragmentSlotStreamProps) {
+  const response = await slotPromise;
+  return renderFragmentSlotHtml(response?.html, fallback);
 }
