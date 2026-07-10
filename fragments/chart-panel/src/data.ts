@@ -1,11 +1,7 @@
 import type { RequestContext } from "@mvp/contracts";
-import {
-  createTradeDataClient,
-  type DataCacheEntry,
-  type Candle as DataCandle,
-  sourceIds,
-} from "@mvp/data";
+import type { DataCacheEntry, Candle as DataCandle } from "@mvp/data";
 import type { RequestTrace } from "@mvp/observability";
+import { createTradeDataClient, sourceIds } from "@mvp/trade-data";
 
 /**
  * The SSR-safe candle history the chart renders from. It comes through the

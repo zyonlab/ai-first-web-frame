@@ -1,4 +1,4 @@
-import { sourceIds } from "@mvp/data";
+import { sourceIds } from "@mvp/trade-data";
 import { marketHeaderBudget } from "./budget";
 
 /**

@@ -11,7 +11,7 @@
  * `context.ts` to forward the resolved `x-locale` header to page units.
  */
 
-import type { LocalePreference } from "@mvp/storage";
+import type { LocalePreference } from "@mvp/trade-prefs";
 
 /** BCP-47 tags emitted on `<html lang>` for each short locale. */
 const LOCALE_LANG: Record<LocalePreference, string> = {

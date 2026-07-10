@@ -515,8 +515,3 @@ export function createStorage(
     },
   };
 }
-
-// Trade-demo user-preference APIs (theme, locale, watchlist, recent symbols,
-// layout prefs) built on top of the core above. Kept in `./prefs` so the core
-// stays untouched; this file only re-exports them.
-export * from "./prefs";

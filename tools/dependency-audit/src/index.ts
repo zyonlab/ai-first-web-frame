@@ -286,24 +286,18 @@ function auditSourceImports(
 //
 // This is scaffolding added ahead of the Phase P1 re-layering migration (see
 // docs/ARCHITECTURE_REFACTOR_PLAN.md §8, Phase P1, and the P1-prep task that
-// added this check). The Phase 1 migration (§2.2 Move A: `packages/trade-client`
-// split into `@mvp/store` / `@mvp/islands` / `domains/trade-chart`; Move B:
-// `packages/interaction/src/trade/*` moved to `domains/trade-contracts`) has
-// landed, so those two leaks are gone — removed from this list so the
-// allowlist doesn't silently mask a regression. The remaining entries (the
-// trade source registry appended to `packages/data/src/sources/tradeClient.ts`
-// / `packages/data/src/index.ts`, the trade prefs under
-// `packages/storage/src/prefs/*`, and `createTradeAliasVariables` in
-// `packages/design-system/src/themes.ts`) are still-pending moves (§2.2 table
-// rows for `domains/trade-data`, `domains/trade-prefs`, `domains/trade-theme`)
-// left for a later phase. Do NOT add new entries here for anything other than
-// these already-known leaks; any new violation outside this list must fail.
-const KNOWN_LEAKS = [
-  "packages/data/src/sources/tradeClient.ts",
-  "packages/data/src/index.ts",
-  "packages/storage/src/prefs/",
-  "packages/design-system/src/themes.ts",
-];
+// added this check). Phase 1 (§2.2 Move A: `packages/trade-client` split into
+// `@mvp/store` / `@mvp/islands` / `domains/trade-chart`; Move B:
+// `packages/interaction/src/trade/*` moved to `domains/trade-contracts`) and
+// Phase 2 (Move C: the trade source registry + `createTradeDataClient` moved
+// from `packages/data` to `domains/trade-data`; Move D: the trade prefs moved
+// from `packages/storage/src/prefs/*` to `domains/trade-prefs`; Move E:
+// `createTradeAliasVariables` moved from `packages/design-system/src/themes.ts`
+// to `domains/trade-theme`) have both landed, so every §2.2 leak this list
+// used to carry is gone. Left empty on purpose (rather than deleted) so the
+// allowlist doesn't silently mask a regression: any new domain-code-in-
+// framework-package violation must fail, not get quietly added here.
+const KNOWN_LEAKS: string[] = [];
 
 function isKnownLeak(relativeFile: string): boolean {
   return KNOWN_LEAKS.some((prefix) => relativeFile.startsWith(prefix));

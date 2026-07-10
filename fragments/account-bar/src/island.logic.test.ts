@@ -1,4 +1,4 @@
-import type { AccountMargin } from "@mvp/data";
+import type { AccountMargin } from "@mvp/trade-data";
 import { describe, expect, it } from "vitest";
 import { toAccountBarView } from "./data";
 import { type IslandState, initialIslandState, islandReducer } from "./island";

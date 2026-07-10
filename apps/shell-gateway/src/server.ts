@@ -9,7 +9,7 @@ import {
   type ThemePreference,
   writeLocalePreference,
   writeThemePreference,
-} from "@mvp/storage";
+} from "@mvp/trade-prefs";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import { fragmentRegistry } from "../../../platform/fragment-registry/src/registry";
 import {

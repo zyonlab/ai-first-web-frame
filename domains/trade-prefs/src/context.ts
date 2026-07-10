@@ -1,5 +1,5 @@
 import type { RequestContext } from "@mvp/contracts";
-import type { StoragePartitionContext } from "../index";
+import type { StoragePartitionContext } from "@mvp/storage";
 
 /**
  * Builds a {@link StoragePartitionContext} from a full {@link RequestContext}.

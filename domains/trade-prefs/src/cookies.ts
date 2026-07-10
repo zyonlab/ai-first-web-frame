@@ -1,4 +1,4 @@
-import { type CookieAttributes, parseCookieHeader } from "../index";
+import { type CookieAttributes, parseCookieHeader } from "@mvp/storage";
 
 /**
  * Structured representation of a cookie the caller should write onto the

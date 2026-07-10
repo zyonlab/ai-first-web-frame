@@ -1,10 +1,6 @@
 import type { RequestContext } from "@mvp/contracts";
-import {
-  createTradeDataClient,
-  type DataCacheEntry,
-  normalizeSymbol,
-  type TradePrintFrame,
-} from "@mvp/data";
+import type { DataCacheEntry, TradePrintFrame } from "@mvp/data";
+import { createTradeDataClient, normalizeSymbol } from "@mvp/trade-data";
 
 /**
  * Reads the recent trades tape for a symbol through the frozen trade data

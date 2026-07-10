@@ -1,5 +1,5 @@
 import type { RequestContext, StoragePolicy } from "@mvp/contracts";
-import { createStorage, type StorageAdapter } from "../index";
+import { createStorage, type StorageAdapter } from "@mvp/storage";
 import { prefsPartitionContext } from "./context";
 
 /**

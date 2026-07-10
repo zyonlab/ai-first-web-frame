@@ -1,11 +1,20 @@
-// Scaffolding only — no real runtime code yet. Per
-// docs/ARCHITECTURE_REFACTOR_PLAN.md §2.2, this package becomes the future
-// home of the trade user-preference APIs currently under
-// `packages/storage/src/prefs/*` (watchlist.ts, recentSymbols.ts, layout.ts,
-// theme.ts, locale.ts, context.ts, cookies.ts) — appended to the framework
-// `@mvp/storage` package.
-//
-// This placeholder only proves the package resolves, builds, and typechecks
-// cleanly ahead of that move. The real migration is a separate, blocked P1
-// task — see docs/ARCHITECTURE_REFACTOR_PLAN.md §8 (Phase P1).
-export const __placeholder = true;
+/**
+ * Trade-demo user-preference persistence, built on top of the `@mvp/storage`
+ * core (`createStorage` + policy validation). Every API is partitioned and
+ * privacy-checked through the existing policy machinery.
+ *
+ * | API | Privacy | Partition | TTL | SSR / client |
+ * | --- | --- | --- | --- | --- |
+ * | theme (`mvp_theme`) | public | none | ~1yr | SSR read + client write (non-HttpOnly cookie) |
+ * | locale (`mvp_locale`) | public | none | ~1yr | SSR read + client write (non-HttpOnly cookie) |
+ * | watchlist | user-private | tenant + user | ~1yr | SSR (default server-kv; cookie adapter injectable) |
+ * | recent symbols | user-private | tenant + user | 30d | SSR (default server-kv; signed cookie injectable) |
+ * | layout prefs | user-private | tenant + user | ~1yr | client-local first (localStorage); optional cookie mirror |
+ */
+export * from "./context";
+export * from "./cookies";
+export * from "./layout";
+export * from "./locale";
+export * from "./recentSymbols";
+export * from "./theme";
+export * from "./watchlist";

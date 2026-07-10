@@ -251,8 +251,8 @@ describe("dependency-audit", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  it("allowlists the known pre-existing trade-domain leaks in framework packages", () => {
-    const root = tempRoot("layering-allowlist");
+  it("no longer allowlists the former trade-domain leaks now that Phase P1/P2 moved them out", () => {
+    const root = tempRoot("layering-allowlist-closed");
     write(
       join(root, "domains/trade-chart/package.json"),
       JSON.stringify({ name: "@mvp/trade-chart" }),
@@ -261,12 +261,14 @@ describe("dependency-audit", () => {
       join(root, "domains/trade-chart/src/index.ts"),
       "export const chart = 1;\n",
     );
-    // Mirrors the real repo's remaining known leaks (packages/trade-client and
-    // packages/interaction/src/trade were migrated away in Phase P1 and are no
-    // longer allowlisted): packages/data's trade source registry, packages/
-    // storage's trade prefs, and packages/design-system's trade theme helper.
-    // Each imports domain code here to prove the allowlist suppresses the
-    // issue without weakening the check for anything else.
+    // These are the exact paths the KNOWN_LEAKS allowlist used to cover
+    // (packages/trade-client and packages/interaction/src/trade were closed in
+    // Phase P1; packages/data's trade source registry, packages/storage's
+    // trade prefs, and packages/design-system's trade theme helper were closed
+    // in Phase P2 — see docs/ARCHITECTURE_REFACTOR_PLAN.md §2.2 Moves C/D/E).
+    // KNOWN_LEAKS is now empty, so importing domain code from any of these
+    // locations must be caught, not silently suppressed — proving the
+    // allowlist was fully narrowed rather than just left stale.
     write(
       join(root, "packages/data/src/sources/tradeClient.ts"),
       'import { chart } from "@mvp/trade-chart";\nexport { chart };\n',
@@ -293,7 +295,12 @@ describe("dependency-audit", () => {
     const layering = report.issues.filter(
       (issue) => issue.code === "domain-code-in-framework-package",
     );
-    expect(layering).toHaveLength(0);
+    expect(layering.map((issue) => issue.file).sort()).toEqual([
+      "packages/data/src/index.ts",
+      "packages/data/src/sources/tradeClient.ts",
+      "packages/design-system/src/themes.ts",
+      "packages/storage/src/prefs/watchlist.ts",
+    ]);
     rmSync(root, { recursive: true, force: true });
   });
 });

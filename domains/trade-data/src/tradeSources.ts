@@ -25,24 +25,25 @@
  *   transport after its request-time seed (spine §5 flow B).
  *
  * Everything the loaders emit is derived from the frozen generators/fixtures in
- * `../transport`; this module never invents literals.
+ * `@mvp/data`'s transport layer; this module never invents literals.
  */
 
 import type { DataDependency } from "@mvp/contracts";
-import type { DataSource, SubscriptionTransport } from "../index";
-import { defineDataSource } from "../index";
 import {
   type Candle,
   createMockSubscriptionTransport,
+  type DataSource,
+  defineDataSource,
   FIXTURE_SEED,
   type FixtureSymbol,
   type FundingFrame,
   getFixture,
   type MockScheduler,
   type OrderbookL2Frame,
+  type SubscriptionTransport,
   type TickerFrame,
   type TradePrintFrame,
-} from "../transport";
+} from "@mvp/data";
 import {
   normalizeInterval,
   normalizeSymbol,

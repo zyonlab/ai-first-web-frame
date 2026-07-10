@@ -1,10 +1,7 @@
 import type { RequestContext } from "@mvp/contracts";
-import {
-  type Candle,
-  createTradeDataClient,
-  type DataCacheEntry,
-} from "@mvp/data";
+import type { Candle, DataCacheEntry } from "@mvp/data";
 import type { RequestTrace } from "@mvp/observability";
+import { createTradeDataClient } from "@mvp/trade-data";
 import { buildEquityCurve, type PnlPoint } from "./curve";
 
 /**

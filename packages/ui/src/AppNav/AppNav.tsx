@@ -17,10 +17,10 @@ import type { ReactElement } from "react";
  *   a framework too.
  */
 
-/** Theme preference — mirrors `@mvp/storage` `ThemePreference` without importing it. */
+/** Theme preference — mirrors `@mvp/trade-prefs` `ThemePreference` without importing it. */
 export type AppNavTheme = "light" | "dark" | "system";
 
-/** Locale preference — mirrors `@mvp/storage` `LocalePreference`. */
+/** Locale preference — mirrors `@mvp/trade-prefs` `LocalePreference`. */
 export type AppNavLocale = "en" | "zh";
 
 export type AppNavProps = {

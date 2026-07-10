@@ -4,7 +4,7 @@ import {
   createStorage,
   type StorageAdapter,
   type WebStorageBackend,
-} from "../index";
+} from "@mvp/storage";
 import { prefsPartitionContext } from "./context";
 
 /**

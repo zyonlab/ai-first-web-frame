@@ -1,4 +1,4 @@
-import type { AccountMargin } from "@mvp/data";
+import type { AccountMargin } from "@mvp/trade-data";
 import { describe, expect, it } from "vitest";
 import { accountBarBudget } from "./budget";
 import { toAccountBarView } from "./data";

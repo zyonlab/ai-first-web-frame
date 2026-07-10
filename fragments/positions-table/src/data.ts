@@ -1,9 +1,6 @@
 import type { RequestContext } from "@mvp/contracts";
-import {
-  createTradeDataClient,
-  type DataCacheEntry,
-  type Position,
-} from "@mvp/data";
+import type { DataCacheEntry } from "@mvp/data";
+import { createTradeDataClient, type Position } from "@mvp/trade-data";
 
 /**
  * Reads the current open-positions snapshot through the frozen trade data plane.
@@ -30,4 +27,4 @@ export async function loadPositions(ctx: RequestContext): Promise<Position[]> {
   return result.data;
 }
 
-export type { Position } from "@mvp/data";
+export type { Position } from "@mvp/trade-data";

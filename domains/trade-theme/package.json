@@ -17,6 +17,9 @@
     "build": "tsdown src/index.ts --format esm --dts",
     "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@mvp/design-system": "workspace:*"
+  },
   "devDependencies": {
     "tsdown": "^0.11.0"
   }

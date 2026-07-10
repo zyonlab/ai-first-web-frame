@@ -1,7 +1,7 @@
 import type { RequestContext } from "@mvp/contracts";
 import { createRequestContext } from "@mvp/request-context";
+import { createMemoryStorageAdapter } from "@mvp/storage";
 import { describe, expect, it } from "vitest";
-import { createMemoryStorageAdapter } from "../index";
 import { createLayoutPrefs } from "./layout";
 import {
   DEFAULT_LOCALE,

@@ -19,15 +19,15 @@
  */
 
 import type { RequestContext } from "@mvp/contracts";
-import type {
-  CacheAdapter,
-  DataCacheEntry,
-  DataSource,
-  DataSubscriptionEvent,
-  SubscribeDataOptions,
-} from "../index";
-import { createDataClient } from "../index";
-import type { MockScheduler } from "../transport";
+import {
+  type CacheAdapter,
+  createDataClient,
+  type DataCacheEntry,
+  type DataSource,
+  type DataSubscriptionEvent,
+  type MockScheduler,
+  type SubscribeDataOptions,
+} from "@mvp/data";
 import { sourceIds } from "./sourceIds";
 import {
   accountSource,

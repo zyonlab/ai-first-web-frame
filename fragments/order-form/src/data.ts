@@ -1,9 +1,6 @@
 import type { RequestContext } from "@mvp/contracts";
-import {
-  type AccountMargin,
-  createTradeDataClient,
-  type DataCacheEntry,
-} from "@mvp/data";
+import type { DataCacheEntry } from "@mvp/data";
+import { type AccountMargin, createTradeDataClient } from "@mvp/trade-data";
 
 /**
  * Request-time account/margin read for the order-form first paint.

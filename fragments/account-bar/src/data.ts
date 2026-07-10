@@ -1,11 +1,11 @@
 import type { RequestContext } from "@mvp/contracts";
+import type { DataCacheEntry } from "@mvp/data";
+import type { RequestTrace } from "@mvp/observability";
 import {
   type AccountMargin,
   createTradeDataClient,
-  type DataCacheEntry,
   sourceIds,
-} from "@mvp/data";
-import type { RequestTrace } from "@mvp/observability";
+} from "@mvp/trade-data";
 
 /**
  * The SSR-safe account frame the bar renders from. It comes through the

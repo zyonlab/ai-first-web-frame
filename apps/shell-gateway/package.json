@@ -17,7 +17,7 @@
     "@mvp/observability": "workspace:*",
     "@mvp/request-context": "workspace:*",
     "@mvp/runtime": "workspace:*",
-    "@mvp/storage": "workspace:*",
+    "@mvp/trade-prefs": "workspace:*",
     "fastify": "^4.28.1"
   },
   "devDependencies": {

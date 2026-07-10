@@ -3,12 +3,9 @@ import {
   collectAssets,
   createAssetHtmlTags,
 } from "@mvp/assets";
-import {
-  baseResetCss,
-  createAllThemeVariables,
-  createTradeAliasVariables,
-} from "@mvp/design-system";
-import { readThemePreference, resolveLocalePreference } from "@mvp/storage";
+import { baseResetCss, createAllThemeVariables } from "@mvp/design-system";
+import { readThemePreference, resolveLocalePreference } from "@mvp/trade-prefs";
+import { createTradeAliasVariables } from "@mvp/trade-theme";
 import { appNavCss } from "@mvp/ui/AppNav";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";

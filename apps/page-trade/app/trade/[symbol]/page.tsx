@@ -1,4 +1,4 @@
-import { readThemePreference, resolveLocalePreference } from "@mvp/storage";
+import { readThemePreference, resolveLocalePreference } from "@mvp/trade-prefs";
 import { AppNav } from "@mvp/ui/AppNav";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";

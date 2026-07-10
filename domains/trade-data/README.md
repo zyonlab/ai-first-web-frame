@@ -1,9 +1,14 @@
 # @mvp/trade-data
 
-Scaffolding package, not yet populated with real code. This is the future home
-of the trade domain's data layer — the trade source-id registry and the
-`createTradeDataClient` helper currently appended to
-`packages/data/src/index.ts`, along with the trade-specific loaders under
-`packages/data/src/sources/tradeClient.ts` — once the Phase P1 re-layering
-migration moves domain code out of the framework `@mvp/data` package; see
+The trade domain's data layer: the canonical trade source-id registry
+(`sourceIds`, `parseSourceId`, `tradeSourceRegistry`), the per-source
+`DataDependency` + loader definitions (`orderbookSource`, `tickerSource`,
+`accountSource`, ...), and the `createTradeDataClient` ergonomic helper that
+pre-registers them all and auto-wires the mock realtime transport.
+
+Moved out of `packages/data` in the Phase P1 re-layering migration (§2.2 Move
+C); see
 [docs/ARCHITECTURE_REFACTOR_PLAN.md §2.2](../../docs/ARCHITECTURE_REFACTOR_PLAN.md#22-moves-mechanical-one-pr-behavior-preserving).
+The generic `createDataClient` / `readData` / `preloadData` / `mutateData` /
+`subscribeData` / cache-adapter core, plus the mock transport / frame
+generators / fixtures, stay in `@mvp/data` — this package depends on it.

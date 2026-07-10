@@ -1,13 +1,13 @@
 import type { RequestContext } from "@mvp/contracts";
+import type { DataCacheEntry } from "@mvp/data";
+import type { RequestTrace } from "@mvp/observability";
 import {
   type AccountMargin,
   type Balances,
   createTradeDataClient,
-  type DataCacheEntry,
   type Position,
   sourceIds,
-} from "@mvp/data";
-import type { RequestTrace } from "@mvp/observability";
+} from "@mvp/trade-data";
 
 /**
  * The request-time portfolio snapshot the render layer consumes. It composes
@@ -65,4 +65,4 @@ export async function loadPortfolioSnapshot(
   };
 }
 
-export type { AccountMargin, Balances, Position } from "@mvp/data";
+export type { AccountMargin, Balances, Position } from "@mvp/trade-data";

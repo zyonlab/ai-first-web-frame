@@ -1,9 +1,6 @@
 import type { RequestContext } from "@mvp/contracts";
-import {
-  createTradeDataClient,
-  type DataCacheEntry,
-  type WorkingOrder,
-} from "@mvp/data";
+import type { DataCacheEntry } from "@mvp/data";
+import { createTradeDataClient, type WorkingOrder } from "@mvp/trade-data";
 
 /**
  * Reads the current working (open) orders through the frozen trade data plane.
@@ -29,4 +26,4 @@ export async function loadOpenOrders(
   return result.data;
 }
 
-export type { WorkingOrder } from "@mvp/data";
+export type { WorkingOrder } from "@mvp/trade-data";

@@ -28,7 +28,6 @@ import type {
   MockScheduler,
   OrderbookL2Frame,
 } from "@mvp/data";
-import { createTradeDataClient, type TradeDataClient } from "@mvp/data";
 import {
   buildLadder,
   diffLadder,
@@ -55,6 +54,7 @@ import {
 import { createRequestContext } from "@mvp/request-context";
 import type { SliceStore } from "@mvp/store";
 import { TRADE_ACTIVE_SYMBOL, type TradeSlices } from "@mvp/trade-contracts";
+import { createTradeDataClient, type TradeDataClient } from "@mvp/trade-data";
 
 /** Options for {@link startTradeRealtime} — all optional; tests inject a scheduler. */
 export type TradeRealtimeOptions = {

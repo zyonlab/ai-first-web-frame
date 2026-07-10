@@ -1,11 +1,7 @@
 import type { RequestContext } from "@mvp/contracts";
-import {
-  createTradeDataClient,
-  type DataCacheEntry,
-  type FundingFrame,
-  type TickerFrame,
-} from "@mvp/data";
+import type { DataCacheEntry, FundingFrame, TickerFrame } from "@mvp/data";
 import type { RequestTrace } from "@mvp/observability";
+import { createTradeDataClient } from "@mvp/trade-data";
 
 /**
  * The funding snapshot the render layer consumes. It composes two C5 sources

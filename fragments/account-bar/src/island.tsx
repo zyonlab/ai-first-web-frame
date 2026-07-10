@@ -1,6 +1,5 @@
 "use client";
 
-import { type AccountMargin, createTradeDataClient } from "@mvp/data";
 import { createInteractionBus } from "@mvp/interaction";
 import { createRequestContext } from "@mvp/request-context";
 import {
@@ -8,6 +7,7 @@ import {
   TRADE_LEVERAGE,
   tradeSliceContracts,
 } from "@mvp/trade-contracts";
+import { type AccountMargin, createTradeDataClient } from "@mvp/trade-data";
 import { useEffect, useMemo, useReducer } from "react";
 import {
   type AccountBarView,

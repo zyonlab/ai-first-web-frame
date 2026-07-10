@@ -3,7 +3,7 @@ import {
   readThemePreference,
   resolveLocalePreference,
   type ThemePreference,
-} from "@mvp/storage";
+} from "@mvp/trade-prefs";
 import type { FastifyRequest } from "fastify";
 import { localeToLang } from "./chrome";
 
