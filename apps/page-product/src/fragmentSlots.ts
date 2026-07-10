@@ -3,6 +3,7 @@ import { createRequestContext } from "@mvp/request-context";
 import {
   type DataResolutionResult,
   executeFragmentSlots,
+  type FragmentSlotDefinition,
   type FragmentSlotResult,
   type PageHealth,
   type SchedulerHint,
@@ -57,6 +58,53 @@ type FetchProductFragmentSlotsOptions = {
   now?: () => number;
 };
 
+/**
+ * The page-product runtime slots array, factored out of
+ * `fetchProductFragmentSlots` so it can be diffed against
+ * `manifest.slots.json` without making a real network call (refactor plan
+ * §3.4 drift check; see `apps/page-product/tests/manifestSync.test.ts`).
+ *
+ * Deliberately does NOT include `price-panel`: the manifest marks it
+ * `reserved: true` because it is hand-rendered as a static aside in
+ * `app/product/[id]/page.tsx`, not fetched through the runtime scheduler.
+ */
+export function buildProductSlotDefinitions(
+  timeoutMs = 200,
+): FragmentSlotDefinition[] {
+  return [
+    {
+      name: "staticProof",
+      fragment: "static-product-proof",
+      strategy: "static",
+      staticHtml:
+        '<section data-fragment="static-product-proof" data-render-strategy="static"><h2>Static product proof</h2><p>This proof block is safe to prerender as static HTML.</p></section>',
+    },
+    {
+      name: "promotion",
+      fragment: "promotion-banner",
+      channel: "stable",
+      strategy: "isr",
+      timeoutMs,
+      dataDependencies: ["product-promotion"],
+      props: { scene: "product", campaignId: "product-launch" },
+      cachePolicy: {
+        ttl: 300,
+        tags: ["promotion", "product"],
+        vary: ["tenant", "locale", "experiment", "props"],
+      },
+    },
+    {
+      name: "recommendations",
+      fragment: "recommendation-widget",
+      channel: "stable",
+      strategy: "dynamic-ssr",
+      timeoutMs,
+      dataDependencies: ["product-price"],
+      props: { scene: "product", limit: 3 },
+    },
+  ];
+}
+
 export async function fetchProductFragmentSlots({
   headers,
   fetchImpl,
@@ -103,38 +151,7 @@ export async function fetchProductFragmentSlots({
       { id: "product-promotion", dependsOn: ["product-summary"] },
     ],
     resolveData,
-    slots: [
-      {
-        name: "staticProof",
-        fragment: "static-product-proof",
-        strategy: "static",
-        staticHtml:
-          '<section data-fragment="static-product-proof" data-render-strategy="static"><h2>Static product proof</h2><p>This proof block is safe to prerender as static HTML.</p></section>',
-      },
-      {
-        name: "promotion",
-        fragment: "promotion-banner",
-        channel: "stable",
-        strategy: "isr",
-        timeoutMs,
-        dataDependencies: ["product-promotion"],
-        props: { scene: "product", campaignId: "product-launch" },
-        cachePolicy: {
-          ttl: 300,
-          tags: ["promotion", "product"],
-          vary: ["tenant", "locale", "experiment", "props"],
-        },
-      },
-      {
-        name: "recommendations",
-        fragment: "recommendation-widget",
-        channel: "stable",
-        strategy: "dynamic-ssr",
-        timeoutMs,
-        dataDependencies: ["product-price"],
-        props: { scene: "product", limit: 3 },
-      },
-    ],
+    slots: buildProductSlotDefinitions(timeoutMs),
   });
 
   const slots = execution.slots;

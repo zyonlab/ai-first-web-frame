@@ -12,7 +12,7 @@
     "channel": "stable",
     "strategy": "cached-ssr",
     "timeoutMs": 200,
-    "required": false
+    "required": true
   },
   {
     "name": "recommendations",

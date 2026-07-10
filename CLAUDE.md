@@ -41,6 +41,8 @@ pnpm monorepo for an AI-native micro-frontend framework. Shell gateway (4100) co
    Mounting a fragment that is not in the fragment registry fails (`"status": "failed"`, no write);
    register it first, or pass `--allow-unregistered` to warn-and-proceed (`--remove` is unaffected).
    Then wire the slot into the page's `src/fragmentSlots.ts` fetch list and page tests.
+   `pnpm test`/`pnpm verify` now catch `manifest.slots.json` vs. runtime slots array drift per page
+   (`platform/fragment-registry/src/slots.ts` `diffManifestAgainstRuntime` + each `tests/manifestSync.test.ts`).
 5. **Verify** the whole repo (typecheck, lint, format, tests, build, 6 audits; writes `reports/`):
    `pnpm verify`
    Accept: exit 0. Never ship with a failing audit or budget.

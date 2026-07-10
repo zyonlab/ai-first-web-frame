@@ -3,6 +3,7 @@ import { createRequestTrace } from "@mvp/observability";
 import { createRequestContext } from "@mvp/request-context";
 import {
   executeFragmentSlots,
+  type FragmentSlotDefinition,
   type FragmentSlotResult,
   type PageHealth,
   type SchedulerHint,
@@ -42,6 +43,34 @@ type FetchMarketsFragmentSlotsOptions = {
 const MARKETS_SLOT_KEYS: MarketsSlotKey[] = ["marketsTable"];
 
 /**
+ * The page-markets runtime slots array, factored out of
+ * `fetchMarketsFragmentSlots` so it can be diffed against
+ * `manifest.slots.json` without making a real network call (refactor plan
+ * §3.4 drift check; see `apps/page-markets/tests/manifestSync.test.ts`).
+ */
+export function buildMarketsSlotDefinitions(
+  timeoutMs = 200,
+): FragmentSlotDefinition[] {
+  return [
+    {
+      name: "marketsTable",
+      fragment: "markets-table",
+      channel: "canary",
+      strategy: "cached-ssr",
+      timeoutMs,
+      // Required: the table is the page's only content — if it fails the page
+      // is reported degraded/unhealthy, not silently empty.
+      required: true,
+      cachePolicy: {
+        ttl: 5,
+        tags: ["markets", "ticker"],
+        vary: ["tenant", "locale", "props"],
+      },
+    },
+  ];
+}
+
+/**
  * Compose the markets page's single fragment slot through the runtime
  * scheduler. `markets-table` is a `cached-ssr` fragment (near-realtime table;
  * doc 01 §5), rendered once and served no-JS-readable. When the fragment is not
@@ -67,23 +96,7 @@ export async function fetchMarketsFragmentSlots({
     timeoutMs,
     trace,
     onRequiredFailure: "fallback",
-    slots: [
-      {
-        name: "marketsTable",
-        fragment: "markets-table",
-        channel: "canary",
-        strategy: "cached-ssr",
-        timeoutMs,
-        // Required: the table is the page's only content — if it fails the page
-        // is reported degraded/unhealthy, not silently empty.
-        required: true,
-        cachePolicy: {
-          ttl: 5,
-          tags: ["markets", "ticker"],
-          vary: ["tenant", "locale", "props"],
-        },
-      },
-    ],
+    slots: buildMarketsSlotDefinitions(timeoutMs),
   });
 
   const slots = {} as Record<MarketsSlotKey, string | null>;
