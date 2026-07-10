@@ -5,6 +5,11 @@
     "channel": "canary",
     "strategy": "dynamic-ssr",
     "timeoutMs": 200,
+    "cachePolicy": {
+      "ttl": 0,
+      "tags": ["portfolio", "account"],
+      "vary": ["tenant", "props"]
+    },
     "required": true
   },
   {
@@ -13,6 +18,11 @@
     "channel": "canary",
     "strategy": "isr",
     "timeoutMs": 200,
+    "cachePolicy": {
+      "ttl": 60,
+      "tags": ["portfolio", "pnl"],
+      "vary": ["tenant", "locale", "props"]
+    },
     "required": false
   }
 ]
