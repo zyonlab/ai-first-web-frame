@@ -41,20 +41,21 @@ pnpm monorepo for an AI-native micro-frontend framework. Shell gateway (4100) co
    Accept: `"status": "mounted"` and empty `warnings`. Unmount with `--remove` instead of `--fragment ...`.
    Mounting a fragment that is not in the fragment registry fails (`"status": "failed"`, no write);
    register it first, or pass `--allow-unregistered` to warn-and-proceed (`--remove` is unaffected).
-   **Status: codegen piloted on page-home (P2).** For page-home, `mount-slot` now also
+   **Status: codegen rolled out to all five pages (P2).** For every page, `mount-slot` now also
    regenerates `src/fragmentSlots.gen.ts` (a `FragmentSlotDefinition[]` built straight from
    `manifest.slots.json`) after every successful mount/unmount — no hand-editing
    `fragmentSlots.ts`'s slot array. Run `mount-slot --page <page> --check` (writes nothing) to
-   verify the gen file is still in sync; `pnpm verify:manifest-gen` runs this for every page that
-   has a `.gen.ts` file and is wired into `pnpm verify`. `page-product`, `page-markets`,
-   `page-portfolio`, and `page-trade` are **not yet on this path** — for those, still hand-wire
-   the slot into the page's `src/fragmentSlots.ts` fetch list and JSX (`<FragmentSlot>` from
-   `@mvp/runtime/react` is available to use there too, but the page's `fragmentSlots.ts` isn't
-   generated yet) and page tests.
-   `pnpm test`/`pnpm verify` catch `manifest.slots.json` vs. runtime slots array drift per hand-wired
-   page (`@mvp/registry`'s `packages/registry/src/slots.ts` `diffManifestAgainstRuntime` + each
-   `tests/manifestSync.test.ts`); page-home's gen file makes that class of drift structurally
-   impossible instead of merely detected.
+   verify the gen file is still in sync; `pnpm verify:manifest-gen` runs this for every page and
+   is wired into `pnpm verify`. Each page's `fragmentSlots.ts` is now a thin wrapper around the
+   generated array (only per-request glue — `timeoutMs` overrides, `resolveData`, and for
+   `page-trade`'s per-request `props.symbol` a `{...slot, timeoutMs, props}` merge — stays
+   hand-written) and each `page.tsx` renders slots via `<FragmentSlot>` from `@mvp/runtime/react`.
+   `page-product`'s `reserved: true` `price-panel` slot is intentionally excluded from codegen
+   and stays hand-rendered, by design.
+   `pnpm test`/`pnpm verify` still also run each page's `tests/manifestSync.test.ts`
+   (`diffManifestAgainstRuntime` from `@mvp/registry`'s `packages/registry/src/slots.ts`) as a
+   belt-and-suspenders check, though `--check`/`verify:manifest-gen` now makes manifest↔runtime
+   drift structurally impossible rather than merely detected.
 5. **Verify** the whole repo (typecheck, lint, format, tests, build, 6 audits; writes `reports/`):
    `pnpm verify`
    Accept: exit 0. Never ship with a failing audit or budget.

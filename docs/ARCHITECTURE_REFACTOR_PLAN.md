@@ -207,9 +207,10 @@ the only slot declaration, with generated runtime wiring.
 **Gate:** A1 measured — mounting the next new fragment touches 0 hand-edited
 files besides JSX placement; the two known drifts are gone; e2e still green.
 
-**Status: piloted on page-home (P2).** Items 1–3 above are implemented and
-exercised end-to-end on exactly one page, on purpose, to prove the pattern
-before rolling it out further:
+**Status: implemented and rolled out to all five pages (P2).** Items 1–3
+above were first exercised end-to-end on page-home alone to prove the
+pattern, then extended to `page-product`, `page-markets`, `page-portfolio`,
+and `page-trade`:
 
 - `PageManifestSchema.slots` (`packages/contracts/src/index.ts`) gained
   `dataDependencies: string[]` (mirroring `@mvp/runtime`'s
@@ -234,27 +235,34 @@ before rolling it out further:
   an already-resolved `FragmentRenderResponse` directly) and renders
   `dangerouslySetInnerHTML` or the fallback — byte-for-byte the same rendered
   output as before.
-- `apps/page-home/src/fragmentSlots.ts` now imports the generated static slot
+- Every page's `fragmentSlots.ts` now imports its generated static slot
   config from `./fragmentSlots.gen.ts` and only hand-writes what isn't a
-  manifest fact: the per-request `timeoutMs` override and the
-  `resolveData`/data-client glue. `apps/page-home/app/page.tsx` uses
-  `<FragmentSlot>` for all three slots instead of a local `FragmentHtml`
-  helper. Rendered output, `data-*` attributes, and every existing test
-  (including `apps/page-home/tests/manifestSync.test.ts`) are unchanged.
+  manifest fact: the per-request `timeoutMs` override, the
+  `resolveData`/data-client glue, and — for `page-trade`, whose 9 slots all
+  carry a per-request `props.symbol` the static manifest can't express — a
+  `generatedSlots.map(slot => ({ ...slot, timeoutMs, props }))` merge that
+  layers dynamic props onto the generated base at request time. Every page's
+  `page.tsx` uses `<FragmentSlot>` in place of a local `FragmentHtml` helper.
+  `page-product`'s hand-rendered `reserved: true` `price-panel` slot is
+  correctly excluded from codegen and untouched, as designed. Rendered
+  output, `data-*` attributes, and every existing test (including each
+  page's `manifestSync.test.ts`, and `page-trade`'s `hydrate.test.tsx` /
+  `tradeStore`-driven island wiring, which codegen never touches) are
+  unchanged.
 - `pnpm verify:manifest-gen` (`scripts/verify-manifest-gen.mts`) runs
-  `mount-slot --page <page> --check` for every page that already has a
-  `fragmentSlots.gen.ts` (today: page-home only) and is wired into
+  `mount-slot --page <page> --check` for every page with a
+  `fragmentSlots.gen.ts` — now all five pages (`page-home`, `page-product`,
+  `page-markets`, `page-portfolio`, `page-trade`) — and is wired into
   `pnpm verify`'s gate list, so a stale generated file fails CI the same way
   a lint error would.
 
-**Deliberately not done yet:** `page-product`, `page-markets`,
-`page-portfolio`, and `page-trade` remain fully hand-wired — their
-`fragmentSlots.ts`/`page.tsx` are untouched. Item 4's manifest↔runtime
-drift-check (`diffManifestAgainstRuntime`) still runs unchanged for the
-hand-wired pages; rolling codegen out to them is the next increment, at which
-point their drift checks become redundant with `--check` and can be retired.
-Item 5 (mount-slot hardening) was already shipped in P0 and is unaffected by
-this phase.
+**Follow-up now available:** with every page on the generated pattern, item
+4's per-page `manifestSync.test.ts` drift-check (`diffManifestAgainstRuntime`)
+is now fully redundant with `--check` for every page (it was already
+redundant for page-home) and could be retired in favor of relying solely on
+`verify:manifest-gen` — left in place for now as a belt-and-suspenders
+check since it's cheap and still passes. Item 5 (mount-slot hardening) was
+already shipped in P0 and is unaffected by this phase.
 
 ## 4. Delivery plane (🎯B, 🎯C)
 
