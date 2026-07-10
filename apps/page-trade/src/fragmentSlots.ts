@@ -13,9 +13,11 @@ import {
   executeFragmentSlots,
   type FragmentSlotDefinition,
   type FragmentSlotResult,
+  type FragmentSlotsExecution,
   type PageHealth,
   type SchedulerHint,
 } from "@mvp/runtime";
+import { fragmentSlots as generatedTradeSlots } from "./fragmentSlots.gen";
 
 /**
  * Shared `account` data node (doc 02 §4): `order-form`, `positions-table`, and
@@ -64,6 +66,11 @@ export type TradeFragmentHtml = {
   traceLog: string;
   /** Structured span/edge snapshot for the diagnostics waterfall drawer. */
   traceSnapshot: RequestTraceSnapshot;
+  // Raw scheduler output, keyed by slot name — feeds `<FragmentSlot>`
+  // (`@mvp/runtime/react`) directly so `app/trade/[symbol]/page.tsx` never
+  // hand-writes a per-slot `dangerouslySetInnerHTML` block (refactor plan
+  // §3.3). Added additively, mirroring page-home's wrapper.
+  execution: FragmentSlotsExecution;
 };
 
 type FetchTradeFragmentSlotsOptions = {
@@ -80,122 +87,37 @@ export function normalizeSymbol(symbol: string | undefined | null): string {
 }
 
 /**
- * The page-trade runtime slots array, factored out of
- * `fetchTradeFragmentSlots` so it can be diffed against
+ * The page-trade runtime slots array. The static shape (fragment, channel,
+ * strategy, cachePolicy, dataDependencies, required) is generated from
+ * `manifest.slots.json` by `scripts/mount-slot.mts` (refactor plan §3.2 — see
+ * `./fragmentSlots.gen.ts`, regenerate via `pnpm exec tsx
+ * scripts/mount-slot.mts --page page-trade --slot <name> --fragment
+ * <fragment> [...flags]`).
+ *
+ * Unlike page-home, every slot on this page also needs a per-request value —
+ * `props.symbol`, the active route symbol — that genuinely cannot be captured
+ * as a manifest fact (it varies per request, not per deployment). This is a
+ * new escape hatch beyond what page-home's wrapper needed: `mount-slot`
+ * registered only the STATIC portion of each slot (fragment/channel/strategy/
+ * timeoutMs/required/cachePolicy/dataDependencies — no `--props`), and this
+ * function merges the per-request `timeoutMs` override and `props` onto every
+ * generated slot before scheduling. `timeoutMs` is also kept as a per-request
+ * override (tests pass a short timeout to keep failure cases fast), mirroring
+ * page-home's pattern. None of this page's slots use strategy "static", so
+ * every generated slot gets both overrides unconditionally.
+ *
+ * Factored out of `fetchTradeFragmentSlots` so it can be diffed against
  * `manifest.slots.json` without making a real network call (refactor plan
- * §3.4 drift check; see `apps/page-trade/tests/manifestSync.test.ts`). `props`
- * only
- * carries the per-request symbol and is outside the manifest-comparable
- * contract, so a default symbol is fine for the drift check.
+ * §3.4 drift check; see `apps/page-trade/tests/manifestSync.test.ts`) — the
+ * drift check only compares fragment/channel/strategy/timeoutMs/required, so
+ * it's unaffected by how `props` is threaded in. A default symbol keeps the
+ * drift check callable with no arguments.
  */
 export function buildTradeSlotDefinitions(
   timeoutMs = 200,
   props: { symbol: string } = { symbol: "BTC" },
 ): FragmentSlotDefinition[] {
-  return [
-    {
-      name: "marketHeader",
-      fragment: "market-header",
-      channel: "canary",
-      strategy: "cached-ssr",
-      timeoutMs,
-      // Required: the header carries mark/oracle/funding — if it fails the
-      // page is reported unhealthy, not merely degraded.
-      required: true,
-      props,
-      cachePolicy: {
-        ttl: 5,
-        tags: ["ticker", "trade"],
-        vary: ["tenant", "locale", "props"],
-      },
-    },
-    {
-      name: "chart",
-      fragment: "chart-panel",
-      channel: "canary",
-      strategy: "isr",
-      timeoutMs,
-      required: false,
-      props,
-      cachePolicy: {
-        ttl: 60,
-        tags: ["candles", "trade"],
-        vary: ["locale", "props"],
-      },
-    },
-    {
-      name: "book",
-      fragment: "order-book",
-      channel: "canary",
-      strategy: "dynamic-ssr",
-      timeoutMs,
-      required: false,
-      props,
-    },
-    {
-      name: "trades",
-      fragment: "trades-feed",
-      channel: "canary",
-      strategy: "dynamic-ssr",
-      timeoutMs,
-      required: false,
-      props,
-    },
-    {
-      name: "orderForm",
-      fragment: "order-form",
-      channel: "canary",
-      strategy: "dynamic-ssr",
-      timeoutMs,
-      required: false,
-      // Shares the account read with positions + account-bar.
-      dataDependencies: [ACCOUNT_DATA_ID],
-      props,
-    },
-    {
-      name: "positions",
-      fragment: "positions-table",
-      channel: "canary",
-      strategy: "dynamic-ssr",
-      timeoutMs,
-      required: false,
-      dataDependencies: [ACCOUNT_DATA_ID],
-      props,
-    },
-    {
-      name: "openOrders",
-      fragment: "open-orders",
-      channel: "canary",
-      strategy: "dynamic-ssr",
-      timeoutMs,
-      required: false,
-      props,
-    },
-    {
-      name: "accountBar",
-      fragment: "account-bar",
-      channel: "canary",
-      strategy: "dynamic-ssr",
-      timeoutMs,
-      required: false,
-      dataDependencies: [ACCOUNT_DATA_ID],
-      props,
-    },
-    {
-      name: "fundingBar",
-      fragment: "funding-bar",
-      channel: "canary",
-      strategy: "cached-ssr",
-      timeoutMs,
-      required: false,
-      props,
-      cachePolicy: {
-        ttl: 30,
-        tags: ["funding", "trade"],
-        vary: ["locale", "props"],
-      },
-    },
-  ];
+  return generatedTradeSlots.map((slot) => ({ ...slot, timeoutMs, props }));
 }
 
 export async function fetchTradeFragmentSlots({
@@ -307,6 +229,7 @@ export async function fetchTradeFragmentSlots({
     },
     traceLog: trace.toDependencyGraphLog(),
     traceSnapshot: trace.toJSON(),
+    execution,
   };
 }
 

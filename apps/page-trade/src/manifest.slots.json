@@ -5,6 +5,11 @@
     "channel": "canary",
     "strategy": "cached-ssr",
     "timeoutMs": 200,
+    "cachePolicy": {
+      "ttl": 5,
+      "tags": ["ticker", "trade"],
+      "vary": ["tenant", "locale", "props"]
+    },
     "required": true
   },
   {
@@ -29,6 +34,7 @@
     "channel": "canary",
     "strategy": "dynamic-ssr",
     "timeoutMs": 200,
+    "dataDependencies": ["trade-account"],
     "required": false
   },
   {
@@ -37,6 +43,7 @@
     "channel": "canary",
     "strategy": "dynamic-ssr",
     "timeoutMs": 200,
+    "dataDependencies": ["trade-account"],
     "required": false
   },
   {
@@ -53,6 +60,7 @@
     "channel": "canary",
     "strategy": "dynamic-ssr",
     "timeoutMs": 200,
+    "dataDependencies": ["trade-account"],
     "required": false
   },
   {
@@ -61,6 +69,11 @@
     "channel": "canary",
     "strategy": "cached-ssr",
     "timeoutMs": 200,
+    "cachePolicy": {
+      "ttl": 30,
+      "tags": ["funding", "trade"],
+      "vary": ["locale", "props"]
+    },
     "required": false
   },
   {
@@ -69,6 +82,11 @@
     "channel": "canary",
     "strategy": "isr",
     "timeoutMs": 200,
+    "cachePolicy": {
+      "ttl": 60,
+      "tags": ["candles", "trade"],
+      "vary": ["locale", "props"]
+    },
     "required": false
   }
 ]
