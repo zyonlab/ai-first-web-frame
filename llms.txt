@@ -55,3 +55,39 @@
 - [packages/design-tokens/AGENT.md](packages/design-tokens/AGENT.md): raw
   design token values and CSS-custom-property generation. Consult for any
   color/spacing/radius/font/z-index value instead of hard-coding one.
+
+## Package AGENT.md (P1-re-layered packages; domain-agnostic APIs)
+
+- [packages/interaction/AGENT.md](packages/interaction/AGENT.md): the generic
+  contract-first pub/sub bus, mutation-tag-invalidation wrapper, and
+  cross-tab broadcast bridge (`createInteractionBus`, `defineMutation`,
+  `createBroadcastBridge`). Consult before any cross-fragment/island
+  messaging.
+- [packages/data/AGENT.md](packages/data/AGENT.md): the generic cached,
+  deduped, freshness-aware data client (`createDataClient`, `readData`,
+  `subscribeData`). Consult when backing a fragment slot's declared data
+  dependencies.
+- [packages/storage/AGENT.md](packages/storage/AGENT.md): the generic
+  privacy-partitioned storage facade over cookie/KV/web-storage adapters
+  (`createStorage`). Consult for any persisted value instead of touching a
+  storage backend directly.
+- [packages/design-system/AGENT.md](packages/design-system/AGENT.md): CSS
+  variable/theme emitters, base reset, and Tailwind preset built on
+  `@mvp/design-tokens` (`createAllThemeVariables`, `tailwindPreset`). Consult
+  before hand-writing theme CSS or a Tailwind config.
+- [packages/registry/AGENT.md](packages/registry/AGENT.md): the fragment
+  registry data model, atomic-write/lock/conflict utility, register/promote/
+  rollback mutation logic, slot mount/drift-check, and manifest→runtime
+  codegen behind the lifecycle CLIs. Consult before writing any lifecycle
+  tooling or registry-adjacent script.
+- [packages/routes/AGENT.md](packages/routes/AGENT.md): the static shell-
+  gateway route registry and path matcher (`matchRoute`). Consult when
+  resolving an incoming request path to its owning page service.
+- [packages/store/AGENT.md](packages/store/AGENT.md): the generic SSR-safe
+  client-side slice store built on `@mvp/interaction`
+  (`createSliceStore`, `useStoreSlice`). Consult when a page needs shared
+  state its islands read/write.
+- [packages/islands/AGENT.md](packages/islands/AGENT.md): the generic client
+  island hydration runtime, including the C2 snapshot version handshake
+  (`registerIsland`, `mountIsland`, `hydrateIslands`). Consult before
+  registering or hydrating any React island.
