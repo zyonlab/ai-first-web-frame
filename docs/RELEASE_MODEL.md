@@ -32,7 +32,7 @@ change on a branch
 [5] Registry promotion                                          PLANNED (separate workstream)
       scripts/promote-fragment.mts moves a fragment/page version
       between preview -> canary -> stable channels in
-      platform/fragment-registry / platform/route-registry
+      packages/registry (@mvp/registry) / packages/routes (@mvp/routes)
   |
   v
 [6] Canary deploy via Argo Rollouts                             SKELETON
@@ -54,8 +54,8 @@ implemented directly on top of git and the pnpm workspace graph:
 - `pnpm exec tsx scripts/affected.mts [--base <ref>] [--list] [--github-output <file>]`
 - Core logic (pure, unit tested): `tools/release-tools/src/affected.ts`.
 - Rules: files in a workspace package affect that package's transitive
-  dependents; `platform/route-registry` affects only `shell-gateway`;
-  `platform/fragment-registry` affects `shell-gateway`, `page-home`, and
+  dependents; `packages/routes` (`@mvp/routes`) affects only `shell-gateway`;
+  `packages/registry` (`@mvp/registry`) affects `shell-gateway`, `page-home`, and
   `page-product`; repo-global files (lockfile, root `package.json`,
   `tsconfig.base.json`, `.dockerignore`) affect all units; docs, infra
   manifests, CI config, e2e specs, and markdown affect none; unknown paths
@@ -133,8 +133,8 @@ Packages release through internal package publishing. Pages and fragments
 consume package versions and rebuild.
 
 Fragments expose stable, canary, preview, and explicit versions through
-`platform/fragment-registry`. Pages expose stable route entries through
-`platform/route-registry`. Registry promotion and rollback scripts
+`packages/registry` (`@mvp/registry`). Pages expose stable route entries through
+`packages/routes` (`@mvp/routes`). Registry promotion and rollback scripts
 (`scripts/promote-fragment.mts` and companions) are a separate workstream;
 rollback is registry-driven for page and fragment traffic where possible,
 while shell rollback uses the shell deployment controller (Rollout abort or

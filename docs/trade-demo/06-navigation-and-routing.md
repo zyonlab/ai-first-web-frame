@@ -112,7 +112,7 @@ palette select("ETH")
 
 ## 3. Routing
 
-### 3.1 `RouteEntry` draft (extends `platform/route-registry/src/registry.ts`)
+### 3.1 `RouteEntry` draft (extends `packages/routes/src/registry.ts`)
 
 The existing `RouteEntry` shape is `{ id, path, page, serviceUrl, channel }` with
 `matchRoute` supporting `:param` patterns (`matchesPathPattern`). New routes for the demo,

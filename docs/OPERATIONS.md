@@ -219,7 +219,7 @@ adding a near-duplicate. Never ship with any step red.
 
 Promotes a fragment's `canary` entry to `stable`, recording the prior stable
 version in the registry's `versions` history and appending an entry to
-`platform/fragment-registry/releases.json`.
+`registry/releases.json`.
 
 **Command**
 ```
@@ -296,8 +296,8 @@ missing/malformed.
   `"status": "failed"` (or, for mount/promote/rollback, `"unchanged"`)
   without writing any file when validation fails — safe to retry after fixing
   the input.
-- **Registry/manifest are hand-edit-forbidden**: `platform/fragment-registry/src/registry.data.json`,
-  `platform/fragment-registry/releases.json`, and `apps/<page>/src/manifest.slots.json`
+- **Registry/manifest are hand-edit-forbidden**: `registry/registry.data.json`,
+  `registry/releases.json`, and `apps/<page>/src/manifest.slots.json`
   must only be mutated through the scripts above, never edited directly —
   they are Zod-validated on load (`FragmentRegistrySchema`) and manual edits
   risk producing a state these scripts then reject.

@@ -24,11 +24,11 @@ where the paved road ends.
 
 | Concept | Where it lives | Behavior |
 | --- | --- | --- |
-| Fragment channels | `platform/fragment-registry/src/registry.data.json` | Each fragment has `stable` / `canary` / `preview` entries + a `versions` history map. `resolveFragment(name, channel)` picks the URL/version. |
-| Fragment env override | `fragmentEnvVarName(name)` in `platform/fragment-registry/src/registry.ts` | `order-book` → env var **`ORDER_BOOK_URL`**; when set it rewrites `serviceUrl`/`manifestUrl` at runtime (compose, k8s) without touching the registry JSON. |
+| Fragment channels | `registry/registry.data.json` | Each fragment has `stable` / `canary` / `preview` entries + a `versions` history map. `resolveFragment(name, channel)` picks the URL/version. |
+| Fragment env override | `fragmentEnvVarName(name)` in `packages/registry/src/registry.ts` | `order-book` → env var **`ORDER_BOOK_URL`**; when set it rewrites `serviceUrl`/`manifestUrl` at runtime (compose, k8s) without touching the registry JSON. |
 | Page → fragment binding | `apps/<page>/src/manifest.slots.json` | Each slot pins `{ fragment, channel, strategy, timeoutMs }`. The page resolves the fragment through the registry **by the slot's `channel`** at request time. |
-| Route channels | `platform/route-registry/src/registry.ts` | Each `RouteEntry` has `id/path/page/serviceUrl/channel`. Pages are matched by `matchRoute(pathname)`; `serviceUrl` is overridable via `process.env.<PAGE>_URL`. |
-| Release history | `platform/fragment-registry/releases.json` | Append-only; `promote`/`rollback` push a record here. |
+| Route channels | `packages/routes/src/registry.ts` | Each `RouteEntry` has `id/path/page/serviceUrl/channel`. Pages are matched by `matchRoute(pathname)`; `serviceUrl` is overridable via `process.env.<PAGE>_URL`. |
+| Release history | `registry/releases.json` | Append-only; `promote`/`rollback` push a record here. |
 | Affected units | `tools/release-tools/src/affected.ts` (`DEPLOYABLE_UNITS`) | Git-diff + pnpm graph → which images rebuild. **New units must be registered here** (see gaps). |
 
 **Channel routing in one sentence:** the page reads its slot's `channel`
@@ -97,7 +97,7 @@ pnpm exec tsx scripts/register-fragment.mts \
   `--port`), the script scans `docker-compose.yml` host ports and picks the next
   free one from 4201 (`nextFragmentPort`). It **refuses a port already in use**.
 - **Files changed:**
-  - `platform/fragment-registry/src/registry.data.json` — adds
+  - `registry/registry.data.json` — adds
     ```json
     "order-book": {
       "canary": { "version": "0.1.0",
@@ -253,7 +253,7 @@ apps/page-markets/
 
 ### Step 2.2 — Add the route-registry entry (canary)
 
-Add a `RouteEntry` to `platform/route-registry/src/registry.ts`:
+Add a `RouteEntry` to `packages/routes/src/registry.ts`:
 
 ```ts
 {
@@ -294,7 +294,7 @@ Register the new unit in `tools/release-tools/src/affected.ts` `DEPLOYABLE_UNITS
 ```ts
 { unit: "page-markets", packageName: "@mvp/page-markets",
   dir: "apps/page-markets", dockerfile: "apps/page-markets/Dockerfile",
-  extraPathPrefixes: ["platform/fragment-registry/", "platform/route-registry/"] },
+  extraPathPrefixes: [] },
 ```
 
 Then confirm a page-only change is isolated:
@@ -343,9 +343,9 @@ Registry-level page promotion is **route-registry driven**. Today the
 `route-registry` has no promote/rollback CLI. Two paths:
 
 - **Interim (implemented):** flip the `RouteEntry.channel` from `canary` to
-  `stable` in `platform/route-registry/src/registry.ts` and ship that one-line
-  change. Because `route-registry` is compiled only into `shell-gateway`
-  (`extraPathPrefixes`), this rebuilds **shell-gateway**, not the pages.
+  `stable` in `packages/routes/src/registry.ts` and ship that one-line
+  change. Because `@mvp/routes` is a normal workspace dependency of only
+  `shell-gateway`, this rebuilds **shell-gateway**, not the pages.
 - **Target (需补):** a `promote-route.mts` / `rollback-route.mts` pair mirroring
   the fragment scripts, writing route channel changes + a `releases.json`-style
   history for pages. Called out as a gap in `RELEASE_MODEL.md` §"Registry-level

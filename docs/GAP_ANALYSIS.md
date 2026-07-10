@@ -36,7 +36,7 @@
 缺口：
 
 - **无 agent 指令文件**：仓库没有 CLAUDE.md / AGENTS.md。`AI_COMPONENT_GUIDE.md`、`COMPONENT_CONTRACT.md`（仅 11 行）、`TDD_GUIDE.md` 是给人看的概述，不是 AI 可执行的操作手册（缺具体命令、验收判据、失败恢复步骤）。
-- **生成后不自动注册**：`platform/fragment-registry/src/registry.ts` 与页面 `apps/page-*/src/manifest.ts` 的 slots 均需手工编辑；没有注册脚本，没有 `dependsOn` 依赖推断工具。
+- **生成后不自动注册**：`packages/registry/src/registry.ts` 与页面 `apps/page-*/src/manifest.ts` 的 slots 均需手工编辑；没有注册脚本，没有 `dependsOn` 依赖推断工具。
 - **防重复机制偏弱**：`component-similarity-check` 是文本 token Jaccard 启发式（默认阈值 0.82，name 仅占 16% 权重），能挡"抄出来的重复"，挡不住"功能相同、实现不同"的重复，也不会给出复用建议。
 
 ### 2.2 验证 — 约 65% 就位，两个硬伤

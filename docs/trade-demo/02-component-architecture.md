@@ -255,7 +255,7 @@ phases.
 | **H · market-data fragments** | `fragments/market-header/**`, `fragments/chart-panel/**`, `fragments/funding-bar/**`, `fragments/marketrail/**`, `fragments/markets-table/**` | near-realtime + ISR fragments |
 | **I · portfolio fragments** | `fragments/portfolio-summary/**`, `fragments/pnl-chart/**` | portfolio fragments |
 | **J · data layer** | `packages/data/**` (trade sources), `packages/interaction/**` (trade channels), mock `SubscriptionTransport`, Zod payloads in `packages/contracts/src/**` | data broker + interaction contracts (owns 03-data doc's code) |
-| **K · registry/deploy** | `platform/fragment-registry/src/registry.data.json`, `platform/route-registry/**`, `infra/docker/**` **via scripts only** | registration/mount/promote runbooks (spine §9, §13) |
+| **K · registry/deploy** | `registry/registry.data.json`, `packages/routes/**`, `infra/docker/**` **via scripts only** | registration/mount/promote runbooks (spine §9, §13) |
 | **L · observability/trace UI** | `packages/observability/**`, trace-waterfall island/fragment | trace waterfall UI (spine §10) |
 
 Shared-boundary rules (prevent write collisions):

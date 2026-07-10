@@ -7,9 +7,9 @@ Request flow:
 ```mermaid
 flowchart TD
   A["CDN / Ingress"] --> B["apps/shell-gateway"]
-  B --> C["platform/route-registry"]
+  B --> C["packages/routes (@mvp/routes)"]
   B --> D["apps/page-home or apps/page-product"]
-  D --> E["platform/fragment-registry"]
+  D --> E["packages/registry (@mvp/registry)"]
   D --> F["fragments/promotion-banner"]
   D --> G["fragments/recommendation-widget"]
 ```

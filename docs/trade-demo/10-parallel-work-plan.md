@@ -95,8 +95,8 @@ before this slot can finish.
 | **A3-portfolio** | `apps/page-portfolio/**` | A2-portfolio, A2-pnl ⟨O⟩ | 06 |
 | **A3-light** | `apps/page-vaults/**`, `apps/page-referrals/**` (static/ISR) | A0-ui ⟨C⟩ | 06 |
 | **A3-shell** | `apps/shell-gateway/src/**` (nav + complex menu, wallet/theme/locale controls, command palette, global chrome, CSP/tokens/fonts) | A0-ui ⟨O⟩, A1-storage ⟨C⟩ | 06 |
-| **A3-routes** | `platform/route-registry/src/registry.ts` (RouteEntries for trade/markets/portfolio/vaults/referrals) | A3 pages exist ⟨O⟩ | 06, 07 |
-| **A3-integrate** | shared registration files: `platform/fragment-registry/src/registry.data.json`, `infra/docker/docker-compose.yml` (runs `register-fragment`/`mount-slot` for all P2 fragments); `tools/release-tools/src/affected.ts` (`DEPLOYABLE_UNITS`), `tools/release-tools/src/smoke.ts` | all P2 ⟨O⟩, A3 pages ⟨O⟩ | 07 |
+| **A3-routes** | `packages/routes/src/registry.ts` (RouteEntries for trade/markets/portfolio/vaults/referrals) | A3 pages exist ⟨O⟩ | 06, 07 |
+| **A3-integrate** | shared registration files: `registry/registry.data.json`, `infra/docker/docker-compose.yml` (runs `register-fragment`/`mount-slot` for all P2 fragments); `tools/release-tools/src/affected.ts` (`DEPLOYABLE_UNITS`), `tools/release-tools/src/smoke.ts` | all P2 ⟨O⟩, A3 pages ⟨O⟩ | 07 |
 
 ### P4 — i18n + theming
 
@@ -145,7 +145,7 @@ dependent phase's agents start. A change to a frozen contract after fan-out is a
 | **C4** | **Data read/subscribe API** — `subscribeData`/read signatures, freshness classes, dedupe keys | A1-data | function signatures + result envelope | all A2 fragments, pages |
 | **C5** | **Data-source id naming** — canonical ids (e.g. `book.l2.<symbol>`, `ticker.<symbol>`, `positions`, `candles.<symbol>.<interval>`) | A1-data | id namespace convention + registry | all A2 fragments, A5-trace (dep graph) |
 | **C6** | **Fragment manifest shape** — render output (`html`, `assets.{js,css}`, `cache{ttl,tags}`, `metadata{name,version}`), `/manifest` + `/health` + `/metrics` + trace-span envelope | A0-client + A1-data jointly; validated in `@mvp/contracts` | manifest + span schema | all A2 fragments, A3-integrate, A5-trace |
-| **C7** | **Slot descriptor shape** — `manifest.slots.json` entry (`name`, `fragment`, `channel`, `strategy`, `timeoutMs`, `props`, `required`) | existing (`platform/fragment-registry/src/slots.ts`) — **already frozen** | as-is | A3 pages, A3-integrate |
+| **C7** | **Slot descriptor shape** — `manifest.slots.json` entry (`name`, `fragment`, `channel`, `strategy`, `timeoutMs`, `props`, `required`) | existing (`packages/registry/src/slots.ts`) — **already frozen** | as-is | A3 pages, A3-integrate |
 | **C8** | **RouteEntry shape** — `{id,path,page,serviceUrl,channel}` | existing (`route-registry`) — **already frozen** | as-is | A3-routes, A6-deploy |
 | **C9** | **Theme token-set contract** — light/dark variable sets + no-flash cookie key | A4-theme | two token sets read by Tailwind + fragments | A0-ui, all surfaces |
 

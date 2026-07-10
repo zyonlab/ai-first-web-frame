@@ -12,8 +12,8 @@
 Multiple AI agents (and humans) should be able to extend this system **in
 parallel, with low coupling, at high speed**. The bones are already right:
 
-- **Registry-driven composition** — `platform/route-registry` + `shell-gateway`
-  compose pages; `platform/fragment-registry` resolves fragments.
+- **Registry-driven composition** — `packages/routes` (`@mvp/routes`) + `shell-gateway`
+  compose pages; `packages/registry` (`@mvp/registry`) resolves fragments.
 - **Per-unit manifest** — every fragment ships `src/manifest.ts` (name, owner,
   version, renderStrategy, cachePolicy, assets, `dependsOn`, `dataDependencies`,
   `budget`).
@@ -101,8 +101,8 @@ Key points:
   the dev harness auto-mock a unit's world (§4), what `affected` walks (§5), and
   what a boundary check verifies (§10).
 - The manifest is **co-located** with the unit (`src/manifest.ts`) and
-  **aggregated** into `platform/*-registry` at register time — that aggregate is
-  the queryable graph (§3).
+  **aggregated** into `packages/registry` / `packages/routes` at register time — that
+  aggregate is the queryable graph (§3).
 - `layoutHint` is consumed by `mount-slot` (pick a pane that fits) and the
   runtime gate (§6) — it's the machine-readable answer to "the order book is a
   tall ladder, don't put it in an `auto` row."
@@ -260,8 +260,8 @@ drive the whole loop concurrently, no `CLAUDE.md` reading.
   `uses-package` edge per `@mvp/*` dependency (read from each unit's + package's
   `package.json`); 15 package units / 143 edges live. A `packages/<x>` change is
   narrowed to just its dependent units (e.g. `@mvp/trade-client` → 5 images, not
-  a GLOBAL rebuild). Only `platform/` and repo-root config still fall back to
-  GLOBAL.
+  a GLOBAL rebuild). Only `packages/registry/`, `packages/routes/`, and
+  repo-root config still fall back to GLOBAL.
 
 - **Mount-time `layoutHint` advisory ✅** — `mount-slot` now reads the mounted
   fragment's `layoutHint` and emits the layout contract as `warnings` (fills →

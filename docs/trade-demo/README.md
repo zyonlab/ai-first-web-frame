@@ -62,7 +62,7 @@ depth (the "complex menu" requirement):
 - Menu also carries: theme toggle, locale switcher, wallet/connect dropdown, a "more"
   overflow menu, and a symbol quick-switcher (command-palette style).
 
-Routing goes through `platform/route-registry`; each page is a separate deployable unit.
+Routing goes through `packages/routes` (`@mvp/routes`); each page is a separate deployable unit.
 
 ## 4. shadcn/ui integration decision (the crux)
 

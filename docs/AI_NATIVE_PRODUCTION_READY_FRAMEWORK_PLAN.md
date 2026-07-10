@@ -20,7 +20,7 @@ This document is the planning source of truth for follow-up implementation. Do n
 
 The current MVP already has useful foundations:
 
-- Monorepo structure: `apps`, `fragments`, `packages`, `platform`, `tools`, `docs`, `infra`.
+- Monorepo structure: `apps`, `fragments`, `packages`, `tools`, `docs`, `infra`.
 - Independent deployable shell, page, and fragment packages.
 - `@mvp/contracts` with Zod schemas for request context, manifests, registries, budgets, render requests, and render responses.
 - `@mvp/runtime` with route/fragment resolution, parallel fragment slot fetching, timeout, fallback, cache, asset merge, and render strategies.
