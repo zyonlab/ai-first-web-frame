@@ -66,6 +66,41 @@ function buildOrderFormNode(): HTMLDivElement {
 }
 
 /**
+ * The account-bar island's SSR mount node, matching the frozen C2 markup
+ * `account-bar/src/render.ts#renderAccountBarHtml` emits
+ * (`data-island="accountBar"` + inline JSON snapshot of `{ view, seededLeverage }`).
+ */
+function buildAccountBarNode(): HTMLDivElement {
+  const el = document.createElement("div");
+  el.setAttribute("data-island", "accountBar");
+  const script = document.createElement("script");
+  script.setAttribute("type", "application/json");
+  script.setAttribute("data-island-props", "accountBar");
+  script.textContent = JSON.stringify({
+    props: {
+      view: {
+        equity: "100,000.00",
+        marginUsed: "20,000.00",
+        withdrawable: "80,000.00",
+        maintenance: "1,000.00",
+        marginUsagePct: "20.00%",
+        marginUsageRatio: 0.2,
+        raw: {
+          equity: 100_000,
+          used: 20_000,
+          free: 80_000,
+          maintenance: 1_000,
+        },
+      },
+      seededLeverage: 1,
+    },
+    slice: TRADE_LEVERAGE,
+  });
+  el.appendChild(script);
+  return el;
+}
+
+/**
  * A single order-book row, exactly as `order-book/src/render.ts#rowHtml` emits
  * it: a `[data-price]` row whose price cell is `[data-field="price"]` carrying
  * the numeric price on `data-value`.
@@ -244,5 +279,48 @@ describe("hydrateTrade — signature order-book -> order-form flow", () => {
     // Teardown unmounts the island and clears the registry.
     expect(orderFormNode.querySelector("[data-of-form]")).toBeNull();
     expect(getIsland("orderForm")).toBeUndefined();
+  });
+});
+
+describe("hydrateTrade — account-bar receives the shared bus (§4.3.2 fix)", () => {
+  it("recomputes the margin preview when TRADE_LEVERAGE is published on the shared bus", async () => {
+    const store = makeStore();
+    const bus = makeBus();
+
+    const accountBarNode = buildAccountBarNode();
+    const root = document.createElement("div");
+    root.appendChild(accountBarNode);
+    document.body.appendChild(root);
+
+    let handles: ReturnType<typeof hydrateTrade> | undefined;
+    await act(async () => {
+      handles = hydrateTrade(root, store, bus);
+    });
+
+    // Seeded at leverage 1: preview == the SSR view's own 20.00% usage.
+    expect(
+      accountBarNode.querySelector('[data-value="marginUsagePct"]')
+        ?.textContent,
+    ).toBe("20.00%");
+
+    // Before the fix, account-bar built its OWN private bus internally, so a
+    // publish on the shared bus (the one order-form/hydrate.tsx uses) would
+    // never reach it. Publish with the leverage channel's declared publisher
+    // ("order-form") exactly as `apps/page-trade` production code would.
+    await act(async () => {
+      await bus.publish(
+        TRADE_LEVERAGE,
+        { leverage: 4 },
+        { owner: "order-form" },
+      );
+    });
+
+    // used(20,000) / leverage(4) = 5,000 -> 5,000 / equity(100,000) = 5.00%.
+    expect(
+      accountBarNode.querySelector('[data-value="marginUsagePct"]')
+        ?.textContent,
+    ).toBe("5.00%");
+
+    await act(async () => handles?.teardown());
   });
 });

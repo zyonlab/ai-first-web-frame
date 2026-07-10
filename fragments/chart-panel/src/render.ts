@@ -97,7 +97,15 @@ export function renderChartPanelHtml(
   degradedReason?: string,
 ): string {
   const props: ChartPanelIslandProps = { symbol, interval, series };
-  const snapshot = JSON.stringify({ props, slice: ISLAND_SLICE });
+  // C2 snapshot version handshake (docs/ARCHITECTURE_REFACTOR_PLAN.md §4.3.1):
+  // stamp this fragment's own manifest name/version so `@mvp/islands` can
+  // detect drift against what the page-bundled island expects.
+  const snapshot = JSON.stringify({
+    props,
+    slice: ISLAND_SLICE,
+    fragment: chartPanelManifest.name,
+    version: chartPanelManifest.version,
+  });
   const summary = summarizeSeries(series);
   const intervalChips = CHART_INTERVALS.map((iv) => {
     const active = iv === interval;

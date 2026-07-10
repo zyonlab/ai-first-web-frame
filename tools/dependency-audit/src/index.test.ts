@@ -303,4 +303,95 @@ describe("dependency-audit", () => {
     ]);
     rmSync(root, { recursive: true, force: true });
   });
+
+  it("flags a fragment island.tsx that calls createInteractionBus with no bus escape hatch (§4.3.2)", () => {
+    const root = tempRoot("island-bus-bare");
+    write(
+      join(root, "fragments/orphan-widget/src/island.tsx"),
+      [
+        '"use client";',
+        'import { createInteractionBus } from "@mvp/interaction";',
+        "export function OrphanWidgetIsland() {",
+        "  const bus = createInteractionBus({ contracts: {} });",
+        "  return null;",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    const busIssues = report.issues.filter(
+      (issue) => issue.code === "island-bus-without-escape-hatch",
+    );
+    expect(busIssues.map((issue) => issue.file)).toEqual([
+      "fragments/orphan-widget/src/island.tsx",
+    ]);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("passes a fragment island.tsx that declares the bus? escape hatch", () => {
+    const root = tempRoot("island-bus-escape-hatch");
+    write(
+      join(root, "fragments/good-widget/src/island.tsx"),
+      [
+        '"use client";',
+        'import { createInteractionBus, type InteractionBus } from "@mvp/interaction";',
+        'import { useMemo } from "react";',
+        "export function GoodWidgetIsland(props: { bus?: InteractionBus }) {",
+        "  const injectedBus = props.bus;",
+        "  const bus = useMemo(",
+        "    () => injectedBus ?? createInteractionBus({ contracts: {} }),",
+        "    [injectedBus],",
+        "  );",
+        "  return null;",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    expect(
+      report.issues.some(
+        (issue) => issue.code === "island-bus-without-escape-hatch",
+      ),
+    ).toBe(false);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("does not flag an island.tsx that never calls createInteractionBus at all (e.g. order-form's deps-only pattern)", () => {
+    const root = tempRoot("island-bus-no-bus-call");
+    write(
+      join(root, "fragments/deps-only-widget/src/island.tsx"),
+      [
+        '"use client";',
+        "export function DepsOnlyWidgetIsland(props: { deps: { store: unknown } }) {",
+        "  return null;",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    expect(
+      report.issues.some(
+        (issue) => issue.code === "island-bus-without-escape-hatch",
+      ),
+    ).toBe(false);
+    rmSync(root, { recursive: true, force: true });
+  });
 });

@@ -26,7 +26,8 @@ type AuditIssue = {
     | "raw-fetch-in-business-code"
     | "server-safe-browser-global"
     | "client-only-dependency-in-server"
-    | "domain-code-in-framework-package";
+    | "domain-code-in-framework-package"
+    | "island-bus-without-escape-hatch";
   severity: "warn" | "fail";
   file?: string;
   packageName?: string;
@@ -60,6 +61,7 @@ export function runDependencyAudit(
   issues.push(...auditPackageVersions(root, config));
   issues.push(...auditSourceImports(root, config));
   issues.push(...auditPackageLayering(root));
+  issues.push(...auditIslandBusEscapeHatch(root));
 
   const report: DependencyReport = {
     tool: "dependency-audit",
@@ -372,6 +374,51 @@ function auditPackageLayering(root: string): AuditIssue[] {
           detail: `packages/** must not import ${target} code (imports "${specifier}")`,
         });
       }
+    }
+  }
+  return issues;
+}
+
+// Island orphan-bus audit (docs/ARCHITECTURE_REFACTOR_PLAN.md §4.3.2, goal C2):
+// a React island that calls `createInteractionBus` directly with no way for
+// the page to inject its shared bus is permanently cut off from cross-island
+// publishes (the exact `account-bar` gap this phase fixed — see
+// `fragments/account-bar/src/island.tsx` before/after). The fix pattern
+// (already used by `market-header`/`chart-panel`/the fixed `account-bar`) is
+// an optional `bus?: InteractionBus` prop the component prefers over its own
+// `createInteractionBus` fallback. This is a regex heuristic, not a full AST
+// check (matching the rest of this file's style, e.g. `hasRawFetch`): it
+// flags any `fragments/*/src/island.tsx` that calls `createInteractionBus(`
+// without the same file also declaring a `bus?` escape hatch somewhere
+// (either a `bus?:` prop-type field or a `props.bus` destructure/access).
+function hasCreateInteractionBusCall(source: string): boolean {
+  return /\bcreateInteractionBus\s*\(/.test(source);
+}
+
+function hasBusEscapeHatch(source: string): boolean {
+  return /\bbus\?\s*:/.test(source) || /\bprops\.bus\b/.test(source);
+}
+
+function auditIslandBusEscapeHatch(root: string): AuditIssue[] {
+  const issues: AuditIssue[] = [];
+  const files = walkFiles(join(root, "fragments"), (path) =>
+    path.endsWith("island.tsx"),
+  );
+  for (const file of files) {
+    const relativeFile = relativePosix(root, file);
+    const source = readFileSync(file, "utf8");
+    if (!hasCreateInteractionBusCall(source)) continue;
+    if (!hasBusEscapeHatch(source)) {
+      issues.push({
+        code: "island-bus-without-escape-hatch",
+        severity: "fail",
+        file: relativeFile,
+        detail:
+          "island.tsx calls createInteractionBus() with no optional `bus?` prop " +
+          "escape hatch for the page-injected shared bus, so it can never receive " +
+          "cross-island publishes (see market-header/chart-panel/account-bar's " +
+          "`injectedBus ?? createInteractionBus(...)` pattern)",
+      });
     }
   }
   return issues;

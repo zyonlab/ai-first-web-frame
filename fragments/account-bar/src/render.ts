@@ -67,7 +67,15 @@ export function renderAccountBarHtml(
   seededLeverage: number,
 ): string {
   const props: AccountBarIslandProps = { view, seededLeverage };
-  const snapshot = JSON.stringify({ props, slice: ISLAND_SLICE });
+  // C2 snapshot version handshake (docs/ARCHITECTURE_REFACTOR_PLAN.md §4.3.1):
+  // stamp this fragment's own manifest name/version so `@mvp/islands` can
+  // detect drift against what the page-bundled island expects.
+  const snapshot = JSON.stringify({
+    props,
+    slice: ISLAND_SLICE,
+    fragment: accountBarManifest.name,
+    version: accountBarManifest.version,
+  });
 
   return (
     `<style data-fragment-style="account-bar">${accountBarCss}</style>` +

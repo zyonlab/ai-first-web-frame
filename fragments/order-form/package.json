@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "exports": {
-    "./island": "./src/island.tsx"
+    "./island": "./src/island.tsx",
+    "./manifest": "./src/manifest.ts"
   },
   "scripts": {
     "dev": "tsx src/server.ts",

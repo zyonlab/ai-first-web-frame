@@ -1,12 +1,16 @@
 "use client";
 
 import { AccountBarIsland } from "@mvp/fragment-account-bar/island";
+import { accountBarManifest } from "@mvp/fragment-account-bar/manifest";
 import { ChartPanelIsland } from "@mvp/fragment-chart-panel/island";
+import { chartPanelManifest } from "@mvp/fragment-chart-panel/manifest";
 import { MarketHeaderIsland } from "@mvp/fragment-market-header/island";
+import { marketHeaderManifest } from "@mvp/fragment-market-header/manifest";
 import {
   OrderFormIsland,
   type OrderFormIslandComponentProps,
 } from "@mvp/fragment-order-form/island";
+import { orderFormManifest } from "@mvp/fragment-order-form/manifest";
 import type { InteractionBus } from "@mvp/interaction";
 import {
   clearIslandRegistry,
@@ -66,37 +70,55 @@ function makeOrderFormIsland(store: SliceStore<TradeSlices>) {
 }
 
 /**
- * Registers the four React islands against the shared store. The three
- * read-mostly islands (market-header, chart, account-bar) mount straight from
- * their SSR snapshot props; the order-form is wrapped so it receives the shared
- * store as `deps`.
+ * Registers the four React islands against the shared store. All three
+ * read-mostly islands (market-header, chart, account-bar) are wrapped to
+ * receive the shared page bus as an injected `bus` prop — each fragment's
+ * `island.tsx` prefers that injected bus over its own private
+ * `createInteractionBus` fallback (see each fragment's `island.tsx`), so
+ * cross-island publishes reach them instead of being isolated: market-header
+ * + chart subscribe to `TRADE_ACTIVE_SYMBOL` (watchlist symbol switches), and
+ * account-bar now subscribes to `TRADE_LEVERAGE` (order-form leverage
+ * changes) over the SAME shared bus instead of its own orphaned instance —
+ * closing the gap `docs/ARCHITECTURE_REFACTOR_PLAN.md` §4.3.2 tracked. The
+ * order-form is wrapped so it receives the shared store as `deps` (its
+ * leverage/price flow goes through the store, not the bus). The signature
+ * order-book → order-form price flow is fully wired end to end.
  *
- * NOTE (leftover / P3 follow-up): market-header + chart currently subscribe to
- * `TRADE_ACTIVE_SYMBOL`, and account-bar to `TRADE_LEVERAGE`, on their OWN
- * internal `createInteractionBus(tradeSliceContracts)` instances (see each
- * fragment's `island.tsx`). That satisfies the "can subscribe" bar but is NOT
- * yet bridged to this shared store's bus — a store→island bus bridge and the
- * live `subscribeData` realtime feed are deliberately deferred. The signature
- * order-book → order-form price flow below is fully wired end to end.
+ * Each registration also declares the fragment's own manifest `version` as
+ * the C2 snapshot handshake's expected version (`@mvp/islands`
+ * `registerIsland`'s third argument): if a fragment's live SSR snapshot ever
+ * drifts from what this page-bundled island component was built against,
+ * `hydrateIslands` skips hydration for that island and keeps the SSR HTML
+ * static instead of silently mis-hydrating (§4.3.1).
  */
 export function registerTradeIslands(
   store: SliceStore<TradeSlices>,
   bus: InteractionBus,
 ): void {
-  // Inject the shared bus so market-header + chart receive symbol switches
-  // published by the watchlist (their own default bus would be isolated).
+  // Inject the shared bus so market-header + chart + account-bar receive
+  // cross-island publishes (symbol switches, leverage changes) instead of
+  // being isolated on their own private bus instance.
   registerIsland(
     "marketHeader",
     (props: Omit<Parameters<typeof MarketHeaderIsland>[0], "bus">) =>
       createElement(MarketHeaderIsland, { ...props, bus }),
+    { expectedVersion: marketHeaderManifest.version },
   );
   registerIsland(
     "chart",
     (props: Omit<Parameters<typeof ChartPanelIsland>[0], "bus">) =>
       createElement(ChartPanelIsland, { ...props, bus }),
+    { expectedVersion: chartPanelManifest.version },
   );
-  registerIsland("accountBar", AccountBarIsland);
-  registerIsland("orderForm", makeOrderFormIsland(store));
+  registerIsland(
+    "accountBar",
+    (props: Omit<Parameters<typeof AccountBarIsland>[0], "bus">) =>
+      createElement(AccountBarIsland, { ...props, bus }),
+    { expectedVersion: accountBarManifest.version },
+  );
+  registerIsland("orderForm", makeOrderFormIsland(store), {
+    expectedVersion: orderFormManifest.version,
+  });
 }
 
 /** Extracts an uppercased symbol from a watchlist row's `/trade/<sym>` href. */

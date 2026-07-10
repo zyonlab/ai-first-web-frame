@@ -1,6 +1,6 @@
 "use client";
 
-import { createInteractionBus } from "@mvp/interaction";
+import { createInteractionBus, type InteractionBus } from "@mvp/interaction";
 import { createRequestContext } from "@mvp/request-context";
 import {
   type LeveragePayload,
@@ -82,7 +82,7 @@ export function initialIslandState(props: AccountBarIslandProps): IslandState {
 /**
  * The small account-bar island. Only this component re-renders on a leverage
  * change or a realtime margin patch; the surrounding SSR fragment stays static.
- * Mounts through `@mvp/trade-client`
+ * Mounts through `@mvp/islands`
  * (`registerIsland("accountBar", AccountBarIsland)`), reading its props from the
  * inline JSON snapshot.
  *
@@ -95,7 +95,9 @@ export function initialIslandState(props: AccountBarIslandProps): IslandState {
  *    logic; the live transport for `account` is a placeholder — the request-time
  *    seed stands in until P3 attaches the realtime margin feed.)
  */
-export function AccountBarIsland(props: AccountBarIslandProps) {
+export function AccountBarIsland(
+  props: AccountBarIslandProps & { bus?: InteractionBus },
+) {
   const [state, dispatch] = useReducer(
     islandReducer,
     props,
@@ -107,9 +109,15 @@ export function AccountBarIsland(props: AccountBarIslandProps) {
     return createTradeDataClient({ ctx });
   }, []);
 
+  // Prefer the page-injected shared bus so a cross-fragment leverage change
+  // (order-form -> account-bar) reaches this island; fall back to a private
+  // bus for standalone/test rendering. Mirrors market-header/chart-panel's
+  // pattern exactly (docs/ARCHITECTURE_REFACTOR_PLAN.md §4.3.2).
+  const injectedBus = props.bus;
   const bus = useMemo(
-    () => createInteractionBus({ contracts: tradeSliceContracts }),
-    [],
+    () =>
+      injectedBus ?? createInteractionBus({ contracts: tradeSliceContracts }),
+    [injectedBus],
   );
 
   // Cross-component leverage change (C3 flow B): recompute the margin preview.
