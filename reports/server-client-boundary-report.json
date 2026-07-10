@@ -46,6 +46,7 @@
     "apps/page-product/src/backgroundJobs.ts",
     "apps/page-product/src/budget.ts",
     "apps/page-product/src/catalog.ts",
+    "apps/page-product/src/fragmentSlots.gen.ts",
     "apps/page-product/src/fragmentSlots.ts",
     "apps/page-product/src/manifest.ts",
     "apps/page-product/src/recentlyViewed.ts",

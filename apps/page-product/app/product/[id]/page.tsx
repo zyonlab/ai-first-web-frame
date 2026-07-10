@@ -1,3 +1,4 @@
+import { FragmentSlot } from "@mvp/runtime/react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Image from "next/image";
@@ -6,11 +7,6 @@ import { fetchProductFragmentSlots } from "../../../src/fragmentSlots";
 import { createProductJsonLd } from "../../../src/render";
 
 export const dynamic = "force-dynamic";
-
-function FragmentHtml({ html }: { html: string }) {
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: fragment HTML is returned by trusted internal SSR fragment services.
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
-}
 
 export async function generateMetadata({
   params,
@@ -132,27 +128,33 @@ export default async function ProductPage({
         <h2>Request trace</h2>
         <pre>{fragmentHtml.traceLog}</pre>
       </section>
-      {fragmentHtml.staticProof ? (
-        <FragmentHtml html={fragmentHtml.staticProof} />
-      ) : (
-        <section data-fragment="static-product-proof" data-fallback="true">
-          Static product proof is unavailable.
-        </section>
-      )}
-      {fragmentHtml.promotion ? (
-        <FragmentHtml html={fragmentHtml.promotion} />
-      ) : (
-        <section data-fragment="promotion-banner" data-fallback="true">
-          Product promotion is loading.
-        </section>
-      )}
-      {fragmentHtml.recommendations ? (
-        <FragmentHtml html={fragmentHtml.recommendations} />
-      ) : (
-        <section data-fragment="recommendation-widget" data-fallback="true">
-          Related products are loading.
-        </section>
-      )}
+      <FragmentSlot
+        name="staticProof"
+        execution={fragmentHtml.execution}
+        fallback={
+          <section data-fragment="static-product-proof" data-fallback="true">
+            Static product proof is unavailable.
+          </section>
+        }
+      />
+      <FragmentSlot
+        name="promotion"
+        execution={fragmentHtml.execution}
+        fallback={
+          <section data-fragment="promotion-banner" data-fallback="true">
+            Product promotion is loading.
+          </section>
+        }
+      />
+      <FragmentSlot
+        name="recommendations"
+        execution={fragmentHtml.execution}
+        fallback={
+          <section data-fragment="recommendation-widget" data-fallback="true">
+            Related products are loading.
+          </section>
+        }
+      />
     </main>
   );
 }
