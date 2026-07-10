@@ -1,8 +1,5 @@
-import {
-  type PageManifest,
-  PageManifestSchema,
-} from "../../../packages/contracts/src/index";
-import type { FragmentSlotDefinition } from "../../../packages/runtime/src/index";
+import { type PageManifest, PageManifestSchema } from "@mvp/contracts";
+import type { FragmentSlotDefinition } from "@mvp/runtime";
 
 export type PageSlot = PageManifest["slots"][number];
 

@@ -4,10 +4,5 @@
     "noEmit": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": [
-    "src/**/*.ts",
-    "tests/**/*.ts",
-    "../../platform/route-registry/src/**/*.ts",
-    "../../platform/fragment-registry/src/**/*.ts"
-  ]
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
 }

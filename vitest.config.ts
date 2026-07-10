@@ -46,10 +46,12 @@ export default defineConfig({
         "./packages/observability/src/index.ts",
       ),
       "@mvp/optimizer": pathFromRoot("./packages/optimizer/src/index.ts"),
+      "@mvp/registry": pathFromRoot("./packages/registry/src/index.ts"),
       "@mvp/request": pathFromRoot("./packages/request/src/index.ts"),
       "@mvp/request-context": pathFromRoot(
         "./packages/request-context/src/index.ts",
       ),
+      "@mvp/routes": pathFromRoot("./packages/routes/src/index.ts"),
       "@mvp/runtime": pathFromRoot("./packages/runtime/src/index.ts"),
       "@mvp/storage": pathFromRoot("./packages/storage/src/index.ts"),
       "@mvp/store": pathFromRoot("./packages/store/src/index.ts"),
@@ -90,7 +92,6 @@ export default defineConfig({
       "apps/**/*.test.ts",
       "apps/**/*.test.tsx",
       "fragments/**/*.test.ts",
-      "platform/**/*.test.ts",
       "e2e/unit/**/*.test.ts",
     ],
     coverage: {

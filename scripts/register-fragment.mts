@@ -4,22 +4,22 @@ import {
   isRetryableWriteError,
   loadFileWithHash,
   writeFileAtomic,
-} from "../platform/fragment-registry/src/atomic-file";
+} from "../packages/registry/src/atomic-file";
 import {
   booleanFlag,
   parseCliArgs,
   stringFlag,
-} from "../platform/fragment-registry/src/cli";
+} from "../packages/registry/src/cli";
 import {
   addComposeService,
   nextFragmentPort,
-} from "../platform/fragment-registry/src/compose";
+} from "../packages/registry/src/compose";
 import {
   applyRegisterFragment,
   loadRegistryData,
   type RegisterFragmentInput,
   saveRegistryData,
-} from "../platform/fragment-registry/src/mutations";
+} from "../packages/registry/src/mutations";
 
 type RegisterResult = {
   status: "registered" | "failed" | "conflict";
@@ -34,10 +34,7 @@ type RegisterResult = {
 };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const registryPath = join(
-  root,
-  "platform/fragment-registry/src/registry.data.json",
-);
+const registryPath = join(root, "registry/registry.data.json");
 const composePath = join(root, "infra/docker/docker-compose.yml");
 
 function run(argv: string[]): RegisterResult {

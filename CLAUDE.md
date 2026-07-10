@@ -1,7 +1,7 @@
 # AI Agent Operations Manual
 
 pnpm monorepo for an AI-native micro-frontend framework. Shell gateway (4100) composes pages
-(page-home 4101, page-product 4102) which fetch SSR fragments (4201+) via `platform/fragment-registry`.
+(page-home 4101, page-product 4102) which fetch SSR fragments (4201+) via `@mvp/registry`.
 
 ## Hard rules
 
@@ -17,9 +17,10 @@ pnpm monorepo for an AI-native micro-frontend framework. Shell gateway (4100) co
 
 - `apps/` — shell-gateway, page-home, page-product (Next.js pages; slots data in `src/manifest.slots.json`)
 - `fragments/` — SSR fragment services (fastify, one Dockerfile each)
-- `packages/` — `@mvp/*` libraries (contracts, runtime, data, request, ui, observability, optimizer, ...)
-- `platform/` — fragment-registry + route-registry (data: `platform/fragment-registry/src/registry.data.json`,
-  release history: `platform/fragment-registry/releases.json`); not in the pnpm workspace, imported by relative path
+- `packages/` — `@mvp/*` libraries (contracts, runtime, data, request, ui, observability, optimizer, registry,
+  routes, ...); `@mvp/registry` (fragment registry) and `@mvp/routes` (route registry) are real workspace packages
+- `registry/` — fragment/route registry runtime state, not package source: `registry/registry.data.json` and
+  release history `registry/releases.json`, loaded by `@mvp/registry` via an explicit repo-root-relative path
 - `tools/` — audits + `create-component` scaffolder; `scripts/` — repo-level CLIs (tsx); `infra/docker/` — compose
 
 ## Fragment lifecycle (end to end)
@@ -42,7 +43,7 @@ pnpm monorepo for an AI-native micro-frontend framework. Shell gateway (4100) co
    register it first, or pass `--allow-unregistered` to warn-and-proceed (`--remove` is unaffected).
    Then wire the slot into the page's `src/fragmentSlots.ts` fetch list and page tests.
    `pnpm test`/`pnpm verify` now catch `manifest.slots.json` vs. runtime slots array drift per page
-   (`platform/fragment-registry/src/slots.ts` `diffManifestAgainstRuntime` + each `tests/manifestSync.test.ts`).
+   (`@mvp/registry`'s `packages/registry/src/slots.ts` `diffManifestAgainstRuntime` + each `tests/manifestSync.test.ts`).
 5. **Verify** the whole repo (typecheck, lint, format, tests, build, 6 audits; writes `reports/`):
    `pnpm verify`
    Accept: exit 0. Never ship with a failing audit or budget.
@@ -61,16 +62,16 @@ and exits 1 without writing — just rerun the same command.
 ## Common commands
 
 - `pnpm test` (all) | `pnpm --filter @mvp/page-home test` (one package)
-- `pnpm exec vitest run platform/fragment-registry` (registry + lifecycle helper tests)
+- `pnpm exec vitest run packages/registry` (registry + lifecycle helper tests)
 - `pnpm typecheck` | `pnpm lint` | `pnpm check` | `pnpm build`
 - `docker compose -f infra/docker/docker-compose.yml config` (validate compose after registration)
 
 ## Failure recovery
 
 - Script prints `"status": "failed"`: read `error`, fix the input; no files were changed.
-- Bad registry state: registry entries live in `platform/fragment-registry/src/registry.data.json`
+- Bad registry state: registry entries live in `registry/registry.data.json`
   (Zod-validated on load by `FragmentRegistrySchema`); re-run `register-fragment` with correct values,
-  or roll back via `rollback-fragment`. History is append-only in `releases.json`.
+  or roll back via `rollback-fragment`. History is append-only in `registry/releases.json`.
 - Wrong slot mounted: `pnpm exec tsx scripts/mount-slot.mts --page <page> --slot <name> --remove`.
 - Duplicate compose service/port: the script refuses used ports; pass an explicit free `--port`.
 - Budget failure in verify: shrink JS/CSS or split the fragment; budgets are in each unit's `budget.ts`.

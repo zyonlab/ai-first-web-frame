@@ -5,19 +5,19 @@ import {
   isRetryableWriteError,
   loadFileWithHash,
   writeFileAtomic,
-} from "../platform/fragment-registry/src/atomic-file";
+} from "../packages/registry/src/atomic-file";
 import {
   booleanFlag,
   parseCliArgs,
   stringFlag,
-} from "../platform/fragment-registry/src/cli";
-import { loadRegistryData } from "../platform/fragment-registry/src/mutations";
+} from "../packages/registry/src/cli";
+import { loadRegistryData } from "../packages/registry/src/mutations";
 import {
   applyMountSlot,
   applyUnmountSlot,
   checkFragmentRegistered,
   type PageSlot,
-} from "../platform/fragment-registry/src/slots";
+} from "../packages/registry/src/slots";
 import { layoutAdvisories } from "../tools/release-tools/src/layout-advisories.ts";
 import { loadFragmentManifest } from "../tools/release-tools/src/load-graph.ts";
 
@@ -33,10 +33,7 @@ type MountResult = {
 };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const registryPath = join(
-  root,
-  "platform/fragment-registry/src/registry.data.json",
-);
+const registryPath = join(root, "registry/registry.data.json");
 
 async function run(argv: string[]): Promise<MountResult> {
   const args = parseCliArgs(argv);

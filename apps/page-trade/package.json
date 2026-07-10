@@ -26,6 +26,7 @@
     "@mvp/interaction": "workspace:*",
     "@mvp/islands": "workspace:*",
     "@mvp/observability": "workspace:*",
+    "@mvp/registry": "workspace:*",
     "@mvp/request-context": "workspace:*",
     "@mvp/runtime": "workspace:*",
     "@mvp/store": "workspace:*",

@@ -5,7 +5,7 @@ import {
   ReleaseChannelSchema,
   type ReleaseManifest,
   ReleaseManifestSchema,
-} from "../../../packages/contracts/src/index";
+} from "@mvp/contracts";
 import { loadFileWithHash, writeFileAtomic } from "./atomic-file";
 
 export type FragmentRegistryData = FragmentRegistry;

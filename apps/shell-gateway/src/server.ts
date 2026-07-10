@@ -4,6 +4,8 @@ import {
   exportTrace as defaultExportTrace,
   type RequestTrace,
 } from "@mvp/observability";
+import { fragmentRegistry } from "@mvp/registry";
+import { matchRoute, routeRegistry } from "@mvp/routes";
 import {
   type LocalePreference,
   type ThemePreference,
@@ -11,11 +13,6 @@ import {
   writeThemePreference,
 } from "@mvp/trade-prefs";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
-import { fragmentRegistry } from "../../../platform/fragment-registry/src/registry";
-import {
-  matchRoute,
-  routeRegistry,
-} from "../../../platform/route-registry/src/registry";
 import { createFragmentHeaders, createShellRequestContext } from "./context";
 import { createNotFoundFallback, createShellFallback } from "./fallback";
 import {

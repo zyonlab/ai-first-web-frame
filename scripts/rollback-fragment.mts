@@ -1,17 +1,14 @@
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isRetryableWriteError } from "../platform/fragment-registry/src/atomic-file";
-import {
-  parseCliArgs,
-  stringFlag,
-} from "../platform/fragment-registry/src/cli";
+import { isRetryableWriteError } from "../packages/registry/src/atomic-file";
+import { parseCliArgs, stringFlag } from "../packages/registry/src/cli";
 import {
   applyRollbackFragment,
   loadRegistryData,
   loadReleases,
   saveRegistryData,
   saveReleases,
-} from "../platform/fragment-registry/src/mutations";
+} from "../packages/registry/src/mutations";
 
 type RollbackResult = {
   status: "rolled-back" | "unchanged" | "failed" | "conflict";
@@ -24,11 +21,8 @@ type RollbackResult = {
 };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const registryPath = join(
-  root,
-  "platform/fragment-registry/src/registry.data.json",
-);
-const releasesPath = join(root, "platform/fragment-registry/releases.json");
+const registryPath = join(root, "registry/registry.data.json");
+const releasesPath = join(root, "registry/releases.json");
 
 function run(argv: string[]): RollbackResult {
   const args = parseCliArgs(argv);

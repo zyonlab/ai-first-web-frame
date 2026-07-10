@@ -1,5 +1,5 @@
+import { diffManifestAgainstRuntime } from "@mvp/registry";
 import { describe, expect, it } from "vitest";
-import { diffManifestAgainstRuntime } from "../../../platform/fragment-registry/src/slots";
 import { buildProductSlotDefinitions } from "../src/fragmentSlots";
 import productManifestSlots from "../src/manifest.slots.json";
 

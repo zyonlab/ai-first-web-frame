@@ -1,4 +1,5 @@
 import { createRequestTrace } from "@mvp/observability";
+import { fragmentRegistry } from "@mvp/registry";
 import { createRequestContext } from "@mvp/request-context";
 import {
   type DataResolutionResult,
@@ -8,7 +9,6 @@ import {
   type PageHealth,
   type SchedulerHint,
 } from "@mvp/runtime";
-import { fragmentRegistry } from "../../../platform/fragment-registry/src/registry";
 import {
   enqueueProductStatsJob,
   getProductStatsWorker,

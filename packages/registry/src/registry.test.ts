@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
+import registryData from "../../../registry/registry.data.json";
 import {
   buildFragmentRegistry,
   fragmentEnvVarName,
   fragmentRegistry,
   resolveFragment,
   validateFragmentRegistry,
-} from "../src/registry";
-import registryData from "../src/registry.data.json";
+} from "./registry";
 
 describe("fragment registry", () => {
   it("passes schema validation", () => {

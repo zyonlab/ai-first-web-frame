@@ -5,7 +5,7 @@ import {
   listComposeHostPorts,
   nextFragmentPort,
   renderComposeService,
-} from "../src/compose";
+} from "./compose";
 
 const composeText = `services:
   shell-gateway:

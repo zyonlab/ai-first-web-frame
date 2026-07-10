@@ -7,6 +7,7 @@ import {
   createRequestTrace,
   type RequestTraceSnapshot,
 } from "@mvp/observability";
+import { fragmentRegistry } from "@mvp/registry";
 import { createRequestContext } from "@mvp/request-context";
 import {
   executeFragmentSlots,
@@ -15,7 +16,6 @@ import {
   type PageHealth,
   type SchedulerHint,
 } from "@mvp/runtime";
-import { fragmentRegistry } from "../../../platform/fragment-registry/src/registry";
 
 /**
  * Shared `account` data node (doc 02 §4): `order-form`, `positions-table`, and

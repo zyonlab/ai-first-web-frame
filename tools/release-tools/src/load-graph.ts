@@ -127,13 +127,7 @@ function loadPackages(root: string): PackageInput[] {
 
 /** Reads the route registry, normalizing `@mvp/page-x` → `page-x`. */
 async function loadRoutes(root: string): Promise<RouteInput[]> {
-  const registryPath = join(
-    root,
-    "platform",
-    "route-registry",
-    "src",
-    "registry.ts",
-  );
+  const registryPath = join(root, "packages", "routes", "src", "registry.ts");
   if (!existsSync(registryPath)) return [];
   const mod = (await import(pathToFileURL(registryPath).href)) as {
     routeRegistry?: { routes?: { path: string; page: string }[] };
@@ -147,13 +141,7 @@ async function loadRoutes(root: string): Promise<RouteInput[]> {
 
 /** Reads the fragment registry release records. */
 function loadRegistry(root: string): Record<string, Record<string, unknown>> {
-  const dataPath = join(
-    root,
-    "platform",
-    "fragment-registry",
-    "src",
-    "registry.data.json",
-  );
+  const dataPath = join(root, "registry", "registry.data.json");
   if (!existsSync(dataPath)) return {};
   const data = JSON.parse(readFileSync(dataPath, "utf8"));
   return (data.fragments ?? {}) as Record<string, Record<string, unknown>>;

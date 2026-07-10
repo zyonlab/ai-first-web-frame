@@ -30,8 +30,8 @@ else in the framework layer depends on it, never the other way around.
   wire contract for `POST /render` on a fragment service
   (`{ ctx, props }` in, `{ html, assets, cache, metadata }` out).
 - `FragmentRegistrySchema` / `type FragmentRegistry` — shape of
-  `platform/fragment-registry/src/registry.data.json`: a map of fragment name
-  to `{ stable?, canary?, preview?, versions? }`, each entry
+  `registry/registry.data.json` (loaded by `@mvp/registry`): a map of fragment
+  name to `{ stable?, canary?, preview?, versions? }`, each entry
   `{ version, serviceUrl, manifestUrl }`.
 - `loadDefaultBudget(scope, name?): PerformanceBudget` /
   `mergeBudget(default, custom): PerformanceBudget` /

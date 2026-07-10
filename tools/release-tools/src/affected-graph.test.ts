@@ -74,10 +74,10 @@ describe("seedsFromPaths", () => {
     expect(global).toBe(false);
   });
 
-  it("stays global for platform / root config / unknown packages", () => {
+  it("stays global for registry/routes code, root config, unknown packages", () => {
     expect(seedsFromPaths(graph, ["pnpm-lock.yaml"]).global).toBe(true);
     expect(
-      seedsFromPaths(graph, ["platform/route-registry/src/registry.ts"]).global,
+      seedsFromPaths(graph, ["packages/routes/src/registry.ts"]).global,
     ).toBe(true);
     expect(seedsFromPaths(graph, ["packages/unknown/src/x.ts"]).global).toBe(
       true,
@@ -85,8 +85,8 @@ describe("seedsFromPaths", () => {
   });
 });
 
-const REGISTRY_DATA_PATH = "platform/fragment-registry/src/registry.data.json";
-const RELEASES_PATH = "platform/fragment-registry/releases.json";
+const REGISTRY_DATA_PATH = "registry/registry.data.json";
+const RELEASES_PATH = "registry/releases.json";
 
 /** Builds a `getRegistryFileContent` resolver from a fixed before/after map,
  * mirroring what the CLI wires up from `git show <base>:<path>` + the
@@ -179,7 +179,7 @@ describe("seedsFromPaths — registry data narrowing (§4.1)", () => {
 
   it("a code change under registry.ts (not the data file) still triggers GLOBAL", () => {
     const { global } = seedsFromPaths(graph, [
-      "platform/fragment-registry/src/registry.ts",
+      "packages/registry/src/registry.ts",
     ]);
     expect(global).toBe(true);
   });
@@ -256,7 +256,7 @@ describe("affectedFromChangedPaths", () => {
     expect(plan.deployables).toEqual(["order-form", "page-trade"]);
   });
 
-  it("still rebuilds everything (+shell) on a platform/root change", () => {
+  it("still rebuilds everything (+shell) on a root config change", () => {
     const plan = affectedFromChangedPaths(graph, ["pnpm-lock.yaml"]);
     expect(plan.global).toBe(true);
     expect(plan.deployables).toContain(SHELL_UNIT);

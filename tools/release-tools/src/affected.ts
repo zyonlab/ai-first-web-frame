@@ -29,7 +29,11 @@ export type DeployableUnit = {
   dockerfile: string;
   /**
    * Non-workspace path prefixes that are compiled into this unit via relative
-   * imports (e.g. platform registries) and therefore trigger a rebuild.
+   * imports and therefore trigger a rebuild. Empty for every unit today —
+   * `@mvp/registry` / `@mvp/routes` (formerly `platform/fragment-registry` /
+   * `platform/route-registry`) are real workspace packages now, so their
+   * changes are already attributed via `packageForPath` + `buildDependentsIndex`
+   * below; this field remains for any future non-package relative import.
    */
   extraPathPrefixes: string[];
 };
@@ -57,24 +61,21 @@ export const DEPLOYABLE_UNITS: DeployableUnit[] = [
     packageName: "@mvp/shell-gateway",
     dir: "apps/shell-gateway",
     dockerfile: "apps/shell-gateway/Dockerfile",
-    extraPathPrefixes: [
-      "platform/fragment-registry/",
-      "platform/route-registry/",
-    ],
+    extraPathPrefixes: [],
   },
   {
     unit: "page-home",
     packageName: "@mvp/page-home",
     dir: "apps/page-home",
     dockerfile: "apps/page-home/Dockerfile",
-    extraPathPrefixes: ["platform/fragment-registry/"],
+    extraPathPrefixes: [],
   },
   {
     unit: "page-product",
     packageName: "@mvp/page-product",
     dir: "apps/page-product",
     dockerfile: "apps/page-product/Dockerfile",
-    extraPathPrefixes: ["platform/fragment-registry/"],
+    extraPathPrefixes: [],
   },
   {
     unit: "promotion-banner",

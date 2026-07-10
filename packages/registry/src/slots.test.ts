@@ -4,9 +4,10 @@ import {
   applyUnmountSlot,
   checkFragmentRegistered,
   diffManifestAgainstRuntime,
+  type PageSlot,
   type RuntimeSlotContract,
   validatePageSlots,
-} from "../src/slots";
+} from "./slots";
 
 const baseSlots = [
   {
@@ -70,7 +71,9 @@ describe("applyMountSlot", () => {
   });
 
   it("is idempotent for identical slots", () => {
-    const result = applyMountSlot(baseSlots, { ...baseSlots[0] });
+    const result = applyMountSlot(baseSlots, {
+      ...baseSlots[0],
+    } as PageSlot);
     expect(result.changed).toBe(false);
     expect(result.action).toBe("unchanged");
   });

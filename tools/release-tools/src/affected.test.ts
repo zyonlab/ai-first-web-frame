@@ -38,23 +38,45 @@ const packages: WorkspacePackage[] = [
     workspaceDependencies: ["@mvp/contracts", "@mvp/request-context"],
   },
   {
+    name: "@mvp/registry",
+    dir: "packages/registry",
+    workspaceDependencies: ["@mvp/contracts", "@mvp/runtime"],
+  },
+  {
+    name: "@mvp/routes",
+    dir: "packages/routes",
+    workspaceDependencies: [],
+  },
+  {
     name: "@mvp/shell-gateway",
     dir: "apps/shell-gateway",
     workspaceDependencies: [
       "@mvp/contracts",
       "@mvp/request-context",
       "@mvp/runtime",
+      "@mvp/registry",
+      "@mvp/routes",
     ],
   },
   {
     name: "@mvp/page-home",
     dir: "apps/page-home",
-    workspaceDependencies: ["@mvp/contracts", "@mvp/runtime", "@mvp/ui"],
+    workspaceDependencies: [
+      "@mvp/contracts",
+      "@mvp/runtime",
+      "@mvp/ui",
+      "@mvp/registry",
+    ],
   },
   {
     name: "@mvp/page-product",
     dir: "apps/page-product",
-    workspaceDependencies: ["@mvp/contracts", "@mvp/runtime", "@mvp/ui"],
+    workspaceDependencies: [
+      "@mvp/contracts",
+      "@mvp/runtime",
+      "@mvp/ui",
+      "@mvp/registry",
+    ],
   },
   {
     name: "@mvp/fragment-promotion-banner",
@@ -139,7 +161,7 @@ describe("packageForPath", () => {
   });
 
   it("returns undefined for paths outside any package", () => {
-    expect(packageForPath("platform/route-registry/src/x.ts", packages)).toBe(
+    expect(packageForPath("scripts/register-fragment.mts", packages)).toBe(
       undefined,
     );
   });
@@ -176,14 +198,14 @@ describe("computeAffected", () => {
     ]);
   });
 
-  it("maps platform route-registry changes to shell-gateway only", () => {
-    expect(unitNames(["platform/route-registry/src/registry.ts"])).toEqual([
+  it("maps @mvp/routes changes to shell-gateway only", () => {
+    expect(unitNames(["packages/routes/src/registry.ts"])).toEqual([
       "shell-gateway",
     ]);
   });
 
-  it("maps platform fragment-registry changes to shell and pages", () => {
-    expect(unitNames(["platform/fragment-registry/src/registry.ts"])).toEqual([
+  it("maps @mvp/registry changes to shell and pages", () => {
+    expect(unitNames(["packages/registry/src/registry.ts"])).toEqual([
       "shell-gateway",
       "page-home",
       "page-product",

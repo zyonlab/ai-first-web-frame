@@ -2,19 +2,20 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { FileConflictError, MISSING_FILE_HASH } from "../src/atomic-file";
+import { FileConflictError, MISSING_FILE_HASH } from "./atomic-file";
 import {
   applyPromoteFragment,
   applyRegisterFragment,
   applyRollbackFragment,
+  type FragmentRegistryData,
   loadRegistryData,
   loadReleases,
   type ReleaseRecord,
   saveRegistryData,
   saveReleases,
-} from "../src/mutations";
+} from "./mutations";
 
-const baseRegistry = {
+const baseRegistry: FragmentRegistryData = {
   fragments: {
     "promotion-banner": {
       stable: {

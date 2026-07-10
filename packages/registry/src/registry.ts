@@ -1,11 +1,8 @@
-import {
-  FragmentRegistrySchema,
-  type ReleaseChannel,
-} from "../../../packages/contracts/src/index";
-import registryData from "./registry.data.json";
+import { FragmentRegistrySchema, type ReleaseChannel } from "@mvp/contracts";
+import registryData from "../../../registry/registry.data.json";
 
 // Re-exported so registry consumers keep a single channel type source.
-export type { ReleaseChannel } from "../../../packages/contracts/src/index";
+export type { ReleaseChannel } from "@mvp/contracts";
 
 export type FragmentVersion = {
   version: string;

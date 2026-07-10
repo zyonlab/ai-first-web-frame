@@ -137,6 +137,24 @@ explicit path — data files are deployment state, not package source.
 > `packages/islands`, plus the `auditPackageLayering` check wired into
 > `audit:deps`), so the real migration PR only moves code in.
 
+**Status: implemented (P1 phase 3).** `platform/fragment-registry` and
+`platform/route-registry` moved into the workspace as `packages/registry`
+(`@mvp/registry`) and `packages/routes` (`@mvp/routes`); `platform/` no longer
+exists. `registry.data.json` / `releases.json` moved out of package source into
+the root-level `registry/` directory exactly as described above; every
+resolver (the lifecycle scripts, `@mvp/registry` itself, `load-graph.ts`,
+`affected-graph.ts`) now points at `registry/registry.data.json` /
+`registry/releases.json`. The §4.1 narrow-affected special-casing in
+`tools/release-tools/src/affected-graph.ts` was repointed to the new data-file
+paths and now also explicitly keeps `packages/registry/**` / `packages/routes/**`
+*code* changes GLOBAL (the same conservative policy `platform/**` had before,
+preserved via an explicit prefix check now that those paths would otherwise
+match the generic per-package narrowing every other `packages/*` change gets).
+`apps/shell-gateway` and every page that reads the fragment registry
+(`page-home`, `page-product`, `page-markets`, `page-portfolio`, `page-trade`)
+now depend on `@mvp/registry` (and `shell-gateway` also on `@mvp/routes`) as
+normal workspace packages instead of relative-importing across `platform/`.
+
 **Gate:** `pnpm verify` green; affected-graph tests updated; the new layering
 audit passes; zero `trade` tokens under `packages/`.
 

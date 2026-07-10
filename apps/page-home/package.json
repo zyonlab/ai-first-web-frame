@@ -17,6 +17,7 @@
     "@mvp/data": "workspace:*",
     "@mvp/interaction": "workspace:*",
     "@mvp/observability": "workspace:*",
+    "@mvp/registry": "workspace:*",
     "@mvp/request-context": "workspace:*",
     "@mvp/runtime": "workspace:*",
     "@mvp/ui": "workspace:*",

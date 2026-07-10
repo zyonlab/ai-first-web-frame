@@ -4,19 +4,22 @@
  * Maps a set of changed file paths to the deployable images that must be rebuilt
  * + the pages that must be re-runtime-verified, by seeding the unit graph from
  * the changed fragment/app dirs and walking its reverse edges
- * ({@link affectedClosure}). Paths under shared roots (`packages/`, `platform/`,
- * repo-root config) can't be resolved to a single unit here, so they mark the
- * run GLOBAL — conservative-correct (rebuild everything). Non-shipping paths
- * (docs, tools, e2e, reports, ci, markdown) are ignored.
+ * ({@link affectedClosure}). Paths under shared roots (`packages/`, repo-root
+ * config) can't be resolved to a single unit here, so they mark the run GLOBAL
+ * — conservative-correct (rebuild everything). Non-shipping paths (docs, tools,
+ * e2e, reports, ci, markdown) are ignored.
  *
  * Exception (docs/ARCHITECTURE_REFACTOR_PLAN.md §4.1): the fragment registry's
- * data files (`registry.data.json`, `releases.json`) are the routine *output*
- * of the register/promote/rollback lifecycle scripts, not shared code — every
- * fragment registration would otherwise force a full-repo rebuild, directly
- * contradicting the minimal-blast-radius goal. Those two paths are diffed
- * content-wise to the fragment name(s) that actually changed and seed only
- * those units; every other `platform/**` path (registry/mutation *code*,
- * route-registry, ...) stays GLOBAL as before.
+ * data files (`registry.data.json`, `releases.json`, root-level `registry/` per
+ * §2.2) are the routine *output* of the register/promote/rollback lifecycle
+ * scripts, not shared code — every fragment registration would otherwise force
+ * a full-repo rebuild, directly contradicting the minimal-blast-radius goal.
+ * Those two paths are diffed content-wise to the fragment name(s) that actually
+ * changed and seed only those units; every other registry/routes *code* path
+ * (`packages/registry/**`, `packages/routes/**`) stays GLOBAL as before —
+ * those packages joined the workspace in §2.2, but their mutation/routing logic
+ * is still shared across every fragment/page, so a code change there is
+ * deliberately conservative.
  *
  * Pure (paths + graph in → plan out) so it is unit-tested; the CLI does the git
  * diff and the docker orchestration.
@@ -28,9 +31,12 @@ import { affectedClosure, type UnitGraph } from "./unit-graph";
 export const SHELL_UNIT = "shell-gateway";
 
 /** The two registry data files special-cased by §4.1 (see module doc). */
-export const REGISTRY_DATA_PATH =
-  "platform/fragment-registry/src/registry.data.json";
-export const RELEASES_PATH = "platform/fragment-registry/releases.json";
+export const REGISTRY_DATA_PATH = "registry/registry.data.json";
+export const RELEASES_PATH = "registry/releases.json";
+
+/** Registry/routes *code* paths that stay GLOBAL even though they now live
+ * under `packages/**` (see module doc exception). */
+const REGISTRY_CODE_PREFIXES = ["packages/registry/", "packages/routes/"];
 
 /** Content of one of the two registry data files at both ends of a diff.
  * `undefined` means the file did not exist / could not be read at that
@@ -226,6 +232,13 @@ export function seedsFromPaths(
       );
       continue;
     }
+    if (REGISTRY_CODE_PREFIXES.some((prefix) => path.startsWith(prefix))) {
+      // Registry/routes *code* (as opposed to the two data files above) is
+      // cross-cutting even though it's a real workspace package now — see
+      // module doc exception.
+      global = true;
+      continue;
+    }
     const frag = /^fragments\/([^/]+)\//.exec(path);
     const app = /^apps\/([^/]+)\//.exec(path);
     const pkg = /^packages\/([^/]+)\//.exec(path);
@@ -238,10 +251,10 @@ export function seedsFromPaths(
       if (unit) seeds.add(unit.id);
       else global = true; // unknown package → conservative
     }
-    // platform/ (route/fragment registry) is cross-cutting, as is repo-root
-    // config (lockfile, tsconfig, biome): rebuild all. (The two registry data
-    // files above are the narrowed exception per §4.1.)
-    else if (/^platform\//.test(path) || !path.includes("/")) global = true;
+    // Repo-root config (lockfile, tsconfig, biome) is cross-cutting: rebuild
+    // all. (The two registry data files and registry/routes code above are
+    // the exceptions per §4.1 / module doc.)
+    else if (!path.includes("/")) global = true;
   }
   return { seeds: [...seeds].sort(), global };
 }

@@ -15,7 +15,9 @@
     "@mvp/contracts": "workspace:*",
     "@mvp/design-system": "workspace:*",
     "@mvp/observability": "workspace:*",
+    "@mvp/registry": "workspace:*",
     "@mvp/request-context": "workspace:*",
+    "@mvp/routes": "workspace:*",
     "@mvp/runtime": "workspace:*",
     "@mvp/trade-prefs": "workspace:*",
     "fastify": "^4.28.1"

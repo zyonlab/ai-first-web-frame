@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  matchRoute,
-  routeRegistry,
-  validateRouteRegistry,
-} from "../src/registry";
+import { matchRoute, routeRegistry, validateRouteRegistry } from "./registry";
 
 describe("route registry", () => {
   it("passes schema validation", () => {

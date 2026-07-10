@@ -1,5 +1,6 @@
 import type { FragmentRegistry } from "@mvp/contracts";
 import { createRequestTrace } from "@mvp/observability";
+import { fragmentRegistry } from "@mvp/registry";
 import { createRequestContext } from "@mvp/request-context";
 import {
   executeFragmentSlots,
@@ -8,7 +9,6 @@ import {
   type PageHealth,
   type SchedulerHint,
 } from "@mvp/runtime";
-import { fragmentRegistry } from "../../../platform/fragment-registry/src/registry";
 
 /** Slot keys composed on the markets page (single main fragment). */
 export type MarketsSlotKey = "marketsTable";

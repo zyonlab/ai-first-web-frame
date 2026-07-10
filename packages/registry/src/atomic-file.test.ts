@@ -16,7 +16,7 @@ import {
   loadFileWithHash,
   MISSING_FILE_HASH,
   writeFileAtomic,
-} from "../src/atomic-file";
+} from "./atomic-file";
 
 function tempTarget(): { dir: string; path: string } {
   const dir = mkdtempSync(join(tmpdir(), "mvp-atomic-file-"));
