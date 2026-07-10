@@ -310,6 +310,31 @@ agents are the normal case, not the edge case.
    then `manifest.assets.js` is explicitly documented as "served for standalone
    demos, not consumed by composition".
 
+**Status: implemented (items 1–2; item 3 remains out of scope this phase).**
+`packages/islands/src/index.ts`'s `IslandSnapshot` now carries optional
+`fragment`/`version`/`contractHash` alongside `props`/`slice`; `registerIsland`
+takes an optional third `{ expectedVersion, expectedContractHash }` argument,
+and `mountIsland`/`hydrateIslands` skip hydration (leaving the SSR HTML as the
+final static state) on a mismatch, `console.warn` unconditionally, and invoke
+an optional `configureIslandRuntime({ onSnapshotMismatch })` hook instead of
+calling `@mvp/observability` directly (a browser-side package has no business
+depending on that request-scoped, server-side API surface). A snapshot with no
+`version` at all (an old/non-participating fragment) hydrates normally rather
+than being treated as a mismatch, for backward compatibility. The four trade
+React fragments (market-header, chart-panel, account-bar, order-form) now
+stamp `fragment`/`version` from their own manifest in their SSR snapshot, and
+`apps/page-trade/src/hydrate.tsx`'s `registerTradeIslands` declares
+`expectedVersion` for all four from each fragment's `<pkg>/manifest` export.
+Item 2 shipped as an injected `bus?: InteractionBus` prop each island prefers
+over its own `createInteractionBus` fallback (mirroring the pattern
+market-header/chart-panel already used) rather than a `getIslandBus()`
+accessor — `account-bar` (the one fragment with no escape hatch) now has one,
+closing the orphan-bus gap, and `registerTradeIslands` injects the shared page
+bus into all three read-mostly islands. A new `tools/dependency-audit`
+regex-heuristic check (`island-bus-without-escape-hatch`) fails any
+`fragments/*/src/island.tsx` that calls `createInteractionBus` without also
+declaring a `bus?`/`props.bus` escape hatch, preventing recurrence.
+
 ### 4.4 Rendering: streaming + SSG (🎯C for content freshness, plus UX)
 1. Rename slot strategy `isr` → `ttl-cache` (A4). One-line codemod + schema alias
    during a deprecation window.

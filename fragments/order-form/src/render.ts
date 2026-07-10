@@ -175,13 +175,21 @@ export function renderOrderFormHtml(
 }
 
 /**
- * Builds the frozen C2 `{ props, slice }` snapshot JSON. `slice` is the store
- * slice the island reads/writes — the full order-draft channel id, so the store
- * maps it directly (the island folds book price + leverage into it and re-emits
- * `trade.order-draft`).
+ * Builds the frozen C2 `{ props, slice, fragment, version }` snapshot JSON.
+ * `slice` is the store slice the island reads/writes — the full order-draft
+ * channel id, so the store maps it directly (the island folds book price +
+ * leverage into it and re-emits `trade.order-draft`). `fragment`/`version`
+ * stamp this fragment's own manifest identity (§4.3.1 version handshake) so
+ * `@mvp/islands` can detect drift against what the page-bundled island
+ * expects.
  */
 export function buildIslandSnapshot(props: OrderFormIslandProps): string {
-  const snapshot = { props, slice: TRADE_ORDER_DRAFT };
+  const snapshot = {
+    props,
+    slice: TRADE_ORDER_DRAFT,
+    fragment: orderFormManifest.name,
+    version: orderFormManifest.version,
+  };
   // Escape `<` so the JSON can never terminate the surrounding <script> early.
   return JSON.stringify(snapshot).replaceAll("<", "\\u003c");
 }

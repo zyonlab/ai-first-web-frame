@@ -76,7 +76,15 @@ export function renderMarketHeaderHtml(
     seededNowMs,
     countdownLabel,
   };
-  const snapshot = JSON.stringify({ props, slice: ISLAND_SLICE });
+  // C2 snapshot version handshake (docs/ARCHITECTURE_REFACTOR_PLAN.md §4.3.1):
+  // stamp this fragment's own manifest name/version so `@mvp/islands` can
+  // detect drift against what the page-bundled island expects.
+  const snapshot = JSON.stringify({
+    props,
+    slice: ISLAND_SLICE,
+    fragment: marketHeaderManifest.name,
+    version: marketHeaderManifest.version,
+  });
   const changeClass =
     view.direction === "up"
       ? "market-header__change--up"

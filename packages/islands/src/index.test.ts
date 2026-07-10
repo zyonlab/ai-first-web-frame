@@ -1,13 +1,15 @@
 import { act } from "@testing-library/react";
 import { createElement } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clearIslandRegistry,
+  configureIslandRuntime,
   hydrateIslands,
   type IslandSnapshot,
   mountIsland,
   readIslandSnapshot,
   registerIsland,
+  type SnapshotMismatchInfo,
 } from "./index";
 
 /**
@@ -43,6 +45,18 @@ describe("readIslandSnapshot", () => {
     const el = buildMountNode("orderForm", snapshot);
     const read = readIslandSnapshot(el);
     expect(read).toEqual(snapshot);
+  });
+
+  it("reads fragment/version/contractHash (C2 handshake fields) when present", () => {
+    const snapshot: IslandSnapshot = {
+      props: { symbol: "BTC" },
+      slice: "orderDraft",
+      fragment: "order-form",
+      version: "0.1.0",
+      contractHash: "abc123",
+    };
+    const el = buildMountNode("orderForm", snapshot);
+    expect(readIslandSnapshot(el)).toEqual(snapshot);
   });
 
   it("returns an empty snapshot when no script is present", () => {
@@ -101,6 +115,163 @@ describe("mountIsland", () => {
   it("throws when the element carries no data-island name", () => {
     const el = document.createElement("div");
     expect(() => mountIsland(el)).toThrow(/data-island/i);
+  });
+});
+
+describe("C2 snapshot version handshake", () => {
+  it("hydrates normally when the snapshot version matches the registered expectation", () => {
+    registerIsland(
+      "orderForm",
+      (props: { symbol?: string }) =>
+        createElement("span", { "data-testid": "sym" }, props.symbol),
+      { expectedVersion: "0.1.0" },
+    );
+    const el = buildMountNode("orderForm", {
+      props: { symbol: "BTC" },
+      fragment: "order-form",
+      version: "0.1.0",
+    });
+    document.body.appendChild(el);
+
+    act(() => {
+      mountIsland(el);
+    });
+    expect(el.querySelector("[data-testid='sym']")?.textContent).toBe("BTC");
+  });
+
+  it("skips hydration and leaves the SSR DOM untouched on a version mismatch", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    registerIsland(
+      "orderForm",
+      (props: { symbol?: string }) =>
+        createElement("span", { "data-testid": "sym" }, props.symbol),
+      { expectedVersion: "2.0.0" },
+    );
+    const el = buildMountNode("orderForm", {
+      props: { symbol: "BTC" },
+      fragment: "order-form",
+      version: "1.0.0",
+    });
+    // Snapshot the SSR-only markup (the mount node's original children) before
+    // attempting to hydrate — a skipped hydration must leave it byte-identical.
+    const ssrHtmlBefore = el.innerHTML;
+    document.body.appendChild(el);
+
+    let handle: { unmount(): void } | undefined;
+    act(() => {
+      handle = mountIsland(el);
+    });
+
+    // No React content was ever rendered into the node.
+    expect(el.querySelector("[data-testid='sym']")).toBeNull();
+    expect(el.innerHTML).toBe(ssrHtmlBefore);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/snapshot mismatch/i);
+
+    // The returned handle is a safe no-op (callers never need to null-check).
+    expect(() => handle?.unmount()).not.toThrow();
+    warnSpy.mockRestore();
+  });
+
+  it("invokes the configureIslandRuntime mismatch callback with the expected/actual info", () => {
+    const onSnapshotMismatch = vi.fn<(info: SnapshotMismatchInfo) => void>();
+    configureIslandRuntime({ onSnapshotMismatch });
+    registerIsland("orderForm", () => createElement("span"), {
+      expectedVersion: "2.0.0",
+      expectedContractHash: "expected-hash",
+    });
+    const el = buildMountNode("orderForm", {
+      props: {},
+      fragment: "order-form",
+      version: "1.0.0",
+      contractHash: "actual-hash",
+    });
+    document.body.appendChild(el);
+
+    act(() => {
+      mountIsland(el);
+    });
+
+    expect(onSnapshotMismatch).toHaveBeenCalledTimes(1);
+    expect(onSnapshotMismatch).toHaveBeenCalledWith({
+      island: "orderForm",
+      expected: { version: "2.0.0", contractHash: "expected-hash" },
+      actual: {
+        fragment: "order-form",
+        version: "1.0.0",
+        contractHash: "actual-hash",
+      },
+      reason: "version-mismatch",
+    });
+  });
+
+  it("flags a contract-hash mismatch even when the version matches", () => {
+    const onSnapshotMismatch = vi.fn<(info: SnapshotMismatchInfo) => void>();
+    configureIslandRuntime({ onSnapshotMismatch });
+    registerIsland("orderForm", () => createElement("span"), {
+      expectedVersion: "0.1.0",
+      expectedContractHash: "expected-hash",
+    });
+    const el = buildMountNode("orderForm", {
+      props: {},
+      fragment: "order-form",
+      version: "0.1.0",
+      contractHash: "drifted-hash",
+    });
+    document.body.appendChild(el);
+
+    act(() => {
+      mountIsland(el);
+    });
+
+    expect(el.querySelector("span")).toBeNull();
+    expect(onSnapshotMismatch).toHaveBeenCalledTimes(1);
+    expect(onSnapshotMismatch.mock.calls[0]?.[0]?.reason).toBe(
+      "contract-hash-mismatch",
+    );
+  });
+
+  it("falls back to hydrating normally when the snapshot omits version (backward compat)", () => {
+    // Old/non-participating fragment: it hasn't adopted the C2 handshake yet,
+    // so its snapshot has no `version` at all. Forcing every fragment to opt
+    // in immediately would be a breaking change, so the safer default is to
+    // hydrate normally rather than treat "absent" as "mismatched" (see the
+    // comment on `detectSnapshotMismatch` in ./index.ts).
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    registerIsland(
+      "orderForm",
+      (props: { symbol?: string }) =>
+        createElement("span", { "data-testid": "sym" }, props.symbol),
+      { expectedVersion: "2.0.0" },
+    );
+    const el = buildMountNode("orderForm", { props: { symbol: "BTC" } });
+    document.body.appendChild(el);
+
+    act(() => {
+      mountIsland(el);
+    });
+
+    expect(el.querySelector("[data-testid='sym']")?.textContent).toBe("BTC");
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it("hydrates unconditionally when registerIsland is called without an expectation", () => {
+    // No third argument at all -> opted out of the handshake entirely,
+    // preserving today's behavior for every island that doesn't pass one.
+    registerIsland("orderForm", (props: { symbol?: string }) =>
+      createElement("span", { "data-testid": "sym" }, props.symbol),
+    );
+    const el = buildMountNode("orderForm", {
+      props: { symbol: "BTC" },
+      version: "some-other-version-nobody-checks",
+    });
+    document.body.appendChild(el);
+
+    act(() => {
+      mountIsland(el);
+    });
+    expect(el.querySelector("[data-testid='sym']")?.textContent).toBe("BTC");
   });
 });
 

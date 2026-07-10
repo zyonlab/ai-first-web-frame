@@ -42,6 +42,21 @@ export default defineConfig({
       "@mvp/fragment-chart-panel/island": pathFromRoot(
         "./fragments/chart-panel/src/island.tsx",
       ),
+      // Trade-demo manifest entry points (C2 version handshake §4.3.1):
+      // page-trade reads each fragment's own `version` to declare its
+      // `registerIsland` expectation.
+      "@mvp/fragment-order-form/manifest": pathFromRoot(
+        "./fragments/order-form/src/manifest.ts",
+      ),
+      "@mvp/fragment-market-header/manifest": pathFromRoot(
+        "./fragments/market-header/src/manifest.ts",
+      ),
+      "@mvp/fragment-account-bar/manifest": pathFromRoot(
+        "./fragments/account-bar/src/manifest.ts",
+      ),
+      "@mvp/fragment-chart-panel/manifest": pathFromRoot(
+        "./fragments/chart-panel/src/manifest.ts",
+      ),
       "@mvp/observability": pathFromRoot(
         "./packages/observability/src/index.ts",
       ),
