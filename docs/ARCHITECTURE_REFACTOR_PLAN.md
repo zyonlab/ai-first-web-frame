@@ -214,15 +214,27 @@ owner's behalf. (2) No `publishConfig` (registry/access) was added to any
 package — access/registry configuration is deferred alongside the license
 choice. `tools/release-tools` and `tools/mcp-devx` (§7.3's future `@mvp/mcp`)
 are unaffected by this pass — both stay `private: true`/unbuilt, tracked as
-a separate increment per the parallel MCP-packaging task. Also noted in
-passing, not acted on: `packages/ui`'s `exports` map still points
-`./shadcn/globals.css` at `./src/shadcn/globals.css`, which is outside the
-new `files` allow-list — that subpath export would 404 for a real npm
-consumer until either the CSS file moves under `dist/` or `files` grows a
-`src/shadcn/globals.css` entry; and `packages/assets`/`packages/workers`
-exist as unmarked-private workspace packages not mentioned by this plan's
-publish/not-published lists, so they were left untouched by both the
-`package.json` changes and the changesets `ignore` list.
+a separate increment per the parallel MCP-packaging task. `packages/assets`/
+`packages/workers` exist as unmarked-private workspace packages not
+mentioned by this plan's publish/not-published lists, so they were left
+untouched by both the `package.json` changes and the changesets `ignore`
+list.
+
+**Status: `packages/ui` export mismatch fixed.** Both `./shadcn/globals.css`
+and `./tailwind.config` pointed at raw source-tree files
+(`src/shadcn/globals.css`, root `tailwind.config.ts`) outside the `files`
+allow-list — a real npm consumer would 404 on either. Fixed by making both
+real build outputs: `tailwind.config.ts` is now a second `tsdown` entry
+(`dist/tailwind.config.js`/`.d.ts`), and `globals.css` is copied to
+`dist/shadcn/globals.css` as a build-script post-step, with both exports
+repointed at `dist/`. One pitfall worth recording: mixing a package-root
+entry (`tailwind.config.ts`) into the SAME `tsdown` invocation as the
+existing `src/*` entries changed tsdown's common-ancestor computation for
+output paths, silently nesting every component's output under an extra
+`dist/src/` segment and breaking every other subpath export — the fix is
+two separate `tsdown` invocations (component entries, then
+`tailwind.config.ts` with `--no-clean` so the second run doesn't wipe the
+first's output), not one invocation with mixed entry roots.
 
 ## 3. Manifest-driven composition (🎯A — the biggest single win)
 

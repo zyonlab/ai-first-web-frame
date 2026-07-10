@@ -44,8 +44,11 @@
       "types": "./dist/shadcn/index.d.ts",
       "import": "./dist/shadcn/index.js"
     },
-    "./shadcn/globals.css": "./src/shadcn/globals.css",
-    "./tailwind.config": "./tailwind.config.ts"
+    "./shadcn/globals.css": "./dist/shadcn/globals.css",
+    "./tailwind.config": {
+      "types": "./dist/tailwind.config.d.ts",
+      "import": "./dist/tailwind.config.js"
+    }
   },
   "files": [
     "dist",
@@ -62,7 +65,7 @@
   "scripts": {
     "test": "pnpm -w exec vitest run packages/ui/src",
     "test:watch": "pnpm -w exec vitest packages/ui/src",
-    "build": "tsdown src/index.ts src/AppNav/index.ts src/Button/index.ts src/Card/index.ts src/Image/index.ts src/ProductCardBase/index.ts src/Section/index.ts src/Skeleton/index.ts src/shadcn/index.ts --format esm --dts",
+    "build": "tsdown src/index.ts src/AppNav/index.ts src/Button/index.ts src/Card/index.ts src/Image/index.ts src/ProductCardBase/index.ts src/Section/index.ts src/Skeleton/index.ts src/shadcn/index.ts --format esm --dts && tsdown tailwind.config.ts --format esm --dts --no-clean && node -e \"const fs=require('fs');fs.mkdirSync('dist/shadcn',{recursive:true});fs.copyFileSync('src/shadcn/globals.css','dist/shadcn/globals.css')\"",
     "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
   },
   "dependencies": {
