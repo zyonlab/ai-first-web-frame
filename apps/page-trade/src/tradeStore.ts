@@ -1,18 +1,18 @@
+import { createInteractionBus, type InteractionBus } from "@mvp/interaction";
+import { createSliceStore, type SliceStore } from "@mvp/store";
 import {
-  createInteractionBus,
-  type InteractionBus,
   initialTradeSlices,
+  TRADE_STORE_OWNER,
   type TradeSlices,
   tradeSliceContracts,
   tradeStoreContracts,
-} from "@mvp/interaction";
-import { createTradeStore, type TradeStore } from "@mvp/trade-client";
+} from "@mvp/trade-contracts";
 
 /**
  * The single shared client store for the trade terminal (README §7 / §14 D4).
  *
  * D3's model is "React ships once at the page level": the page owns exactly one
- * `createTradeStore` instance and hands it to every island through the
+ * `createSliceStore` instance and hands it to every island through the
  * hydration bootstrap. Islands never construct their own store — they read/write
  * slices on this one so a cross-island flow (an order-book row click driving the
  * order-form price) is a single `set`/`subscribe` pair on a shared bus.
@@ -23,13 +23,14 @@ import { createTradeStore, type TradeStore } from "@mvp/trade-client";
  * SSR-HTML/`dangerouslySetInnerHTML` boundary (islands mount into detached SSR
  * nodes, so a React context provider above them would not reach them).
  */
-let store: TradeStore<TradeSlices> | null = null;
+let store: SliceStore<TradeSlices> | null = null;
 
 /** Returns the process-wide shared trade store, creating it on first use. */
-export function getTradeStore(): TradeStore<TradeSlices> {
+export function getTradeStore(): SliceStore<TradeSlices> {
   if (!store) {
-    store = createTradeStore<TradeSlices>(tradeStoreContracts, {
+    store = createSliceStore<TradeSlices>(tradeStoreContracts, {
       initial: initialTradeSlices,
+      owner: TRADE_STORE_OWNER,
     });
   }
   return store;

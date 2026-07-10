@@ -18,7 +18,6 @@ export default defineConfig({
       ),
       "@mvp/interaction": pathFromRoot("./packages/interaction/src/index.ts"),
       "@mvp/islands": pathFromRoot("./packages/islands/src/index.ts"),
-      "@mvp/trade-client": pathFromRoot("./packages/trade-client/src/index.ts"),
       // Trade-demo patch-only fragment entry points (pure DOM-patch functions,
       // page-trade bundles them into the realtime hydration layer).
       "@mvp/fragment-order-book/patch": pathFromRoot(

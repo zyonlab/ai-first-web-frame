@@ -5,9 +5,9 @@ import type { InteractionContract } from "@mvp/contracts";
  *
  * This module freezes contract **C3** (10-parallel-work-plan §3): the store
  * slice channel ids + Zod/JSON-Schema payloads + publisher/subscriber
- * declarations. It is demo-specific and intentionally isolated under
- * `@mvp/interaction/trade` — the generic interaction bus/mutation core stays
- * untouched; this only adds on top of it.
+ * declarations. It is demo-specific and lives under `domains/trade-contracts`
+ * — the generic interaction bus/mutation core in `@mvp/interaction` stays
+ * untouched; this only builds on top of it.
  *
  * Two contract sets are exported:
  *
@@ -16,10 +16,10 @@ import type { InteractionContract } from "@mvp/contracts";
  *   `order-book`, `chart-panel`). These wire the real multi-island bus that the
  *   A2/A3 fragment agents build; publisher discipline is enforced per doc §5.1.
  * - {@link tradeStoreContracts} — the same channels reshaped so the generic
- *   {@link "../../trade-client".createTradeStore} (single-owner get/set/
+ *   `@mvp/store`'s {@link "@mvp/store".createSliceStore} (single-owner get/set/
  *   subscribe) accepts them: every contract names {@link TRADE_STORE_OWNER} as
  *   publisher and includes it among subscribers. Feed these to
- *   `createTradeStore<TradeSlices>(tradeStoreContracts, { initial })`.
+ *   `createSliceStore<TradeSlices>(tradeStoreContracts, { initial })`.
  *
  * Slice name === channel-topic-tail (the store maps a slice key to a channel),
  * so the {@link TradeSlices} keys line up with these channels for the store
@@ -192,12 +192,12 @@ export const tradeSliceContracts: InteractionContract[] = [
 // --- TradeSlices type + initial values --------------------------------------
 
 /**
- * Slice map fed to the generic `createTradeStore<TradeSlices>`. Each key is a
+ * Slice map fed to the generic `createSliceStore<TradeSlices>`. Each key is a
  * slice/channel; the value type is the slice's stored value (NOT wrapped in the
  * `{ ... }` payload envelope — the store holds the raw slice value and the
  * channel payload carries it).
  *
- * NOTE the slice keys are the full channel ids, because `createTradeStore` maps
+ * NOTE the slice keys are the full channel ids, because `createSliceStore` maps
  * `slice -> channel` by identity (`String(slice)`). Using the channel id as the
  * slice key keeps store slices and bus channels in exact lockstep.
  */
@@ -231,14 +231,14 @@ export const initialTradeSlices: TradeSlices = {
 /**
  * Contracts reshaped for the generic single-owner client store: publisher is
  * {@link TRADE_STORE_OWNER} and the owner is a subscriber, so
- * `createTradeStore<TradeSlices>(tradeStoreContracts, { initial })` can
+ * `createSliceStore<TradeSlices>(tradeStoreContracts, { initial })` can
  * `set` (publish) and `subscribe` every slice. The payload schemas are the
  * canonical ones — a bad slice value is still rejected at `set` time.
  *
  * This is a deliberate, isolated reshaping: the canonical island publishers
  * live in {@link tradeSliceContracts}; the store is a client-side mechanism and
- * uses a single owner identity by construction (see `packages/trade-client/src/
- * store.ts`).
+ * uses a single owner identity by construction (see `@mvp/store`'s
+ * `createSliceStore`).
  */
 export const tradeStoreContracts: InteractionContract[] =
   tradeSliceContracts.map((contract) => ({

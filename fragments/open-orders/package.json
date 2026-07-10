@@ -17,6 +17,7 @@
     "@mvp/interaction": "workspace:*",
     "@mvp/observability": "workspace:*",
     "@mvp/request-context": "workspace:*",
+    "@mvp/trade-contracts": "workspace:*",
     "fastify": "^4.28.1",
     "zod": "^3.23.8"
   },

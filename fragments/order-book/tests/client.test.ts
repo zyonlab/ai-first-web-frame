@@ -1,5 +1,8 @@
 import type { OrderbookL2Frame } from "@mvp/data";
-import { TRADE_HOVERED_PRICE, TRADE_ORDER_DRAFT_PRICE } from "@mvp/interaction";
+import {
+  TRADE_HOVERED_PRICE,
+  TRADE_ORDER_DRAFT_PRICE,
+} from "@mvp/trade-contracts";
 import { describe, expect, it } from "vitest";
 import {
   hoveredPriceFromHover,

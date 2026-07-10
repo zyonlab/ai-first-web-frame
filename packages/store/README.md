@@ -1,8 +1,12 @@
 # @mvp/store
 
-Scaffolding package, not yet populated with real code. This is the future home
-of the generic parts of `packages/trade-client/src/store.ts`
-(`createTradeStore` / `useStoreSlice`, renamed `createSliceStore` in the real
-move) once the Phase P1 re-layering migration splits `packages/trade-client`
-between this framework package and the trade domain layer; see
+A generic client-side slice store built on `@mvp/interaction`
+(`createSliceStore`, `useStoreSlice`). Domain-agnostic: the slice map and the
+`InteractionContract`s that back it are supplied by the caller (e.g. a domain
+package like `@mvp/trade-contracts`) at construction time — this package has
+no domain vocabulary of its own.
+
+Moved here from `packages/trade-client/src/store.ts` in the Phase P1
+re-layering migration (§2.2 Move A), renaming `createTradeStore` ->
+`createSliceStore` and `TradeStore` -> `SliceStore` to match; see
 [docs/ARCHITECTURE_REFACTOR_PLAN.md §2.2](../../docs/ARCHITECTURE_REFACTOR_PLAN.md#22-moves-mechanical-one-pr-behavior-preserving).

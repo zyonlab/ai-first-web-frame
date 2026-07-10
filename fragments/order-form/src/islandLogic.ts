@@ -6,7 +6,7 @@ import {
   type OrderDraftPricePayload,
   type OrderSide,
   type PlaceOrderInput,
-} from "@mvp/interaction";
+} from "@mvp/trade-contracts";
 
 /**
  * Pure island logic for the order-form (contract C3 realized).

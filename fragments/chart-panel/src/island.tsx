@@ -5,21 +5,19 @@ import {
   createTradeDataClient,
   type Candle as DataCandle,
 } from "@mvp/data";
+import { createInteractionBus, type InteractionBus } from "@mvp/interaction";
+import { createRequestContext } from "@mvp/request-context";
+import { CandleChart, type Candle as ChartCandle } from "@mvp/trade-chart";
 import {
   type ActiveSymbolPayload,
   CHART_INTERVALS,
   type ChartInterval,
   type ChartIntervalPayload,
-  createInteractionBus,
-  type InteractionBus,
   isChartInterval,
   TRADE_ACTIVE_SYMBOL,
   TRADE_CHART_INTERVAL,
   tradeSliceContracts,
-} from "@mvp/interaction";
-import { createRequestContext } from "@mvp/request-context";
-import type { Candle as ChartCandle } from "@mvp/trade-client";
-import { CandleChart } from "@mvp/trade-client";
+} from "@mvp/trade-contracts";
 import { Tabs, TabsList, TabsTrigger } from "@mvp/ui/shadcn";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {

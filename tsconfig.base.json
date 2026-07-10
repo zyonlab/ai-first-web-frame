@@ -20,7 +20,6 @@
       "@mvp/design-tokens": ["./packages/design-tokens/src/index.ts"],
       "@mvp/interaction": ["./packages/interaction/src/index.ts"],
       "@mvp/islands": ["./packages/islands/src/index.ts"],
-      "@mvp/trade-client": ["./packages/trade-client/src/index.ts"],
       "@mvp/observability": ["./packages/observability/src/index.ts"],
       "@mvp/optimizer": ["./packages/optimizer/src/index.ts"],
       "@mvp/request": ["./packages/request/src/index.ts"],

@@ -1,301 +1,343 @@
 {
   "tool": "tsgo",
-  "generatedAt": "2026-07-09T12:41:14.151Z",
-  "projectCount": 44,
-  "passed": 44,
+  "generatedAt": "2026-07-10T00:48:02.202Z",
+  "projectCount": 50,
+  "passed": 50,
   "failed": 0,
   "results": [
     {
       "config": "apps/page-home/tsconfig.json",
       "status": "passed",
-      "durationMs": 427,
+      "durationMs": 893,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "apps/page-markets/tsconfig.json",
       "status": "passed",
-      "durationMs": 303,
+      "durationMs": 396,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "apps/page-portfolio/tsconfig.json",
       "status": "passed",
-      "durationMs": 293,
+      "durationMs": 397,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "apps/page-product/tsconfig.json",
       "status": "passed",
-      "durationMs": 314,
+      "durationMs": 407,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "apps/page-referrals/tsconfig.json",
       "status": "passed",
-      "durationMs": 297,
+      "durationMs": 417,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "apps/page-trade/tsconfig.json",
       "status": "passed",
-      "durationMs": 306,
+      "durationMs": 674,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "apps/page-vaults/tsconfig.json",
       "status": "passed",
-      "durationMs": 296,
+      "durationMs": 392,
       "stdout": "",
       "stderr": ""
     },
     {
       "config": "apps/shell-gateway/tsconfig.json",
       "status": "passed",
-      "durationMs": 377,
+      "durationMs": 385,
       "stdout": "",
       "stderr": ""
     },
     {
-      "config": "fragments/account-bar/tsconfig.json",
-      "status": "passed",
-      "durationMs": 384,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/chart-panel/tsconfig.json",
-      "status": "passed",
-      "durationMs": 650,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/funding-bar/tsconfig.json",
-      "status": "passed",
-      "durationMs": 363,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/market-header/tsconfig.json",
-      "status": "passed",
-      "durationMs": 413,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/markets-table/tsconfig.json",
-      "status": "passed",
-      "durationMs": 401,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/open-orders/tsconfig.json",
-      "status": "passed",
-      "durationMs": 375,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/order-book/tsconfig.json",
-      "status": "passed",
-      "durationMs": 378,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/order-form/tsconfig.json",
-      "status": "passed",
-      "durationMs": 595,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/pnl-chart/tsconfig.json",
-      "status": "passed",
-      "durationMs": 369,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/portfolio-summary/tsconfig.json",
-      "status": "passed",
-      "durationMs": 402,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/positions-table/tsconfig.json",
-      "status": "passed",
-      "durationMs": 372,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/promotion-banner/tsconfig.json",
-      "status": "passed",
-      "durationMs": 367,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/recommendation-widget/tsconfig.json",
-      "status": "passed",
-      "durationMs": 375,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "fragments/trades-feed/tsconfig.json",
-      "status": "passed",
-      "durationMs": 373,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/assets/tsconfig.json",
-      "status": "passed",
-      "durationMs": 264,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/contracts/tsconfig.json",
-      "status": "passed",
-      "durationMs": 332,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/data/tsconfig.json",
-      "status": "passed",
-      "durationMs": 340,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/design-system/tsconfig.json",
-      "status": "passed",
-      "durationMs": 282,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/design-tokens/tsconfig.json",
-      "status": "passed",
-      "durationMs": 261,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/interaction/tsconfig.json",
-      "status": "passed",
-      "durationMs": 332,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/observability/tsconfig.json",
-      "status": "passed",
-      "durationMs": 270,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/optimizer/tsconfig.json",
-      "status": "passed",
-      "durationMs": 337,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/request/tsconfig.json",
-      "status": "passed",
-      "durationMs": 343,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/request-context/tsconfig.json",
-      "status": "passed",
-      "durationMs": 346,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/runtime/tsconfig.json",
-      "status": "passed",
-      "durationMs": 339,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/storage/tsconfig.json",
-      "status": "passed",
-      "durationMs": 335,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/trade-client/tsconfig.json",
-      "status": "passed",
-      "durationMs": 368,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/ui/tsconfig.json",
-      "status": "passed",
-      "durationMs": 563,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "packages/workers/tsconfig.json",
-      "status": "passed",
-      "durationMs": 344,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "tools/bundle-budget-check/tsconfig.json",
-      "status": "passed",
-      "durationMs": 260,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "tools/component-similarity-check/tsconfig.json",
-      "status": "passed",
-      "durationMs": 280,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "tools/create-component/tsconfig.json",
-      "status": "passed",
-      "durationMs": 263,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "config": "tools/css-budget-check/tsconfig.json",
+      "config": "domains/trade-chart/tsconfig.json",
       "status": "passed",
       "durationMs": 262,
       "stdout": "",
       "stderr": ""
     },
     {
-      "config": "tools/dependency-audit/tsconfig.json",
+      "config": "domains/trade-contracts/tsconfig.json",
+      "status": "passed",
+      "durationMs": 327,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "domains/trade-data/tsconfig.json",
+      "status": "passed",
+      "durationMs": 252,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "domains/trade-prefs/tsconfig.json",
+      "status": "passed",
+      "durationMs": 250,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "domains/trade-theme/tsconfig.json",
+      "status": "passed",
+      "durationMs": 251,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/account-bar/tsconfig.json",
+      "status": "passed",
+      "durationMs": 373,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/chart-panel/tsconfig.json",
+      "status": "passed",
+      "durationMs": 556,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/funding-bar/tsconfig.json",
+      "status": "passed",
+      "durationMs": 369,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/market-header/tsconfig.json",
+      "status": "passed",
+      "durationMs": 393,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/markets-table/tsconfig.json",
+      "status": "passed",
+      "durationMs": 419,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/open-orders/tsconfig.json",
+      "status": "passed",
+      "durationMs": 368,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/order-book/tsconfig.json",
+      "status": "passed",
+      "durationMs": 368,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/order-form/tsconfig.json",
+      "status": "passed",
+      "durationMs": 547,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/pnl-chart/tsconfig.json",
+      "status": "passed",
+      "durationMs": 364,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/portfolio-summary/tsconfig.json",
+      "status": "passed",
+      "durationMs": 408,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/positions-table/tsconfig.json",
+      "status": "passed",
+      "durationMs": 366,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/promotion-banner/tsconfig.json",
+      "status": "passed",
+      "durationMs": 361,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/recommendation-widget/tsconfig.json",
+      "status": "passed",
+      "durationMs": 360,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "fragments/trades-feed/tsconfig.json",
+      "status": "passed",
+      "durationMs": 363,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/assets/tsconfig.json",
+      "status": "passed",
+      "durationMs": 255,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/contracts/tsconfig.json",
+      "status": "passed",
+      "durationMs": 325,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/data/tsconfig.json",
+      "status": "passed",
+      "durationMs": 335,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/design-system/tsconfig.json",
       "status": "passed",
       "durationMs": 260,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/design-tokens/tsconfig.json",
+      "status": "passed",
+      "durationMs": 255,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/interaction/tsconfig.json",
+      "status": "passed",
+      "durationMs": 324,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/islands/tsconfig.json",
+      "status": "passed",
+      "durationMs": 300,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/observability/tsconfig.json",
+      "status": "passed",
+      "durationMs": 263,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/optimizer/tsconfig.json",
+      "status": "passed",
+      "durationMs": 328,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/request/tsconfig.json",
+      "status": "passed",
+      "durationMs": 331,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/request-context/tsconfig.json",
+      "status": "passed",
+      "durationMs": 326,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/runtime/tsconfig.json",
+      "status": "passed",
+      "durationMs": 330,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/storage/tsconfig.json",
+      "status": "passed",
+      "durationMs": 330,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/store/tsconfig.json",
+      "status": "passed",
+      "durationMs": 334,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/ui/tsconfig.json",
+      "status": "passed",
+      "durationMs": 556,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "packages/workers/tsconfig.json",
+      "status": "passed",
+      "durationMs": 327,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "tools/bundle-budget-check/tsconfig.json",
+      "status": "passed",
+      "durationMs": 256,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "tools/component-similarity-check/tsconfig.json",
+      "status": "passed",
+      "durationMs": 260,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "tools/create-component/tsconfig.json",
+      "status": "passed",
+      "durationMs": 253,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "tools/css-budget-check/tsconfig.json",
+      "status": "passed",
+      "durationMs": 256,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "config": "tools/dependency-audit/tsconfig.json",
+      "status": "passed",
+      "durationMs": 269,
       "stdout": "",
       "stderr": ""
     },
@@ -309,7 +351,7 @@
     {
       "config": "tools/server-client-boundary-check/tsconfig.json",
       "status": "passed",
-      "durationMs": 260,
+      "durationMs": 255,
       "stdout": "",
       "stderr": ""
     }

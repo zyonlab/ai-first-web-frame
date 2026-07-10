@@ -1,8 +1,8 @@
 import type { RequestContext } from "@mvp/contracts";
 import type { DataCacheEntry } from "@mvp/data";
-import { TRADE_ORDER_DRAFT } from "@mvp/interaction";
 import type { RequestTrace } from "@mvp/observability";
 import { createRequestContext } from "@mvp/request-context";
+import { TRADE_ORDER_DRAFT } from "@mvp/trade-contracts";
 import { type AccountMargin, loadAccountMargin } from "./data";
 import { createDefaultDraft, type OrderFormDraft } from "./islandLogic";
 import { orderFormManifest } from "./manifest";
@@ -119,7 +119,7 @@ export async function renderOrderForm(
  * Server-safe first paint: the full form structure (market/limit tabs, size
  * input, leverage track, buy/sell buttons, reduce-only, margin preview) as an
  * HTML string — no React — plus the frozen C2 island mount node with an inline
- * `{ props, slice }` snapshot the page hydrates via `@mvp/trade-client`
+ * `{ props, slice }` snapshot the page hydrates via `@mvp/islands`
  * `mountIsland`. Readable with JS disabled (degraded, non-interactive).
  */
 export function renderOrderFormHtml(

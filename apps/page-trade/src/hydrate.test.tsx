@@ -1,22 +1,18 @@
+import { createInteractionBus, type InteractionBus } from "@mvp/interaction";
+import { clearIslandRegistry, getIsland } from "@mvp/islands";
+import { createSliceStore, type SliceStore } from "@mvp/store";
 import {
-  createInteractionBus,
-  type InteractionBus,
   initialTradeSlices,
   type OrderDraftPricePayload,
   TRADE_ACTIVE_SYMBOL,
   TRADE_LEVERAGE,
   TRADE_ORDER_DRAFT,
   TRADE_ORDER_DRAFT_PRICE,
+  TRADE_STORE_OWNER,
   type TradeSlices,
   tradeSliceContracts,
   tradeStoreContracts,
-} from "@mvp/interaction";
-import {
-  clearIslandRegistry,
-  createTradeStore,
-  getIsland,
-  type TradeStore,
-} from "@mvp/trade-client";
+} from "@mvp/trade-contracts";
 import { act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -28,9 +24,10 @@ import {
 import { getTradeStore, resetTradeStore } from "./tradeStore";
 
 /** A fresh isolated store per test (own bus + slice values). */
-function makeStore(): TradeStore<TradeSlices> {
-  return createTradeStore<TradeSlices>(tradeStoreContracts, {
+function makeStore(): SliceStore<TradeSlices> {
+  return createSliceStore<TradeSlices>(tradeStoreContracts, {
     initial: structuredClone(initialTradeSlices),
+    owner: TRADE_STORE_OWNER,
   });
 }
 

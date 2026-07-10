@@ -5,14 +5,13 @@ import {
   type FundingFrame,
   type TickerFrame,
 } from "@mvp/data";
+import { createInteractionBus, type InteractionBus } from "@mvp/interaction";
+import { createRequestContext } from "@mvp/request-context";
 import {
   type ActiveSymbolPayload,
-  createInteractionBus,
-  type InteractionBus,
   TRADE_ACTIVE_SYMBOL,
   tradeSliceContracts,
-} from "@mvp/interaction";
-import { createRequestContext } from "@mvp/request-context";
+} from "@mvp/trade-contracts";
 import { useEffect, useMemo, useReducer } from "react";
 import {
   computeCountdown,

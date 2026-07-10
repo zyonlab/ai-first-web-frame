@@ -1,7 +1,7 @@
 import {
   CANCEL_ORDER_INVALIDATES,
   createMockMatchingEngine,
-} from "@mvp/interaction";
+} from "@mvp/trade-contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   applyOrderFrame,

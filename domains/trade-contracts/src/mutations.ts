@@ -1,4 +1,4 @@
-import { defineMutation, type Mutation } from "../index";
+import { defineMutation, type Mutation } from "@mvp/interaction";
 import type { OrderSide } from "./slices";
 
 /**

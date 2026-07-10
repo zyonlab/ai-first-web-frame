@@ -1,4 +1,4 @@
-import { TRADE_ORDER_DRAFT } from "@mvp/interaction";
+import { TRADE_ORDER_DRAFT } from "@mvp/trade-contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { orderFormBudget } from "../src/budget";
 import { validateOrderFormManifest } from "../src/manifest";

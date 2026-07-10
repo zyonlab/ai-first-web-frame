@@ -1,5 +1,5 @@
+import { createInteractionBus } from "@mvp/interaction";
 import { describe, expect, it, vi } from "vitest";
-import { createInteractionBus } from "../index";
 import {
   applyLeverageChange,
   applyOrderbookPrice,

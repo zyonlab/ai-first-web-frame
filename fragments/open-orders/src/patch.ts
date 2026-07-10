@@ -34,7 +34,7 @@ import {
   cancelOrder,
   resolveUserTags,
   TRADE_ACTIVE_SYMBOL,
-} from "@mvp/interaction";
+} from "@mvp/trade-contracts";
 
 /** Aggressor side of a working order. */
 export type OrderSide = "buy" | "sell";

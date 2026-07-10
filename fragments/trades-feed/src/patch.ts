@@ -14,7 +14,7 @@
  * `TRADE_ACTIVE_SYMBOL` switch — clears the tape and resubscribes.
  */
 
-import { TRADE_ACTIVE_SYMBOL } from "@mvp/interaction";
+import { TRADE_ACTIVE_SYMBOL } from "@mvp/trade-contracts";
 
 /** Aggressor side of a print. */
 export type TradeSide = "buy" | "sell";

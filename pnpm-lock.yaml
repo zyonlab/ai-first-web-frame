@@ -269,6 +269,9 @@ importers:
       '@mvp/interaction':
         specifier: workspace:*
         version: link:../../packages/interaction
+      '@mvp/islands':
+        specifier: workspace:*
+        version: link:../../packages/islands
       '@mvp/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -281,9 +284,12 @@ importers:
       '@mvp/storage':
         specifier: workspace:*
         version: link:../../packages/storage
-      '@mvp/trade-client':
+      '@mvp/store':
         specifier: workspace:*
-        version: link:../../packages/trade-client
+        version: link:../../packages/store
+      '@mvp/trade-contracts':
+        specifier: workspace:*
+        version: link:../../domains/trade-contracts
       '@mvp/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -351,11 +357,24 @@ importers:
 
   domains/trade-chart:
     devDependencies:
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
       tsdown:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   domains/trade-contracts:
+    dependencies:
+      '@mvp/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@mvp/interaction':
+        specifier: workspace:*
+        version: link:../../packages/interaction
     devDependencies:
       tsdown:
         specifier: ^0.11.0
@@ -396,9 +415,9 @@ importers:
       '@mvp/request-context':
         specifier: workspace:*
         version: link:../../packages/request-context
-      '@mvp/trade-client':
+      '@mvp/trade-contracts':
         specifier: workspace:*
-        version: link:../../packages/trade-client
+        version: link:../../domains/trade-contracts
       fastify:
         specifier: ^4.28.1
         version: 4.29.1
@@ -430,9 +449,12 @@ importers:
       '@mvp/request-context':
         specifier: workspace:*
         version: link:../../packages/request-context
-      '@mvp/trade-client':
+      '@mvp/trade-chart':
         specifier: workspace:*
-        version: link:../../packages/trade-client
+        version: link:../../domains/trade-chart
+      '@mvp/trade-contracts':
+        specifier: workspace:*
+        version: link:../../domains/trade-contracts
       '@mvp/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -492,9 +514,9 @@ importers:
       '@mvp/request-context':
         specifier: workspace:*
         version: link:../../packages/request-context
-      '@mvp/trade-client':
+      '@mvp/trade-contracts':
         specifier: workspace:*
-        version: link:../../packages/trade-client
+        version: link:../../domains/trade-contracts
       fastify:
         specifier: ^4.28.1
         version: 4.29.1
@@ -551,6 +573,9 @@ importers:
       '@mvp/request-context':
         specifier: workspace:*
         version: link:../../packages/request-context
+      '@mvp/trade-contracts':
+        specifier: workspace:*
+        version: link:../../domains/trade-contracts
       fastify:
         specifier: ^4.28.1
         version: 4.29.1
@@ -579,6 +604,9 @@ importers:
       '@mvp/request-context':
         specifier: workspace:*
         version: link:../../packages/request-context
+      '@mvp/trade-contracts':
+        specifier: workspace:*
+        version: link:../../domains/trade-contracts
       fastify:
         specifier: ^4.28.1
         version: 4.29.1
@@ -607,9 +635,12 @@ importers:
       '@mvp/request-context':
         specifier: workspace:*
         version: link:../../packages/request-context
-      '@mvp/trade-client':
+      '@mvp/store':
         specifier: workspace:*
-        version: link:../../packages/trade-client
+        version: link:../../packages/store
+      '@mvp/trade-contracts':
+        specifier: workspace:*
+        version: link:../../domains/trade-contracts
       '@mvp/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -694,6 +725,9 @@ importers:
       '@mvp/request-context':
         specifier: workspace:*
         version: link:../../packages/request-context
+      '@mvp/trade-contracts':
+        specifier: workspace:*
+        version: link:../../domains/trade-contracts
       fastify:
         specifier: ^4.28.1
         version: 4.29.1
@@ -772,6 +806,9 @@ importers:
       '@mvp/request-context':
         specifier: workspace:*
         version: link:../../packages/request-context
+      '@mvp/trade-contracts':
+        specifier: workspace:*
+        version: link:../../domains/trade-contracts
       fastify:
         specifier: ^4.28.1
         version: 4.29.1
@@ -843,6 +880,12 @@ importers:
 
   packages/islands:
     devDependencies:
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
       tsdown:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
@@ -916,12 +959,6 @@ importers:
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/store:
-    devDependencies:
-      tsdown:
-        specifier: ^0.11.0
-        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
-
-  packages/trade-client:
     dependencies:
       '@mvp/contracts':
         specifier: workspace:*
@@ -933,9 +970,6 @@ importers:
       react:
         specifier: ^18.3.1
         version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
       tsdown:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)

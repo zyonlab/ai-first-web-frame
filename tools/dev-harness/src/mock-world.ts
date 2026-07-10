@@ -17,7 +17,7 @@
  * `dev:component` CLI consume it.
  */
 
-import { initialTradeSlices } from "../../../packages/interaction/src/index.ts";
+import { initialTradeSlices } from "../../../domains/trade-contracts/src/index.ts";
 import type {
   FragmentManifestLike,
   LayoutHint,

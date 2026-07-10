@@ -17,7 +17,15 @@
     "build": "tsdown src/index.ts --format esm --dts",
     "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
   },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  },
+  "dependencies": {
+    "@mvp/contracts": "workspace:*",
+    "@mvp/interaction": "workspace:*"
+  },
   "devDependencies": {
+    "react": "^18.3.1",
     "tsdown": "^0.11.0"
   }
 }

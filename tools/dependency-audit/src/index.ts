@@ -47,9 +47,9 @@ const DEFAULT_LARGE_PACKAGES: Record<string, number> = {
 // Framework packages whose whole purpose is to wrap browser APIs. The
 // server-safe browser-global guard is skipped for files under these prefixes;
 // they gate real access behind runtime capability checks / dependency injection.
-// `trade-client` is the client-side island runtime (React hydration, canvas
-// chart, store client) — window/document are its job, not accidental leakage.
-const DEFAULT_BROWSER_CAPABLE = ["packages/storage/", "packages/trade-client/"];
+// `islands` is the generic client-side island runtime (React hydration) —
+// window/document are its job, not accidental leakage.
+const DEFAULT_BROWSER_CAPABLE = ["packages/storage/", "packages/islands/"];
 
 export function runDependencyAudit(
   options: CliOptions = parseArgs(process.argv.slice(2)),
@@ -286,23 +286,19 @@ function auditSourceImports(
 //
 // This is scaffolding added ahead of the Phase P1 re-layering migration (see
 // docs/ARCHITECTURE_REFACTOR_PLAN.md §8, Phase P1, and the P1-prep task that
-// added this check). Before that migration lands, `packages/trade-client`,
-// `packages/interaction/src/trade/*` (plus its `export * from "./trade"`
-// facade re-export), the trade source registry appended to
-// `packages/data/src/sources/tradeClient.ts` / `packages/data/src/index.ts`,
-// the trade prefs under `packages/storage/src/prefs/*`, and
-// `createTradeAliasVariables` in `packages/design-system/src/themes.ts` are
-// KNOWN pre-existing leaks of domain code into framework packages. They do
-// not (yet) import from `domains/**`, `apps/**`, or `fragments/**` — the
-// domains/* packages did not exist before this scaffolding — so this
-// allowlist is a forward-looking safety net: once the real P1 migration
-// starts moving code, these paths may temporarily import from their new
-// `domains/*` home during the transition without tripping this check. Do NOT
-// add new entries here for anything other than these already-known leaks;
-// any new violation outside this list must fail.
+// added this check). The Phase 1 migration (§2.2 Move A: `packages/trade-client`
+// split into `@mvp/store` / `@mvp/islands` / `domains/trade-chart`; Move B:
+// `packages/interaction/src/trade/*` moved to `domains/trade-contracts`) has
+// landed, so those two leaks are gone — removed from this list so the
+// allowlist doesn't silently mask a regression. The remaining entries (the
+// trade source registry appended to `packages/data/src/sources/tradeClient.ts`
+// / `packages/data/src/index.ts`, the trade prefs under
+// `packages/storage/src/prefs/*`, and `createTradeAliasVariables` in
+// `packages/design-system/src/themes.ts`) are still-pending moves (§2.2 table
+// rows for `domains/trade-data`, `domains/trade-prefs`, `domains/trade-theme`)
+// left for a later phase. Do NOT add new entries here for anything other than
+// these already-known leaks; any new violation outside this list must fail.
 const KNOWN_LEAKS = [
-  "packages/trade-client/",
-  "packages/interaction/src/trade/",
   "packages/data/src/sources/tradeClient.ts",
   "packages/data/src/index.ts",
   "packages/storage/src/prefs/",

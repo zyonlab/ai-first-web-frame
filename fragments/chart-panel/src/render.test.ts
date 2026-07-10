@@ -1,4 +1,4 @@
-import { TRADE_CHART_INTERVAL } from "@mvp/interaction";
+import { TRADE_CHART_INTERVAL } from "@mvp/trade-contracts";
 import { describe, expect, it } from "vitest";
 import { chartPanelBudget } from "./budget";
 import { validateChartPanelManifest } from "./manifest";

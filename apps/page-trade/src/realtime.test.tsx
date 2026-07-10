@@ -1,11 +1,12 @@
 import type { MockScheduler } from "@mvp/data";
+import { createSliceStore, type SliceStore } from "@mvp/store";
 import {
   initialTradeSlices,
   TRADE_ACTIVE_SYMBOL,
+  TRADE_STORE_OWNER,
   type TradeSlices,
   tradeStoreContracts,
-} from "@mvp/interaction";
-import { createTradeStore, type TradeStore } from "@mvp/trade-client";
+} from "@mvp/trade-contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { startTradeRealtime } from "./realtime";
 
@@ -46,9 +47,10 @@ function createManualScheduler() {
   };
 }
 
-function makeStore(): TradeStore<TradeSlices> {
-  return createTradeStore<TradeSlices>(tradeStoreContracts, {
+function makeStore(): SliceStore<TradeSlices> {
+  return createSliceStore<TradeSlices>(tradeStoreContracts, {
     initial: structuredClone(initialTradeSlices),
+    owner: TRADE_STORE_OWNER,
   });
 }
 

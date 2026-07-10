@@ -9,7 +9,7 @@ import type {
  * Pure reducers for the three canonical store data flows (spine §7 / data doc
  * 03 §5.3). None of these touch the DOM — they are the deterministic core an
  * island wires to an event (a click / a slider drag / a palette pick) and then
- * publishes on the bus. Tests drive them with `createTradeStore` + an in-memory
+ * publishes on the bus. Tests drive them with `createSliceStore` + an in-memory
  * bus to prove each flow updates only its target slice.
  */
 

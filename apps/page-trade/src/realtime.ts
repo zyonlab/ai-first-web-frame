@@ -52,9 +52,9 @@ import {
   type TapePrint,
   type TapeState,
 } from "@mvp/fragment-trades-feed/patch";
-import { TRADE_ACTIVE_SYMBOL, type TradeSlices } from "@mvp/interaction";
 import { createRequestContext } from "@mvp/request-context";
-import type { TradeStore } from "@mvp/trade-client";
+import type { SliceStore } from "@mvp/store";
+import { TRADE_ACTIVE_SYMBOL, type TradeSlices } from "@mvp/trade-contracts";
 
 /** Options for {@link startTradeRealtime} — all optional; tests inject a scheduler. */
 export type TradeRealtimeOptions = {
@@ -79,7 +79,7 @@ const PANEL_SELECTOR = {
 /** Reads the active symbol from the page root, falling back to the store slice. */
 export function resolveActiveSymbol(
   root: ParentNode,
-  store: TradeStore<TradeSlices>,
+  store: SliceStore<TradeSlices>,
 ): string {
   const pageEl =
     (root as Element).closest?.('[data-page="trade"][data-symbol]') ??
@@ -450,7 +450,7 @@ function positionsStateFromDom(node: Element): PositionsState {
  */
 export function startTradeRealtime(
   root: ParentNode,
-  store: TradeStore<TradeSlices>,
+  store: SliceStore<TradeSlices>,
   options: TradeRealtimeOptions = {},
 ): () => void {
   const makeClient =

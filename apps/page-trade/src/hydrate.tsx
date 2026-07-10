@@ -7,20 +7,20 @@ import {
   OrderFormIsland,
   type OrderFormIslandComponentProps,
 } from "@mvp/fragment-order-form/island";
-import {
-  applySymbolSwitch,
-  type InteractionBus,
-  TRADE_ACTIVE_SYMBOL,
-  TRADE_ORDER_DRAFT_PRICE,
-  type TradeSlices,
-} from "@mvp/interaction";
-import type { TradeStore } from "@mvp/trade-client";
+import type { InteractionBus } from "@mvp/interaction";
 import {
   clearIslandRegistry,
   hydrateIslands,
   type IslandHandle,
   registerIsland,
-} from "@mvp/trade-client";
+} from "@mvp/islands";
+import type { SliceStore } from "@mvp/store";
+import {
+  applySymbolSwitch,
+  TRADE_ACTIVE_SYMBOL,
+  TRADE_ORDER_DRAFT_PRICE,
+  type TradeSlices,
+} from "@mvp/trade-contracts";
 import { createElement, useEffect } from "react";
 import { startTradeRealtime } from "./realtime";
 import { getTradeBus, getTradeStore } from "./tradeStore";
@@ -48,7 +48,7 @@ export function priceFromRow(target: Element | null): number | null {
  * from the page-owned shared store. This wrapper is what gets registered under
  * `"orderForm"`; `hydrateIslands` mounts it with the snapshot props.
  */
-function makeOrderFormIsland(store: TradeStore<TradeSlices>) {
+function makeOrderFormIsland(store: SliceStore<TradeSlices>) {
   return function OrderFormIslandBound(
     props: Omit<OrderFormIslandComponentProps, "deps">,
   ) {
@@ -80,7 +80,7 @@ function makeOrderFormIsland(store: TradeStore<TradeSlices>) {
  * order-book → order-form price flow below is fully wired end to end.
  */
 export function registerTradeIslands(
-  store: TradeStore<TradeSlices>,
+  store: SliceStore<TradeSlices>,
   bus: InteractionBus,
 ): void {
   // Inject the shared bus so market-header + chart receive symbol switches
@@ -124,7 +124,7 @@ function symbolFromPath(pathname: string): string | null {
  * Back/forward (`popstate`) re-applies the switch without pushing history.
  */
 export function attachSymbolSwitcher(
-  store: TradeStore<TradeSlices>,
+  store: SliceStore<TradeSlices>,
   bus: InteractionBus,
   root: ParentNode & {
     addEventListener: Element["addEventListener"];
@@ -189,7 +189,7 @@ export function attachSymbolSwitcher(
  * fragment. Returns a teardown that removes the listener.
  */
 export function attachOrderbookPriceBridge(
-  store: TradeStore<TradeSlices>,
+  store: SliceStore<TradeSlices>,
   root: ParentNode & { addEventListener: Element["addEventListener"] },
 ): () => void {
   const onClick = (event: Event) => {
@@ -211,7 +211,7 @@ export function hydrateTrade(
     addEventListener: Element["addEventListener"];
     removeEventListener: Element["removeEventListener"];
   },
-  store: TradeStore<TradeSlices>,
+  store: SliceStore<TradeSlices>,
   bus: InteractionBus = getTradeBus(),
 ): { handles: IslandHandle[]; teardown: () => void } {
   registerTradeIslands(store, bus);

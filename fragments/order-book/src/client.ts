@@ -1,12 +1,12 @@
 import type { OrderbookL2Frame } from "@mvp/data";
+import { validateInteractionPayload } from "@mvp/interaction";
 import {
   type HoveredPricePayload,
   type OrderDraftPricePayload,
   TRADE_HOVERED_PRICE,
   TRADE_ORDER_DRAFT_PRICE,
   tradeSliceContracts,
-  validateInteractionPayload,
-} from "@mvp/interaction";
+} from "@mvp/trade-contracts";
 import {
   buildLadder,
   diffLadder,

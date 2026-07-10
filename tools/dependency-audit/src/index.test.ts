@@ -261,19 +261,12 @@ describe("dependency-audit", () => {
       join(root, "domains/trade-chart/src/index.ts"),
       "export const chart = 1;\n",
     );
-    // Mirrors the real repo's known leaks: packages/trade-client,
-    // packages/interaction/src/trade, packages/data's trade source registry,
-    // packages/storage's trade prefs, and packages/design-system's trade
-    // theme helper. Each imports domain code here to prove the allowlist
-    // suppresses the issue without weakening the check for anything else.
-    write(
-      join(root, "packages/trade-client/src/chart.tsx"),
-      'import { chart } from "@mvp/trade-chart";\nexport { chart };\n',
-    );
-    write(
-      join(root, "packages/interaction/src/trade/slices.ts"),
-      'import { chart } from "@mvp/trade-chart";\nexport { chart };\n',
-    );
+    // Mirrors the real repo's remaining known leaks (packages/trade-client and
+    // packages/interaction/src/trade were migrated away in Phase P1 and are no
+    // longer allowlisted): packages/data's trade source registry, packages/
+    // storage's trade prefs, and packages/design-system's trade theme helper.
+    // Each imports domain code here to prove the allowlist suppresses the
+    // issue without weakening the check for anything else.
     write(
       join(root, "packages/data/src/sources/tradeClient.ts"),
       'import { chart } from "@mvp/trade-chart";\nexport { chart };\n',

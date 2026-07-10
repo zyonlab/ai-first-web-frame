@@ -1,14 +1,14 @@
 import type { RequestContext } from "@mvp/contracts";
 import type { DataCacheEntry } from "@mvp/data";
+import type { RequestTrace } from "@mvp/observability";
+import { createRequestContext } from "@mvp/request-context";
+import type { Candle as ChartCandle } from "@mvp/trade-chart";
 import {
   CHART_INTERVALS,
   type ChartInterval,
   isChartInterval,
   TRADE_CHART_INTERVAL,
-} from "@mvp/interaction";
-import type { RequestTrace } from "@mvp/observability";
-import { createRequestContext } from "@mvp/request-context";
-import type { Candle as ChartCandle } from "@mvp/trade-client";
+} from "@mvp/trade-contracts";
 import { loadChartHistory } from "./data";
 import {
   type ChartSummary,

@@ -3,7 +3,7 @@ import {
   type PlaceOrderResult,
   placeOrder,
   resolveUserTags,
-} from "@mvp/interaction";
+} from "@mvp/trade-contracts";
 
 /**
  * The order-form submit flow (mutation contract usage, data doc 03 §6).

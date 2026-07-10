@@ -19,11 +19,8 @@
  * stays transport-agnostic — it only transforms frames into patches.
  */
 
-import {
-  TRADE_ACTIVE_SYMBOL,
-  tradeSliceContracts,
-  validateInteractionPayload,
-} from "@mvp/interaction";
+import { validateInteractionPayload } from "@mvp/interaction";
+import { TRADE_ACTIVE_SYMBOL, tradeSliceContracts } from "@mvp/trade-contracts";
 
 /** Long / short direction, derived from the (signed) position size. */
 export type PositionDirection = "long" | "short";

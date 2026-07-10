@@ -2,7 +2,7 @@ import {
   createMockMatchingEngine,
   PLACE_ORDER_INVALIDATES,
   type PlaceOrderInput,
-} from "@mvp/interaction";
+} from "@mvp/trade-contracts";
 import { describe, expect, it, vi } from "vitest";
 import { submitOrder } from "../src/placeOrderFlow";
 

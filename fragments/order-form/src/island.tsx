@@ -1,5 +1,6 @@
 "use client";
 
+import type { SliceStore } from "@mvp/store";
 import {
   type ActiveSymbolPayload,
   createMockMatchingEngine,
@@ -11,8 +12,7 @@ import {
   TRADE_ORDER_DRAFT,
   TRADE_ORDER_DRAFT_PRICE,
   type TradeSlices,
-} from "@mvp/interaction";
-import type { TradeStore } from "@mvp/trade-client";
+} from "@mvp/trade-contracts";
 import { Slider } from "@mvp/ui/shadcn";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -33,7 +33,7 @@ import type { OrderFormIslandProps } from "./render";
 /**
  * The `order-form` island (contract C2 mount target).
  *
- * Mounted by `@mvp/trade-client` `mountIsland(el, { props, slice })` on the
+ * Mounted by `@mvp/islands` `mountIsland(el, { props, slice })` on the
  * `data-island="orderForm"` node the fragment emits (P3 does the real DOM
  * mount; P2 ships the component + pure-logic tests). It:
  *
@@ -55,7 +55,7 @@ import type { OrderFormIslandProps } from "./render";
  */
 export type OrderFormIslandDeps = {
   /** Shared client store (from `createTradeStore(tradeStoreContracts, ...)`). */
-  store: TradeStore<TradeSlices>;
+  store: SliceStore<TradeSlices>;
   /** `ctx.user.id` used to resolve `{user}` invalidation tags. */
   userId: string;
   /**
@@ -74,7 +74,7 @@ export type OrderFormIslandComponentProps = OrderFormIslandProps & {
 
 /** Publishes the full draft on `trade.order-draft` (order-form is sole writer). */
 async function publishDraft(
-  store: TradeStore<TradeSlices>,
+  store: SliceStore<TradeSlices>,
   draft: OrderFormDraft,
 ): Promise<void> {
   // Optional numeric fields must be omitted (not sent as `undefined`) when
