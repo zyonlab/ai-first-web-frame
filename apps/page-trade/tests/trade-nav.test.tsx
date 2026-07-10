@@ -34,6 +34,10 @@ vi.mock("../src/fragmentSlots", async (importOriginal) => {
       },
       scheduler: { health: "ok", hints: [] },
       traceLog: "trace",
+      // Empty execution envelope: this test only asserts the nav/theme
+      // markup, so every <FragmentSlot> resolves to its fallback (no slot
+      // entries) — consistent with the empty `slots`/`diagnostics` above.
+      execution: { slots: {}, data: {}, health: "ok", hints: [] },
       traceSnapshot: {
         traceId: "trace-abc123",
         startedAtMs: 0,

@@ -1,3 +1,4 @@
+import { FragmentSlot } from "@mvp/runtime/react";
 import { readThemePreference, resolveLocalePreference } from "@mvp/trade-prefs";
 import { AppNav } from "@mvp/ui/AppNav";
 import { headers } from "next/headers";
@@ -12,18 +13,6 @@ import { tradeSeoCopy } from "../../../src/render";
 import { TraceDrawer } from "../../../src/TraceDrawer";
 
 export const dynamic = "force-dynamic";
-
-function FragmentHtml({
-  html,
-  fallback,
-}: {
-  html: string | null;
-  fallback: ReactNode;
-}) {
-  if (!html) return fallback;
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: fragment HTML is returned by trusted internal SSR fragment services (registry serviceUrl), never user input.
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
-}
 
 /** No-JS-readable fallback for a degraded/absent panel. */
 function PanelFallback({
@@ -113,7 +102,7 @@ export default async function TradePage({ params }: TradePageProps) {
     symbol,
     headers: requestHeaders,
   });
-  const slots = fragmentHtml.slots;
+  const execution = fragmentHtml.execution;
 
   return (
     <>
@@ -140,8 +129,9 @@ export default async function TradePage({ params }: TradePageProps) {
           </div>
 
           <div data-area="header" data-slot="marketHeader">
-            <FragmentHtml
-              html={slots.marketHeader}
+            <FragmentSlot
+              name="marketHeader"
+              execution={execution}
               fallback={
                 <PanelFallback fragment="market-header">
                   Market header for {symbol} is loading.
@@ -151,8 +141,9 @@ export default async function TradePage({ params }: TradePageProps) {
           </div>
 
           <div data-area="chart" data-slot="chart">
-            <FragmentHtml
-              html={slots.chart}
+            <FragmentSlot
+              name="chart"
+              execution={execution}
               fallback={
                 <PanelFallback fragment="chart-panel">
                   Chart for {symbol} is loading.
@@ -162,8 +153,9 @@ export default async function TradePage({ params }: TradePageProps) {
           </div>
 
           <div data-area="book" data-slot="book">
-            <FragmentHtml
-              html={slots.book}
+            <FragmentSlot
+              name="book"
+              execution={execution}
               fallback={
                 <PanelFallback fragment="order-book">
                   Order book for {symbol} is loading.
@@ -173,8 +165,9 @@ export default async function TradePage({ params }: TradePageProps) {
           </div>
 
           <div data-area="trades" data-slot="trades">
-            <FragmentHtml
-              html={slots.trades}
+            <FragmentSlot
+              name="trades"
+              execution={execution}
               fallback={
                 <PanelFallback fragment="trades-feed">
                   Trades feed for {symbol} is loading.
@@ -186,8 +179,9 @@ export default async function TradePage({ params }: TradePageProps) {
           {/* Order-form column: order-form on top, account-bar docked at foot. */}
           <div data-area="form">
             <div data-slot="orderForm">
-              <FragmentHtml
-                html={slots.orderForm}
+              <FragmentSlot
+                name="orderForm"
+                execution={execution}
                 fallback={
                   <PanelFallback fragment="order-form">
                     Order form for {symbol} is loading.
@@ -196,8 +190,9 @@ export default async function TradePage({ params }: TradePageProps) {
               />
             </div>
             <div data-slot="accountBar">
-              <FragmentHtml
-                html={slots.accountBar}
+              <FragmentSlot
+                name="accountBar"
+                execution={execution}
                 fallback={
                   <PanelFallback fragment="account-bar">
                     Account summary is loading.
@@ -213,8 +208,9 @@ export default async function TradePage({ params }: TradePageProps) {
               <section className="ledger-panel" data-slot="positions">
                 <header className="ledger-panel__head">Positions</header>
                 <div className="ledger-panel__body">
-                  <FragmentHtml
-                    html={slots.positions}
+                  <FragmentSlot
+                    name="positions"
+                    execution={execution}
                     fallback={
                       <PanelFallback fragment="positions-table">
                         Positions are loading.
@@ -226,8 +222,9 @@ export default async function TradePage({ params }: TradePageProps) {
               <section className="ledger-panel" data-slot="openOrders">
                 <header className="ledger-panel__head">Open orders</header>
                 <div className="ledger-panel__body">
-                  <FragmentHtml
-                    html={slots.openOrders}
+                  <FragmentSlot
+                    name="openOrders"
+                    execution={execution}
                     fallback={
                       <PanelFallback fragment="open-orders">
                         Open orders are loading.
@@ -240,8 +237,9 @@ export default async function TradePage({ params }: TradePageProps) {
           </div>
 
           <div data-area="status" data-slot="fundingBar">
-            <FragmentHtml
-              html={slots.fundingBar}
+            <FragmentSlot
+              name="fundingBar"
+              execution={execution}
               fallback={
                 <PanelFallback fragment="funding-bar">
                   Funding schedule for {symbol} is loading.
