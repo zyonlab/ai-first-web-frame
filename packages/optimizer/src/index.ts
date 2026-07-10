@@ -6,7 +6,10 @@ import type {
   OptimizationFinding,
   RenderStrategy,
 } from "@mvp/contracts";
-import { OptimizationFindingSchema } from "@mvp/contracts";
+import {
+  normalizeRenderStrategy,
+  OptimizationFindingSchema,
+} from "@mvp/contracts";
 import type { RequestTraceSnapshot, TraceNode } from "@mvp/observability";
 
 export type OptimizationThresholds = {
@@ -374,8 +377,11 @@ function findLowCacheHitRates(
         else if (source === "loader")
           record(`data:${dataKey}`, { dataKey }, trace, node, false);
       } else if (node.kind === "fragment") {
-        const strategy = node.attributes.strategy;
-        if (strategy !== "cached-ssr" && strategy !== "isr") continue;
+        const strategy =
+          typeof node.attributes.strategy === "string"
+            ? normalizeRenderStrategy(node.attributes.strategy)
+            : undefined;
+        if (strategy !== "cached-ssr" && strategy !== "ttl-cache") continue;
         const fragmentName = fragmentNameOf(node);
         if (!fragmentName) continue;
         const source = node.attributes.source;
@@ -467,8 +473,8 @@ function findStaticSlotCandidates(
   return slots
     .filter(
       (slot) =>
-        (slot.strategy ?? "dynamic-ssr") === "dynamic-ssr" &&
-        (slot.dependsOn ?? []).length === 0,
+        normalizeRenderStrategy(slot.strategy ?? "dynamic-ssr") ===
+          "dynamic-ssr" && (slot.dependsOn ?? []).length === 0,
     )
     .map((slot) =>
       OptimizationFindingSchema.parse({
@@ -484,7 +490,7 @@ function findStaticSlotCandidates(
         },
         evidence: { fragment: slot.fragment, props: slot.props ?? {} },
         recommendation:
-          "Change the slot strategy to static, isr, or cached-ssr if its content is deterministic.",
+          "Change the slot strategy to static, ttl-cache, or cached-ssr if its content is deterministic.",
       }),
     );
 }

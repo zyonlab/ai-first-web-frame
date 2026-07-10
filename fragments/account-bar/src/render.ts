@@ -167,6 +167,8 @@ export function createAccountBarFallback(reason: string) {
     metadata: {
       name: accountBarManifest.name,
       version: accountBarManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

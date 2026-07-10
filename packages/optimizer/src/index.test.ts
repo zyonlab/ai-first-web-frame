@@ -372,6 +372,32 @@ describe("@mvp/optimizer", () => {
     expect(cacheFinding?.location?.fragmentName).toBe("promotion-banner");
   });
 
+  it("treats deprecated isr and canonical ttl-cache strategies as cacheable", () => {
+    for (const strategy of ["isr", "ttl-cache"] as const) {
+      const missSlot = (traceId: string) =>
+        traceWith(traceId, [
+          slotSpan("chart", "chart-panel", {
+            id: `slot-chart-${traceId}`,
+            status: "ok",
+            attributes: {
+              slot: "chart",
+              fragment: "chart-panel",
+              strategy,
+              source: "network",
+            },
+          }),
+        ]);
+      const findings = createOptimizationFindings({
+        traces: [missSlot("t1"), missSlot("t2"), missSlot("t3")],
+      });
+      const cacheFinding = findings.find((finding) =>
+        finding.id.startsWith("cache-miss-"),
+      );
+      expect(cacheFinding).toBeDefined();
+      expect(cacheFinding?.location?.fragmentName).toBe("chart-panel");
+    }
+  });
+
   it("stays silent when cache hit rate is healthy or samples are too few", () => {
     const healthy = [
       traceWith("trace-h1", [

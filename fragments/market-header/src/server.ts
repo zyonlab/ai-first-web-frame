@@ -1,4 +1,5 @@
 import { pathToFileURL } from "node:url";
+import { parseFragmentRenderRequest } from "@mvp/contracts";
 import { createRequestTrace, exportTrace } from "@mvp/observability";
 import Fastify from "fastify";
 import { marketHeaderBudget } from "./budget";
@@ -68,9 +69,17 @@ export function buildServer(options: BuildServerOptions = {}) {
   server.get("/assets", async () => marketHeaderManifest.assets);
   server.get("/budget", async () => marketHeaderBudget);
   server.post("/render", async (request, reply) => {
-    const body = (request.body ?? {}) as Parameters<
-      typeof renderMarketHeader
-    >[0];
+    const parsed = parseFragmentRenderRequest(request.body);
+    if (!parsed.ok) {
+      // Malformed envelope: fail loudly with the contract's issues. The
+      // onResponse hook records the 400 in the HTTP metrics.
+      reply.code(400);
+      return {
+        error: { code: "invalid-render-request", issues: parsed.issues },
+      };
+    }
+    // Adapt the validated envelope to this fragment's internal request type.
+    const body = parsed.request as Parameters<typeof renderMarketHeader>[0];
     const traceId = body.ctx?.traceId ?? `trace-${SERVICE_NAME}-${now()}`;
     const trace = createRequestTrace({ traceId });
     const requestSpan = trace.startSpan("request:/render", "request", {

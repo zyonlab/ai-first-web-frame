@@ -6,7 +6,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { chartPanelBudget } from "../src/budget";
 import { validateChartPanelManifest } from "../src/manifest";
-import { renderChartPanel } from "../src/render";
+import { createChartPanelFallback, renderChartPanel } from "../src/render";
 import { buildServer } from "../src/server";
 
 afterEach(() => {
@@ -177,5 +177,25 @@ describe("chart-panel fragment service", () => {
     });
     expect(chartPanelBudget.jsBytes).toBeLessThanOrEqual(30_000);
     expect(chartPanelBudget.cssBytes).toBeLessThanOrEqual(10_000);
+  });
+
+  it("/render rejects a malformed envelope with a structured 400", async () => {
+    const server = buildServer();
+    const response = await server.inject({
+      method: "POST",
+      url: "/render",
+      payload: { ctx: "not-an-object" },
+    });
+    expect(response.statusCode).toBe(400);
+    const body = response.json();
+    expect(body.error.code).toBe("invalid-render-request");
+    expect(Array.isArray(body.error.issues)).toBe(true);
+    expect(body.error.issues.length).toBeGreaterThan(0);
+  });
+
+  it("stamps metadata.fallback on the degraded render path", () => {
+    const fallback = createChartPanelFallback("test-reason");
+    expect(fallback.metadata.fallback).toBe(true);
+    expect(fallback.html).toContain('data-fallback="true"');
   });
 });

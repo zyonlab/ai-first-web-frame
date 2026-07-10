@@ -191,6 +191,8 @@ export function createPnlChartFallback(reason: string) {
     metadata: {
       name: pnlChartManifest.name,
       version: pnlChartManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

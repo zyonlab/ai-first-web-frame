@@ -1,13 +1,20 @@
-import type {
-  FragmentRegistry,
-  FragmentRenderRequest,
-  FragmentRenderResponse,
-  PageManifest,
-  RenderStrategy,
-  RequestContext,
-  RouteManifest,
+import {
+  type FragmentRegistry,
+  type FragmentRenderRequest,
+  type FragmentRenderResponse,
+  normalizeRenderStrategy,
+  type PageManifest,
+  type ReleaseChannel,
+  type RenderStrategy,
+  type RequestContext,
+  type RouteManifest,
 } from "@mvp/contracts";
 import { serializeContext } from "@mvp/request-context";
+
+export type { ReleaseChannel } from "@mvp/contracts";
+
+/** The strategy used when a slot does not declare one. */
+export const DEFAULT_RENDER_STRATEGY: RenderStrategy = "dynamic-ssr";
 
 type RuntimeTrace = {
   startSpan: (
@@ -42,7 +49,7 @@ type RuntimeTrace = {
 export type FragmentSlotDefinition = {
   name: string;
   fragment: string;
-  channel?: string;
+  channel?: ReleaseChannel;
   strategy?: RenderStrategy;
   timeoutMs?: number;
   props?: Record<string, unknown>;
@@ -180,8 +187,20 @@ export function createFallbackResponse(
     html: createFallbackHtml(fragmentName, reason),
     assets: { js: [], css: [] },
     cache: { ttl: 5, tags: ["fallback", fragmentName] },
-    metadata: { name: fragmentName, version },
+    metadata: { name: fragmentName, version, fallback: true },
   };
+}
+
+/**
+ * A render response is a fallback when its contract metadata says so.
+ * The HTML sniff is deprecated and only kept until every fragment stamps
+ * metadata.fallback on its own degraded path.
+ */
+export function isFallbackResponse(response: FragmentRenderResponse): boolean {
+  if (response.metadata.fallback === true) return true;
+  // Deprecated: legacy HTML marker sniff; remove once all fragments set
+  // metadata.fallback = true in their degraded responses.
+  return response.html.includes('data-fallback="true"');
 }
 
 export function createFragmentHeaders(
@@ -239,10 +258,8 @@ export async function fetchFragment(
       fallback,
     );
     options.trace?.endSpan(spanId ?? "", {
-      status: response.html.includes('data-fallback="true"')
-        ? "fallback"
-        : "ok",
-      attributes: { fallback: response.html.includes('data-fallback="true"') },
+      status: isFallbackResponse(response) ? "fallback" : "ok",
+      attributes: { fallback: isFallbackResponse(response) },
     });
     return response;
   } catch (error) {
@@ -382,7 +399,7 @@ export async function executeFragmentSlots({
     } catch {
       slotResults[slot.name] = {
         slot,
-        strategy: slot.strategy ?? "dynamic-ssr",
+        strategy: slot.strategy ?? DEFAULT_RENDER_STRATEGY,
         source: "fallback",
         status: "fallback",
         response: createFallbackResponse(slot.fragment, "fallback", "error"),
@@ -410,7 +427,7 @@ export async function executeFragmentSlots({
     const slot = node.slot;
     slotResults[slot.name] = {
       slot,
-      strategy: slot.strategy ?? "dynamic-ssr",
+      strategy: slot.strategy ?? DEFAULT_RENDER_STRATEGY,
       source: "fallback",
       status: "skipped-dependency",
       response: createFallbackResponse(
@@ -698,7 +715,10 @@ export async function fetchFragmentSlot({
   trace?: RuntimeTrace;
   parentSpanId?: string;
 }): Promise<FragmentSlotResult> {
-  const strategy = slot.strategy ?? "dynamic-ssr";
+  const strategy = slot.strategy ?? DEFAULT_RENDER_STRATEGY;
+  // Normalize once: the deprecated "isr" alias compares as "ttl-cache"
+  // internally while the reported strategy keeps the configured value.
+  const normalizedStrategy = normalizeRenderStrategy(strategy);
   const slotSpanId = trace?.startSpan(`slot:${slot.name}`, "fragment", {
     parentId: parentSpanId,
     attributes: {
@@ -720,7 +740,7 @@ export async function fetchFragmentSlot({
       trace?.addDependency(`data:${dependency}`, slotSpanId, "depends-on");
   }
   try {
-    if (strategy === "static") {
+    if (normalizedStrategy === "static") {
       const result: FragmentSlotResult = {
         slot,
         strategy,
@@ -767,7 +787,8 @@ export async function fetchFragmentSlot({
     }
 
     const request: FragmentRenderRequest = { ctx, props: slot.props ?? {} };
-    const cacheable = strategy === "cached-ssr" || strategy === "isr";
+    const cacheable =
+      normalizedStrategy === "cached-ssr" || normalizedStrategy === "ttl-cache";
     const cacheKey = cacheable
       ? createFragmentCacheKey(slot, fragment, request)
       : undefined;
@@ -805,13 +826,13 @@ export async function fetchFragmentSlot({
       spanName: `fragment.http:${slot.name}`,
     });
 
-    if (cacheKey && !response.html.includes('data-fallback="true"')) {
+    if (cacheKey && !isFallbackResponse(response)) {
       const ttl = slot.cachePolicy?.ttl ?? response.cache.ttl;
       if (ttl > 0)
         cache.set(cacheKey, { expiresAt: now() + ttl * 1000, response });
     }
 
-    const source = response.html.includes('data-fallback="true"')
+    const source = isFallbackResponse(response)
       ? ("fallback" as const)
       : ("network" as const);
     const result: FragmentSlotResult = {
@@ -852,7 +873,8 @@ export function createFragmentCacheKey(
   const parts: Record<string, unknown> = {
     fragment: slot.fragment,
     version: fragment.version,
-    strategy: slot.strategy ?? "dynamic-ssr",
+    // Normalized so "isr" and "ttl-cache" slots share cache entries.
+    strategy: normalizeRenderStrategy(slot.strategy ?? DEFAULT_RENDER_STRATEGY),
   };
   if (vary.includes("tenant")) parts.tenant = request.ctx.tenant;
   if (vary.includes("locale")) parts.locale = request.ctx.locale;

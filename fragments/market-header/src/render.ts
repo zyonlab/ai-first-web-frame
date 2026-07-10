@@ -189,6 +189,8 @@ export function createMarketHeaderFallback(reason: string) {
     metadata: {
       name: marketHeaderManifest.name,
       version: marketHeaderManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

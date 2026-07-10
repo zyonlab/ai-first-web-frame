@@ -169,6 +169,8 @@ export function createOpenOrdersFallback(reason: string) {
     metadata: {
       name: openOrdersManifest.name,
       version: openOrdersManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

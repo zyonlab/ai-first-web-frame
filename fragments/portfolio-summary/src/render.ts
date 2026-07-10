@@ -223,6 +223,8 @@ export function createPortfolioSummaryFallback(reason: string) {
     metadata: {
       name: portfolioSummaryManifest.name,
       version: portfolioSummaryManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

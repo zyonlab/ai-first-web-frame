@@ -186,6 +186,8 @@ export function createPositionsTableFallback(reason: string) {
     metadata: {
       name: positionsTableManifest.name,
       version: positionsTableManifest.version,
+      // Contract flag: marks this response as a degraded fallback.
+      fallback: true,
     },
   };
 }

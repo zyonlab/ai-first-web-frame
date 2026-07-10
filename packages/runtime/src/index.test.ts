@@ -2,6 +2,7 @@ import {
   type FragmentRegistry,
   loadDefaultBudget,
   type PageManifest,
+  type ReleaseChannel,
   type RequestContext,
   type RouteManifest,
 } from "@mvp/contracts";
@@ -10,14 +11,17 @@ import { describe, expect, it, vi } from "vitest";
 import {
   clearFragmentCache,
   composePage,
+  createFallbackResponse,
   createFragmentCacheKey,
   createFragmentHeaders,
   createFragmentSlotExecutionPlan,
   createSlotDataExecutionPlan,
+  DEFAULT_RENDER_STRATEGY,
   executeFragmentSlots,
   type FragmentSlotDefinition,
   fetchFragment,
   fetchFragmentSlots,
+  isFallbackResponse,
   mergeAssets,
   resolveFragment,
   resolveRoute,
@@ -921,6 +925,153 @@ describe("@mvp/runtime", () => {
       expect(record.promo.source).toBe("network");
       expect(record.promo.status).toBe("ok");
     });
+  });
+
+  describe("fallback contract metadata", () => {
+    it("marks createFallbackResponse with metadata.fallback = true", () => {
+      const response = createFallbackResponse("promotion-banner");
+      expect(response.metadata.fallback).toBe(true);
+      expect(isFallbackResponse(response)).toBe(true);
+    });
+
+    it("detects fallback via metadata even without the legacy HTML marker", async () => {
+      const fetchImpl = vi.fn(async () =>
+        Response.json({
+          html: "<section>degraded but unmarked html</section>",
+          assets: { js: [], css: [] },
+          cache: { ttl: 60, tags: [] },
+          metadata: {
+            name: "promotion-banner",
+            version: "0.1.0",
+            fallback: true,
+          },
+        }),
+      ) as unknown as typeof fetch;
+      const cache = new Map();
+      const record = await fetchFragmentSlots({
+        slots: [
+          {
+            name: "promo",
+            fragment: "promotion-banner",
+            strategy: "cached-ssr",
+          },
+        ],
+        registry,
+        ctx,
+        fetchImpl,
+        cache,
+      });
+      expect(record.promo.source).toBe("fallback");
+      expect(record.promo.status).toBe("fallback");
+      // Fallback responses must never be cached.
+      expect(cache.size).toBe(0);
+    });
+
+    it("keeps the deprecated HTML sniff for fragments without metadata", () => {
+      expect(
+        isFallbackResponse({
+          html: '<section data-fallback="true">legacy</section>',
+          assets: { js: [], css: [] },
+          cache: { ttl: 0, tags: [] },
+          metadata: { name: "legacy", version: "0.1.0" },
+        }),
+      ).toBe(true);
+      expect(
+        isFallbackResponse({
+          html: "<section>ok</section>",
+          assets: { js: [], css: [] },
+          cache: { ttl: 60, tags: [] },
+          metadata: { name: "ok", version: "0.1.0" },
+        }),
+      ).toBe(false);
+    });
+  });
+
+  describe("strategy normalization", () => {
+    it("exports dynamic-ssr as the default render strategy", () => {
+      expect(DEFAULT_RENDER_STRATEGY).toBe("dynamic-ssr");
+    });
+
+    it("treats deprecated isr slots as cacheable ttl-cache slots", async () => {
+      const fetchImpl = vi.fn(async () =>
+        Response.json({
+          html: '<section data-fragment="promotion-banner">promo</section>',
+          assets: { js: [], css: [] },
+          cache: { ttl: 60, tags: [] },
+          metadata: { name: "promotion-banner", version: "0.1.0" },
+        }),
+      ) as unknown as typeof fetch;
+      const cache = new Map();
+      const slots: FragmentSlotDefinition[] = [
+        { name: "promo", fragment: "promotion-banner", strategy: "isr" },
+      ];
+      const first = await fetchFragmentSlots({
+        slots,
+        registry,
+        ctx,
+        fetchImpl,
+        cache,
+      });
+      const second = await fetchFragmentSlots({
+        slots,
+        registry,
+        ctx,
+        fetchImpl,
+        cache,
+      });
+      expect(first.promo.source).toBe("network");
+      // The reported strategy stays as configured (alias, not a rename).
+      expect(first.promo.strategy).toBe("isr");
+      expect(second.promo.source).toBe("cache");
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it("caches ttl-cache slots and shares the cache with isr-configured slots", async () => {
+      const fetchImpl = vi.fn(async () =>
+        Response.json({
+          html: '<section data-fragment="promotion-banner">promo</section>',
+          assets: { js: [], css: [] },
+          cache: { ttl: 60, tags: [] },
+          metadata: { name: "promotion-banner", version: "0.1.0" },
+        }),
+      ) as unknown as typeof fetch;
+      const cache = new Map();
+      const first = await fetchFragmentSlots({
+        slots: [
+          { name: "promo", fragment: "promotion-banner", strategy: "isr" },
+        ],
+        registry,
+        ctx,
+        fetchImpl,
+        cache,
+      });
+      const second = await fetchFragmentSlots({
+        slots: [
+          {
+            name: "promo",
+            fragment: "promotion-banner",
+            strategy: "ttl-cache",
+          },
+        ],
+        registry,
+        ctx,
+        fetchImpl,
+        cache,
+      });
+      expect(first.promo.source).toBe("network");
+      expect(second.promo.source).toBe("cache");
+      expect(second.promo.strategy).toBe("ttl-cache");
+    });
+  });
+
+  it("types slot channel as a release channel from contracts", () => {
+    const slot: FragmentSlotDefinition = {
+      name: "promo",
+      fragment: "promotion-banner",
+      channel: "canary",
+    };
+    const channel: ReleaseChannel | undefined = slot.channel;
+    expect(channel).toBe("canary");
   });
 
   it("creates fragment headers and merges assets", () => {

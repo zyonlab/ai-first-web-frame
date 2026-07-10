@@ -5,11 +5,26 @@ export type ReleaseChannel = z.infer<typeof ReleaseChannelSchema>;
 
 export const RenderStrategySchema = z.enum([
   "static",
+  // "isr" is a deprecated alias for "ttl-cache" (it collides with Next.js ISR
+  // semantics); use normalizeRenderStrategy() before comparing strategies.
   "isr",
+  "ttl-cache",
   "cached-ssr",
   "dynamic-ssr",
 ]);
 export type RenderStrategy = z.infer<typeof RenderStrategySchema>;
+
+/**
+ * Maps the deprecated "isr" slot strategy to its canonical name "ttl-cache".
+ * Accepts arbitrary strings so trace attributes can be normalized too.
+ */
+export function normalizeRenderStrategy(
+  strategy: RenderStrategy,
+): RenderStrategy;
+export function normalizeRenderStrategy(strategy: string): string;
+export function normalizeRenderStrategy(strategy: string): string {
+  return strategy === "isr" ? "ttl-cache" : strategy;
+}
 
 export const CachePolicySchema = z.object({
   ttl: z.number().int().nonnegative(),
@@ -423,6 +438,41 @@ export const FragmentRenderRequestSchema = z.object({
 });
 export type FragmentRenderRequest = z.infer<typeof FragmentRenderRequestSchema>;
 
+/**
+ * Lenient edge envelope for POST /render bodies: every part is optional but
+ * type-checked. Fragments own graceful degradation for missing ctx/props, so
+ * the edge only rejects structurally malformed envelopes.
+ */
+export const FragmentRenderRequestEnvelopeSchema = z.object({
+  ctx: RequestContextSchema.partial().optional(),
+  props: z.record(z.unknown()).optional(),
+});
+export type FragmentRenderRequestEnvelope = z.infer<
+  typeof FragmentRenderRequestEnvelopeSchema
+>;
+
+export type ParseFragmentRenderRequestResult =
+  | { ok: true; request: FragmentRenderRequestEnvelope; strict: boolean }
+  | { ok: false; issues: z.ZodIssue[] };
+
+/**
+ * Parses a POST /render body at the fragment-service edge. A fully-formed
+ * FragmentRenderRequest parses strictly; partial envelopes (missing props,
+ * subset ctx) are accepted so fragments can degrade gracefully; anything
+ * structurally malformed fails with the strict schema's issues.
+ */
+export function parseFragmentRenderRequest(
+  body: unknown,
+): ParseFragmentRenderRequestResult {
+  const strict = FragmentRenderRequestSchema.safeParse(body);
+  if (strict.success) return { ok: true, request: strict.data, strict: true };
+  const lenient = FragmentRenderRequestEnvelopeSchema.safeParse(body ?? {});
+  if (lenient.success)
+    return { ok: true, request: lenient.data, strict: false };
+  // Report the canonical schema's issues so the error names the contract.
+  return { ok: false, issues: strict.error.issues };
+}
+
 export const FragmentRenderResponseSchema = z.object({
   html: z.string(),
   assets: z.object({ js: z.array(z.string()), css: z.array(z.string()) }),
@@ -430,7 +480,12 @@ export const FragmentRenderResponseSchema = z.object({
     ttl: z.number().int().nonnegative(),
     tags: z.array(z.string()),
   }),
-  metadata: z.object({ name: z.string(), version: z.string() }),
+  metadata: z.object({
+    name: z.string(),
+    version: z.string(),
+    // True when this response is a degraded/fallback render. Absent = normal.
+    fallback: z.boolean().optional(),
+  }),
 });
 export type FragmentRenderResponse = z.infer<
   typeof FragmentRenderResponseSchema
