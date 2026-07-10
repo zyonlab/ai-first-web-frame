@@ -17,6 +17,8 @@
       "**",
       "!**/node_modules",
       "!**/dist",
+      "!**/dist-browser",
+      "!apps/page-trade/public/spike-vendor",
       "!**/.next",
       "!**/coverage",
       "!**/test-results",

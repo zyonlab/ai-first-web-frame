@@ -1,4 +1,6 @@
-import { pathToFileURL } from "node:url";
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseFragmentRenderRequest } from "@mvp/contracts";
 import { createRequestTrace, exportTrace } from "@mvp/observability";
 import Fastify from "fastify";
@@ -23,6 +25,26 @@ const DEFAULT_PORT = 4205;
 
 /** Routes excluded from HTTP metrics to keep scrape/health noise out of p95. */
 const UNINSTRUMENTED_ROUTES = new Set(["/metrics", "/health"]);
+
+/**
+ * Real, browser-loadable island module (C3 spike, §4.3.3 "Runtime island
+ * assets") — the tsdown browser build of `island.browser.ts`
+ * (`pnpm run build:island-browser`, chained into this package's `build`
+ * script). Resolved relative to THIS file so it works whether the server
+ * runs from `src/server.ts` (tsx, dev) or the built `dist/server.js` (node,
+ * prod) — both sit next to `dist-browser/` under the fragment root.
+ *
+ * Before this route, `/assets` only ever returned the manifest's `assets`
+ * JSON *metadata* — no fragment served an actual browser-loadable file at
+ * any of those declared paths. This route is the fix: a real file, at a
+ * real URL, actually fetchable over HTTP.
+ */
+const ISLAND_BROWSER_BUNDLE_PATH = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "dist-browser",
+  "island.browser.js",
+);
 
 export function buildServer(options: BuildServerOptions = {}) {
   const now = options.now ?? Date.now;
@@ -69,6 +91,37 @@ export function buildServer(options: BuildServerOptions = {}) {
   });
   server.get("/manifest", async () => orderFormManifest);
   server.get("/assets", async () => orderFormManifest.assets);
+  server.get("/assets/order-form.island.js", async (_request, reply) => {
+    try {
+      const bundle = await readFile(ISLAND_BROWSER_BUNDLE_PATH, "utf8");
+      reply.type("text/javascript; charset=utf-8");
+      // Unversioned path — fine for the spike's single canary deployment,
+      // but NOT immutable/cacheable the way a real rollout needs (§4.3.3
+      // findings: a real asset URL needs a content hash or version segment
+      // so it's safe to cache aggressively).
+      reply.header("Cache-Control", "no-store");
+      // Real spike finding: a page (apps/page-trade, a different origin —
+      // localhost:4103 vs this fragment's localhost:4205) dynamically
+      // `import()`ing this module is a CROSS-ORIGIN module fetch, which the
+      // ES module spec always fetches in CORS mode. Without this header a
+      // real browser blocks the import outright (opaque response) — this
+      // was only caught by actually loading the page in a browser and
+      // reading the console, not by curl or a unit test. `*` is fine for a
+      // publicly-cacheable, non-credentialed static asset; a real rollout
+      // should scope this to known consuming page origins.
+      reply.header("Access-Control-Allow-Origin", "*");
+      return bundle;
+    } catch {
+      reply.code(404);
+      return {
+        error: {
+          code: "island-bundle-not-built",
+          message:
+            "dist-browser/island.browser.js is missing — run `pnpm --filter @mvp/fragment-order-form run build:island-browser` (or `build`) first.",
+        },
+      };
+    }
+  });
   server.get("/budget", async () => orderFormBudget);
   server.post("/render", async (request, reply) => {
     const parsed = parseFragmentRenderRequest(request.body);

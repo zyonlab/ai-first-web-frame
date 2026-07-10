@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "tsx src/server.ts",
     "start": "node dist/server.js",
-    "build": "tsdown src/server.ts --format esm --platform node --dts",
+    "build:island-browser": "tsdown src/island.browser.ts --format esm --platform browser --external react --external react/jsx-runtime --external react-dom/client --external @mvp/trade-contracts --external @mvp/ui/shadcn --out-dir dist-browser --no-dts --minify --clean",
+    "build": "tsdown src/server.ts --format esm --platform node --dts && pnpm run build:island-browser",
     "test": "pnpm -w exec vitest run fragments/order-form/tests fragments/order-form/src",
     "test:watch": "pnpm -w exec vitest fragments/order-form/tests fragments/order-form/src",
     "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
@@ -29,10 +30,12 @@
     "zod": "^3.23.8"
   },
   "peerDependencies": {
-    "react": "^18.3.1"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tsdown": "^0.11.0"
   }
 }

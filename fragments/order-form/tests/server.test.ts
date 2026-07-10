@@ -1,3 +1,6 @@
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   configureTraceExport,
   type RequestTraceSnapshot,
@@ -8,6 +11,16 @@ import { orderFormBudget } from "../src/budget";
 import { validateOrderFormManifest } from "../src/manifest";
 import { createOrderFormFallback } from "../src/render";
 import { buildServer } from "../src/server";
+
+// Mirrors `ISLAND_BROWSER_BUNDLE_PATH` in `../src/server.ts` (resolved
+// relative to this file instead, since both `src/` and `tests/` are
+// siblings at the fragment root — same target path either way).
+const ISLAND_BUNDLE_PATH = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "dist-browser",
+  "island.browser.js",
+);
 
 afterEach(() => {
   resetTraceExport();
@@ -41,12 +54,56 @@ describe("order-form fragment service", () => {
     expect(validateOrderFormManifest(response.json())).toBe(true);
   });
 
-  it("/assets lists shared chunks + island glue", async () => {
+  it("/assets lists the real served island bundle + stylesheet", async () => {
     const server = buildServer();
     const response = await server.inject({ method: "GET", url: "/assets" });
     const assets = response.json();
-    expect(assets.js).toContain("@mvp/trade-client");
+    // C3 spike: no more `@mvp/trade-client` (a package that no longer
+    // exists — stale metadata nobody ever consumed) or bare `@mvp/ui/shadcn`
+    // package-name placeholder; the one JS entry is the real served path.
+    expect(assets.js).toEqual(["/assets/order-form.island.js"]);
     expect(assets.css).toEqual(["/assets/order-form.css"]);
+  });
+
+  describe("/assets/order-form.island.js (C3 spike, §4.3.3)", () => {
+    afterEach(async () => {
+      await rm(ISLAND_BUNDLE_PATH, { force: true });
+    });
+
+    it("serves the built browser bundle as real, fetchable JS", async () => {
+      await mkdir(dirname(ISLAND_BUNDLE_PATH), { recursive: true });
+      await writeFile(
+        ISLAND_BUNDLE_PATH,
+        'export function mountOrderFormIsland(){return "spike-bundle";}',
+        "utf8",
+      );
+      const server = buildServer();
+      const response = await server.inject({
+        method: "GET",
+        url: "/assets/order-form.island.js",
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.headers["content-type"]).toContain("text/javascript");
+      expect(response.body).toContain("mountOrderFormIsland");
+      // Real spike finding, only caught by loading the real page in a real
+      // browser (curl and this test don't enforce CORS): a page on a
+      // different origin (apps/page-trade, localhost:4103) dynamically
+      // `import()`ing this module is a cross-origin ES module fetch, which
+      // the spec always performs in CORS mode. Without this header, Chrome
+      // blocked the import outright with an opaque-response error.
+      expect(response.headers["access-control-allow-origin"]).toBe("*");
+    });
+
+    it("returns a structured 404 when the browser bundle hasn't been built", async () => {
+      await rm(ISLAND_BUNDLE_PATH, { force: true });
+      const server = buildServer();
+      const response = await server.inject({
+        method: "GET",
+        url: "/assets/order-form.island.js",
+      });
+      expect(response.statusCode).toBe(404);
+      expect(response.json().error.code).toBe("island-bundle-not-built");
+    });
   });
 
   it("/budget returns the fragment budget", async () => {

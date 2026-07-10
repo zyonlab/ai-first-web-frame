@@ -51,13 +51,15 @@
       "canary": {
         "version": "0.1.0",
         "serviceUrl": "http://localhost:4205",
-        "manifestUrl": "http://localhost:4205/manifest"
+        "manifestUrl": "http://localhost:4205/manifest",
+        "assetsUrl": "http://localhost:4205/assets/order-form.island.js"
       },
       "versions": {
         "0.1.0": {
           "version": "0.1.0",
           "serviceUrl": "http://localhost:4205",
-          "manifestUrl": "http://localhost:4205/manifest"
+          "manifestUrl": "http://localhost:4205/manifest",
+          "assetsUrl": "http://localhost:4205/assets/order-form.island.js"
         }
       }
     },
