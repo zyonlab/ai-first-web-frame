@@ -21,6 +21,7 @@
     "apps/page-markets/app/markets/page.tsx",
     "apps/page-markets/next-env.d.ts",
     "apps/page-markets/src/budget.ts",
+    "apps/page-markets/src/fragmentSlots.gen.ts",
     "apps/page-markets/src/fragmentSlots.ts",
     "apps/page-markets/src/gridStyles.ts",
     "apps/page-markets/src/manifest.ts",

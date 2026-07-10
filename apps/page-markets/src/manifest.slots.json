@@ -5,6 +5,11 @@
     "channel": "canary",
     "strategy": "cached-ssr",
     "timeoutMs": 200,
+    "cachePolicy": {
+      "ttl": 5,
+      "tags": ["markets", "ticker"],
+      "vary": ["tenant", "locale", "props"]
+    },
     "required": true
   }
 ]

@@ -1,5 +1,5 @@
+import { FragmentSlot } from "@mvp/runtime/react";
 import { headers } from "next/headers";
-import type { ReactNode } from "react";
 import {
   fetchMarketsFragmentSlots,
   type MarketsSlotKey,
@@ -9,38 +9,10 @@ import { marketsSeoCopy } from "../../src/render";
 
 export const dynamic = "force-dynamic";
 
-function FragmentHtml({
-  html,
-  fallback,
-}: {
-  html: string | null;
-  fallback: ReactNode;
-}) {
-  if (!html) return fallback;
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: fragment HTML is returned by trusted internal SSR fragment services (registry serviceUrl), never user input.
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
-}
-
-/** No-JS-readable fallback for a degraded/absent table. */
-function PanelFallback({
-  fragment,
-  children,
-}: {
-  fragment: string;
-  children: ReactNode;
-}) {
-  return (
-    <section data-fragment={fragment} data-fallback="true">
-      {children}
-    </section>
-  );
-}
-
 export default async function MarketsPage() {
   const fragmentHtml = await fetchMarketsFragmentSlots({
     headers: await headers(),
   });
-  const slots = fragmentHtml.slots;
 
   const diagnosticsList = Object.entries(fragmentHtml.diagnostics) as [
     MarketsSlotKey,
@@ -72,12 +44,13 @@ export default async function MarketsPage() {
         </div>
 
         <div data-area="markets-table" data-slot="marketsTable">
-          <FragmentHtml
-            html={slots.marketsTable}
+          <FragmentSlot
+            name="marketsTable"
+            execution={fragmentHtml.execution}
             fallback={
-              <PanelFallback fragment="markets-table">
+              <section data-fragment="markets-table" data-fallback="true">
                 Markets table is loading.
-              </PanelFallback>
+              </section>
             }
           />
         </div>
