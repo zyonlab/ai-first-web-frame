@@ -349,6 +349,36 @@ importers:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
+  domains/trade-chart:
+    devDependencies:
+      tsdown:
+        specifier: ^0.11.0
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
+
+  domains/trade-contracts:
+    devDependencies:
+      tsdown:
+        specifier: ^0.11.0
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
+
+  domains/trade-data:
+    devDependencies:
+      tsdown:
+        specifier: ^0.11.0
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
+
+  domains/trade-prefs:
+    devDependencies:
+      tsdown:
+        specifier: ^0.11.0
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
+
+  domains/trade-theme:
+    devDependencies:
+      tsdown:
+        specifier: ^0.11.0
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
+
   fragments/account-bar:
     dependencies:
       '@mvp/contracts':
@@ -811,6 +841,12 @@ importers:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
+  packages/islands:
+    devDependencies:
+      tsdown:
+        specifier: ^0.11.0
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
+
   packages/observability:
     devDependencies:
       tsdown:
@@ -874,6 +910,12 @@ importers:
       '@mvp/contracts':
         specifier: workspace:*
         version: link:../contracts
+    devDependencies:
+      tsdown:
+        specifier: ^0.11.0
+        version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
+
+  packages/store:
     devDependencies:
       tsdown:
         specifier: ^0.11.0
