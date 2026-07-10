@@ -243,6 +243,18 @@ drive the whole loop concurrently, no `CLAUDE.md` reading.
 - **Phase 1 ✅ — MCP/skill wrapper + `query_registry`.** `tools/mcp-devx`
   (7 tools, dependency-free stdio) + `pnpm graph` over the unit graph
   (`tools/release-tools/unit-graph.ts`).
+
+  **P5 status: packaged as `@mvp/mcp` ✅.** The server moved from
+  `tools/mcp-devx` to `packages/mcp` (a real, buildable, publishable
+  workspace package — `docs/ARCHITECTURE_REFACTOR_PLAN.md` §7 item 3) with
+  its own `package.json`/`tsconfig.json`; `pnpm mcp:devx` is now `pnpm mcp`
+  (`pnpm --filter @mvp/mcp start`). Verified against the current post-P1/P2/P3
+  repo shape (`registry/registry.data.json`, `packages/registry`,
+  `packages/routes`) rather than assumed fixed — `query_registry` resolves
+  real registry-sourced fields (`channel`/`version`/`serviceUrl`), unit-tested
+  in `packages/mcp/src/tools.test.ts`. The `mount_slot` tool also now covers
+  P2's `mount-slot --check` mode (verifies `fragmentSlots.gen.ts` freshness
+  without writing).
 - **Phase 2 ✅ — manifest consolidation + graph closure.** `consumes`/`produces`
   (C3 slices) + `layoutHint` on the trade fragments; graph emits slice units +
   `affectedClosure`; `affected_units` MCP tool.

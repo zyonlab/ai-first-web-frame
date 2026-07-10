@@ -28,7 +28,7 @@
     "verify:runtime": "tsx scripts/verify-runtime.mts",
     "affected:graph": "tsx scripts/affected-graph.mts",
     "deploy:affected": "tsx scripts/deploy-affected.mts",
-    "mcp:devx": "tsx tools/mcp-devx/src/server.mts",
+    "mcp": "pnpm --filter @mvp/mcp start",
     "register:fragment": "tsx scripts/register-fragment.mts",
     "mount:slot": "tsx scripts/mount-slot.mts",
     "promote:fragment": "tsx scripts/promote-fragment.mts",

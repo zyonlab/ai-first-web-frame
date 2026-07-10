@@ -471,6 +471,14 @@ Three tiers, all generated or verified in CI so they cannot rot:
    lifecycle calls) published as `@mvp/mcp` so downstream agents connect
    instead of reading docs at all.
 
+   **Status: implemented.** The MCP server moved from `tools/mcp-devx` to
+   `packages/mcp` as a real, buildable `@mvp/mcp` workspace package
+   (`package.json`, `tsconfig.json`, `tsdown` build, `bin`) and was verified
+   against the current post-P1/P2/P3 repo shape rather than assumed working
+   (`query_registry` confirmed to resolve real `registry/registry.data.json`
+   fields, unit-tested); the `mount_slot` tool now also covers P2's
+   `mount-slot --check` freshness mode.
+
 > **P5-prep status:** `AGENT.md` now exists for the 8 packages whose public API
 > is not part of the current refactor (`packages/contracts`, `packages/runtime`,
 > `packages/request`, `packages/request-context`, `packages/observability`,

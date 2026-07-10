@@ -1,5 +1,6 @@
 /**
- * DevX MCP tool registry (docs/AI_NATIVE_DEVX.md §7, Phase 1).
+ * DevX MCP tool registry (docs/AI_NATIVE_DEVX.md §7,
+ * docs/ARCHITECTURE_REFACTOR_PLAN.md §7 item 3 — published as `@mvp/mcp`).
  *
  * Exposes the framework's discovery + lifecycle surface as agent-callable tools.
  * `query_registry` runs in-process off the unit graph; the lifecycle tools are
@@ -7,18 +8,24 @@
  * so multiple agents can drive scaffold → register → mount → deploy → promote →
  * rollback concurrently without reading CLAUDE.md.
  *
- * The transport lives in `server.mts`; this module is pure enough to unit-test
+ * The transport lives in `server.ts`; this module is pure enough to unit-test
  * (tool definitions + argument mapping + the in-process query handler).
+ *
+ * `tools/release-tools` has no package export surface of its own (it is a
+ * private, unbuilt dev-tooling package consumed via deep relative imports
+ * elsewhere in the repo, e.g. `scripts/mount-slot.mts`) — so the pure graph
+ * helpers below are imported the same way and get inlined by `tsdown` at
+ * build time rather than declared as an npm dependency.
  */
 
 import { spawnSync } from "node:child_process";
-import { loadUnitGraph } from "../../release-tools/src/load-graph.ts";
+import { loadUnitGraph } from "../../../tools/release-tools/src/load-graph";
 import {
   affectedClosure,
   queryRegistry,
   type RegistryQuery,
   type UnitKind,
-} from "../../release-tools/src/unit-graph.ts";
+} from "../../../tools/release-tools/src/unit-graph";
 
 export type ToolResult = { text: string; isError?: boolean };
 
@@ -100,10 +107,14 @@ export const SCRIPT_TOOLS: ScriptTool[] = [
   {
     name: "mount_slot",
     description:
-      "Mount (or --remove) a fragment into a page slot. Input: { page, slot, fragment?, strategy?, channel?, timeoutMs?, remove? }.",
+      "Mount (or --remove) a fragment into a page slot, or --check that the page's " +
+      "generated fragmentSlots.gen.ts is still fresh against manifest.slots.json " +
+      "without writing anything (refactor plan §3.2). Input: { page, slot, " +
+      "fragment?, strategy?, channel?, timeoutMs?, remove?, check? }. `slot` and " +
+      "`fragment` are only required when neither `remove` nor `check` is set.",
     inputSchema: {
       type: "object",
-      required: ["page", "slot"],
+      required: ["page"],
       properties: {
         page: { type: "string" },
         slot: { type: "string" },
@@ -112,6 +123,11 @@ export const SCRIPT_TOOLS: ScriptTool[] = [
         channel: { type: "string" },
         timeoutMs: { type: "number" },
         remove: { type: "boolean" },
+        check: {
+          type: "boolean",
+          description:
+            "Verify fragmentSlots.gen.ts is in sync with manifest.slots.json; writes nothing.",
+        },
       },
     },
     command: ["exec", "tsx", "scripts/mount-slot.mts"],
@@ -122,6 +138,11 @@ export const SCRIPT_TOOLS: ScriptTool[] = [
       ...flag("--strategy", i.strategy),
       ...flag("--channel", i.channel),
       ...flag("--timeout-ms", i.timeoutMs),
+      // --check (refactor plan §3.2) is a pure verification mode: it accepts
+      // the same flags a mount/remove call would use but ignores them, only
+      // checking that fragmentSlots.gen.ts is fresh for --page. Appended last
+      // so { page, check: true } alone is a valid, minimal check call.
+      ...(i.check ? ["--check"] : []),
     ],
   },
   {
