@@ -18,12 +18,12 @@ Status: pass
 | fragment | promotion-banner | jsBytes | 0 | 30000 | pass | inline SSR <script> content, if any, is not counted |
 | fragment | recommendation-widget | jsBytes | 0 | 30000 | pass | inline SSR <script> content, if any, is not counted |
 | fragment | trades-feed | jsBytes | 0 | 30000 | pass | inline SSR <script> content, if any, is not counted |
-| page | page-home | jsBytes | 127694 | 180000 | pass | Next first-load JS (.next manifests), gzipped bytes |
+| page | page-home | jsBytes | 127745 | 180000 | pass | Next first-load JS (.next manifests), gzipped bytes |
 | page | page-markets | jsBytes | 102531 | 180000 | pass | Next first-load JS (.next manifests), gzipped bytes |
 | page | page-portfolio | jsBytes | 102531 | 180000 | pass | Next first-load JS (.next manifests), gzipped bytes |
 | page | page-product | jsBytes | 108006 | 180000 | pass | Next first-load JS (.next manifests), gzipped bytes |
 | page | page-referrals | jsBytes | 102531 | 110000 | pass | Next first-load JS (.next manifests), gzipped bytes |
-| page | page-trade | jsBytes | 202009 | 220000 | pass | Next first-load JS (.next manifests), gzipped bytes |
+| page | page-trade | jsBytes | 202097 | 220000 | pass | Next first-load JS (.next manifests), gzipped bytes |
 | page | page-vaults | jsBytes | 102531 | 110000 | pass | Next first-load JS (.next manifests), gzipped bytes |
 
 ## Not measured by this audit
