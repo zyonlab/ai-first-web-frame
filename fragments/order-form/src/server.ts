@@ -29,8 +29,10 @@ const UNINSTRUMENTED_ROUTES = new Set(["/metrics", "/health"]);
 /**
  * Real, browser-loadable island module (C3 spike, §4.3.3 "Runtime island
  * assets") — the tsdown browser build of `island.browser.ts`
- * (`pnpm run build:island-browser`, chained into this package's `build`
- * script). Resolved relative to THIS file so it works whether the server
+ * (`pnpm run build:island-browser`; a MANUAL script since the C3 no-go
+ * decision unchained it from this package's `build` — the route below
+ * answers a structured 404 until it is run). Resolved relative to THIS
+ * file so it works whether the server
  * runs from `src/server.ts` (tsx, dev) or the built `dist/server.js` (node,
  * prod) — both sit next to `dist-browser/` under the fragment root.
  *

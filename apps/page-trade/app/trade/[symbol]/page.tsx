@@ -9,12 +9,7 @@ import {
 } from "../../../src/fragmentSlots";
 import { TRADE_GRID_CLASS } from "../../../src/gridStyles";
 import { TradeHydrator } from "../../../src/hydrate";
-import { SpikeOrderFormLoader } from "../../../src/hydrateSpike";
 import { tradeSeoCopy } from "../../../src/render";
-import {
-  resolveOrderFormSpikeModuleUrl,
-  SPIKE_VENDOR_IMPORT_MAP,
-} from "../../../src/spikeImportMap";
 import { TraceDrawer } from "../../../src/TraceDrawer";
 
 export const dynamic = "force-dynamic";
@@ -108,10 +103,6 @@ export default async function TradePage({ params }: TradePageProps) {
     headers: requestHeaders,
   });
   const execution = fragmentHtml.execution;
-  // C3 spike (§4.3.3): order-form's real, registry-resolved browser island
-  // URL — null for every other fragment/deployment that hasn't registered
-  // one, in which case the spike path below renders nothing.
-  const spikeModuleUrl = resolveOrderFormSpikeModuleUrl();
 
   return (
     <>
@@ -263,26 +254,11 @@ export default async function TradePage({ params }: TradePageProps) {
           the order-book → order-form price flow. Renders nothing itself. */}
         <TradeHydrator />
 
-        {/* C3 spike (docs/ARCHITECTURE_REFACTOR_PLAN.md §4.3.3, "Runtime
-          island assets") — a PARALLEL, ADDITIVE path proving order-form's
-          island can be loaded at runtime via an import map + dynamic
-          `import()` instead of TradeHydrator's build-time static import
-          above. Does not replace or interfere with TradeHydrator: it mounts
-          into its own sandbox node, not the production
-          `data-island="orderForm"` node. Renders nothing when order-form has
-          no registered `assetsUrl` (e.g. any other deployment). */}
-        {spikeModuleUrl ? (
-          <>
-            <script
-              type="importmap"
-              // biome-ignore lint/security/noDangerouslySetInnerHtml: server-generated JSON only (a fixed, framework-owned import map) — no user input.
-              dangerouslySetInnerHTML={{
-                __html: JSON.stringify({ imports: SPIKE_VENDOR_IMPORT_MAP }),
-              }}
-            />
-            <SpikeOrderFormLoader moduleUrl={spikeModuleUrl} />
-          </>
-        ) : null}
+        {/* C3 import-map spike: decided NO-GO for this cycle
+          (docs/ARCHITECTURE_REFACTOR_PLAN.md §4.3.3) and unmounted from this
+          page. The validated reference implementation stays dormant in
+          src/hydrateSpike.tsx + src/spikeImportMap.ts (build via the manual
+          `build:spike-vendor` script) for when the reopen trigger fires. */}
 
         {/* Framework-observability drawer: the request trace as a bottom-docked
             waterfall (spans on a shared time axis) plus scheduler hints. Pure

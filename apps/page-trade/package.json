@@ -7,7 +7,7 @@
     "dev": "next dev --turbopack -p 4103",
     "start": "next start -p 4103",
     "build:spike-vendor": "tsdown --config tsdown.vendor.config.ts",
-    "build": "pnpm run build:spike-vendor && next build",
+    "build": "next build",
     "test": "pnpm -w exec vitest run apps/page-trade/tests apps/page-trade/src",
     "test:watch": "pnpm -w exec vitest apps/page-trade/tests apps/page-trade/src",
     "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
