@@ -91,7 +91,7 @@ export const fragmentSlots: FragmentSlotDefinition[] = [
     name: "chart",
     fragment: "chart-panel",
     channel: "canary",
-    strategy: "isr",
+    strategy: "ttl-cache",
     timeoutMs: 200,
     cachePolicy: {
       ttl: 60,

@@ -27,7 +27,7 @@ export const fragmentSlots: FragmentSlotDefinition[] = [
     name: "pnlChart",
     fragment: "pnl-chart",
     channel: "canary",
-    strategy: "isr",
+    strategy: "ttl-cache",
     timeoutMs: 200,
     cachePolicy: {
       ttl: 60,

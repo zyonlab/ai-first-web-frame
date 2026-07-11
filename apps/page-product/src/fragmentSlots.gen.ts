@@ -23,7 +23,7 @@ export const fragmentSlots: FragmentSlotDefinition[] = [
     name: "promotion",
     fragment: "promotion-banner",
     channel: "stable",
-    strategy: "isr",
+    strategy: "ttl-cache",
     timeoutMs: 200,
     props: {
       scene: "product",
