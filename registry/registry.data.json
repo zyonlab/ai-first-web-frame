@@ -10,6 +10,18 @@
         "version": "0.2.0-beta.1",
         "serviceUrl": "http://localhost:4201",
         "manifestUrl": "http://localhost:4201/manifest"
+      },
+      "versions": {
+        "0.1.0": {
+          "version": "0.1.0",
+          "serviceUrl": "http://localhost:4201",
+          "manifestUrl": "http://localhost:4201/manifest"
+        },
+        "0.2.0-beta.1": {
+          "version": "0.2.0-beta.1",
+          "serviceUrl": "http://localhost:4201",
+          "manifestUrl": "http://localhost:4201/manifest"
+        }
       }
     },
     "recommendation-widget": {
