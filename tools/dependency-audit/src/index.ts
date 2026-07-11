@@ -2,7 +2,12 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type CliOptions, parseArgs } from "../../_shared/args";
-import { browserGlobals, hasUseClient, parseImports } from "../../_shared/code";
+import {
+  browserGlobals,
+  hasUseClient,
+  parseImports,
+  stripCommentsAndStrings,
+} from "../../_shared/code";
 import {
   findWorkspaceRoot,
   readJson,
@@ -446,7 +451,9 @@ function isBusinessCodeFile(path: string): boolean {
 }
 
 function hasRawFetch(source: string): boolean {
-  return /\bfetch\s*\(/.test(source);
+  // Match only real code: `fetch(` in a comment or a log/doc string is not a
+  // raw network call (same false-positive class as browserGlobals).
+  return /\bfetch\s*\(/.test(stripCommentsAndStrings(source));
 }
 
 function normalizeImportTarget(

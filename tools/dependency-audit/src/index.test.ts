@@ -119,6 +119,90 @@ describe("dependency-audit", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
+  it("does not flag browser-global or fetch words in comments and strings", () => {
+    const root = tempRoot("heuristic-fp");
+    // The regression that motivated this: a doc comment saying "deprecation
+    // window" in a server-safe package failed audit:deps (2026-07-11).
+    write(
+      join(root, "packages/contracts/src/index.ts"),
+      [
+        "// The alias was retired after the deprecation window closed.",
+        "/* Also fine in block comments: window, document, localStorage. */",
+        'export const label = "resize the window";',
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: fixture source intentionally contains template syntax
+        "export const hint = `document says: fetch( later via ${label}`;",
+        "export const ok = 1;",
+        "",
+      ].join("\n"),
+    );
+    write(
+      join(root, "apps/page-home/src/data.ts"),
+      [
+        "// Never call fetch() directly here — use @mvp/request instead.",
+        'export const msg = "fetch(url) is forbidden in business code";',
+        "export const load = () => msg;",
+        "",
+      ].join("\n"),
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    expect(
+      report.issues.some(
+        (issue) => issue.code === "server-safe-browser-global",
+      ),
+    ).toBe(false);
+    expect(
+      report.issues.some(
+        (issue) => issue.code === "raw-fetch-in-business-code",
+      ),
+    ).toBe(false);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("still flags real browser-global and fetch usage next to innocent comments", () => {
+    const root = tempRoot("heuristic-tp");
+    write(
+      join(root, "packages/ui/src/measure.ts"),
+      [
+        "// Reading the window size is a real browser dependency:",
+        "export const width = window.innerWidth;",
+        "",
+      ].join("\n"),
+    );
+    write(
+      join(root, "apps/page-home/src/data.ts"),
+      [
+        "// fetch( in this comment must not mask the real call below.",
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: fixture source intentionally contains template syntax
+        "export const load = () => fetch(`https://api.example.test/${1}`);",
+        "",
+      ].join("\n"),
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    expect(
+      report.issues.some(
+        (issue) => issue.code === "server-safe-browser-global",
+      ),
+    ).toBe(true);
+    expect(
+      report.issues.some(
+        (issue) => issue.code === "raw-fetch-in-business-code",
+      ),
+    ).toBe(true);
+    rmSync(root, { recursive: true, force: true });
+  });
+
   it("detects raw fetch in page and fragment business code", () => {
     const root = tempRoot("raw-fetch");
     write(
