@@ -66,10 +66,26 @@ export function applyRegisterFragment(
   const next = structuredClone(data);
   const entry = next.fragments[input.name] ?? {};
   const previous = entry[channel];
+
+  // Versions are append-only: re-registering an already-recorded
+  // name+version with different values would silently rewrite history
+  // (a different serviceUrl/manifestUrl/assetsUrl retroactively pinned to
+  // the same version number). Refuse it instead of overwriting — this is
+  // distinct from promote/rollback's writes to `versions`, which only ever
+  // copy an entry's own current `stable`/`canary` value under its own
+  // version key (no rewrite of a conflicting value).
+  const existingVersion = entry.versions?.[input.version];
+  if (existingVersion && !deepEqual(existingVersion, entryVersion)) {
+    throw new Error(
+      `fragment "${input.name}" version "${input.version}" is already registered ` +
+        `with different values; versions are append-only — bump the version instead ` +
+        `of re-registering an existing one`,
+    );
+  }
+
   const action: MutationAction = !next.fragments[input.name]
     ? "added"
-    : deepEqual(previous, entryVersion) &&
-        deepEqual(entry.versions?.[input.version], entryVersion)
+    : deepEqual(previous, entryVersion) && existingVersion !== undefined
       ? "unchanged"
       : "updated";
 
