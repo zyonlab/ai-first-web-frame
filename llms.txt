@@ -33,6 +33,23 @@
   (`packages/contracts/src/index.ts`). Consult to find the page that
   demonstrates a specific composition/streaming/island capability instead of
   re-deriving it from source.
+- [docs/COMPOSITION.md](docs/COMPOSITION.md): slot model, render strategies
+  (incl. the deprecated `isr` → `ttl-cache` alias), the manifest → codegen →
+  `<FragmentSlot>` pipeline, DAG/timeout/fallback execution and streaming
+  semantics, and the two-tier fragment independence table (SSR-only vs.
+  React-island). Consult before composing or reasoning about a page's slots.
+- [docs/CONTRACTS.md](docs/CONTRACTS.md): schema index for `@mvp/contracts` —
+  every exported Zod schema, grouped by concern, with the real runtime
+  enforcement call site (or an honest "type-level only" marking). Consult to
+  learn which boundary actually validates a given object.
+- [docs/INTERACTION.md](docs/INTERACTION.md): the contract-enforced bus /
+  slice store / ACL model, island snapshot handshake, and the orphan-bus
+  failure mode + its audit rule. Consult before writing any `island.tsx`,
+  bus publish/subscribe, or slice contract.
+- [docs/DELIVERY.md](docs/DELIVERY.md): the graph-based affected model — the
+  exact narrow-vs-GLOBAL seeding rules, registry-write narrowing, deploy
+  gates (`pnpm verify`'s 13 gates, `verify:runtime`, E2E tiers). Consult
+  before reasoning about blast radius or CI/deploy behavior.
 
 ## Package AGENT.md (stable packages; API not part of the current refactor)
 
@@ -97,6 +114,28 @@
   island hydration runtime, including the C2 snapshot version handshake
   (`registerIsland`, `mountIsland`, `hydrateIslands`). Consult before
   registering or hydrating any React island.
+
+## Domain AGENT.md (demo domain layer; the reference for adding a domain)
+
+- [domains/trade-contracts/AGENT.md](domains/trade-contracts/AGENT.md): the
+  trade demo's typed interaction contracts — slice contracts, store-owner
+  contract reshaping, `placeOrder`/`cancelOrder` mutations, and flow
+  reducers. Consult as the reference for defining a new domain's contracts.
+- [domains/trade-data/AGENT.md](domains/trade-data/AGENT.md): the trade
+  demo's data-source registry, `createTradeDataClient`, and the deterministic
+  mock realtime transport (seeded PRNG frame generators). Consult as the
+  reference for wiring a domain's data sources onto `@mvp/data`.
+- [domains/trade-prefs/AGENT.md](domains/trade-prefs/AGENT.md): the trade
+  demo's persisted preferences (watchlist, recent symbols, theme/locale
+  cookies, layout prefs) on `@mvp/storage`. Consult as the reference for
+  domain-scoped persistence.
+- [domains/trade-theme/AGENT.md](domains/trade-theme/AGENT.md): the trade
+  demo's semantic colors (buy/sell/up/down) and theme-scoped CSS emission via
+  `@mvp/design-system`'s public `emitDeclarations`. Consult as the reference
+  for domain-owned, theme-aware tokens.
+- [domains/trade-chart/AGENT.md](domains/trade-chart/AGENT.md): the trade
+  demo's canvas chart renderer (demo-only presentation code). Consult as the
+  reference for domain-layer presentation utilities.
 
 ## Tooling AGENT.md (lifecycle scaffolder + MCP server)
 
