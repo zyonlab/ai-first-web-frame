@@ -1,6 +1,8 @@
+import { PageManifestSchema } from "@mvp/contracts";
 import { describe, expect, it } from "vitest";
 import { GET as healthGet } from "../app/health/route";
 import { referralsPageBudget } from "../src/budget";
+import { referralsPageManifest } from "../src/manifest";
 import { metadata, referralsSeoCopy } from "../src/metadata";
 import {
   REFERRAL_CODE,
@@ -61,5 +63,12 @@ describe("page-referrals", () => {
       status: "ok",
       service: "page-referrals",
     });
+  });
+
+  it("page manifest passes PageManifestSchema (slotless unit-graph entry)", () => {
+    const parsed = PageManifestSchema.parse(referralsPageManifest);
+    expect(parsed.route).toBe("/referrals");
+    expect(parsed.slots).toEqual([]);
+    expect(referralsPageManifest.renderMode).toBe("ssg");
   });
 });
