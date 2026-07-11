@@ -199,7 +199,7 @@ object directly, not this package's mutation API).
 
 ## Example
 
-```ts
+```ts no-run
 import {
   loadRegistryData,
   saveRegistryData,

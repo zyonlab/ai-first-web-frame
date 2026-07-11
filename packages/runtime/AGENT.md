@@ -139,7 +139,7 @@ settles, so the per-slot promise can be handed to `<FragmentSlotStream>`
 (`@mvp/runtime/react`, below) inside its own `<Suspense>` boundary instead of
 blocking page render on `execution`:
 
-```ts
+```ts no-run
 import { streamFragmentSlots } from "@mvp/runtime";
 
 const stream = streamFragmentSlots({ slots, registry, ctx, timeoutMs: 200 });
@@ -179,7 +179,7 @@ byte-identical markup regardless of which one a page uses.
   `<Suspense fallback={...}>` to stream that slot's HTML in the moment its own
   promise resolves.
 
-```tsx
+```tsx no-run
 import { Suspense } from "react";
 import { FragmentSlot, FragmentSlotStream } from "@mvp/runtime/react";
 
