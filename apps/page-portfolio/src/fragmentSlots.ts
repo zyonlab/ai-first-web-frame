@@ -13,9 +13,6 @@ import {
 } from "@mvp/runtime";
 import { fragmentSlots as generatedPortfolioSlots } from "./fragmentSlots.gen";
 
-/** Slot keys composed on the portfolio page. */
-export type PortfolioSlotKey = "portfolioSummary" | "pnlChart";
-
 export type PortfolioSlotDiagnostic = Pick<
   FragmentSlotResult,
   "source" | "strategy"
@@ -25,9 +22,14 @@ export type PortfolioSlotDiagnostic = Pick<
 };
 
 export type PortfolioFragmentHtml = {
-  /** Rendered (or null) HTML per slot; null → render the panel fallback. */
-  slots: Record<PortfolioSlotKey, string | null>;
-  diagnostics: Record<PortfolioSlotKey, PortfolioSlotDiagnostic>;
+  // Rendered (or null) HTML per slot, keyed by slot name (whatever names
+  // `fragmentSlots.gen.ts` currently enumerates — see
+  // `buildPortfolioSlotDefinitions`). Generic on purpose (A1 gate, refactor
+  // plan §3): adding/removing a slot in the manifest changes the keys this
+  // map has at runtime without any type or code edit here. null -> render
+  // the panel fallback.
+  slots: Record<string, string | null>;
+  diagnostics: Record<string, PortfolioSlotDiagnostic>;
   scheduler: {
     health: PageHealth;
     hints: SchedulerHint[];
@@ -49,7 +51,7 @@ export type PortfolioFragmentHtml = {
  * slots.
  */
 export type PortfolioFragmentAggregate = {
-  diagnostics: Record<PortfolioSlotKey, PortfolioSlotDiagnostic>;
+  diagnostics: Record<string, PortfolioSlotDiagnostic>;
   scheduler: {
     health: PageHealth;
     hints: SchedulerHint[];
@@ -57,8 +59,23 @@ export type PortfolioFragmentAggregate = {
   traceLog: string;
 };
 
+/**
+ * The fragment-slot promises `streamPortfolioFragmentSlots` exposes, one per
+ * `<FragmentSlotStream>` boundary in `app/portfolio/page.tsx` (refactor plan
+ * §4.4). Deliberately generic (`Record<string, ...>`, not a hand-written
+ * interface with one field per slot name): `@mvp/runtime`'s
+ * `streamFragmentSlots` already returns exactly this shape (see
+ * `FragmentSlotStreamHandle.slots` in `packages/runtime/src/index.ts`), keyed
+ * by whatever `buildPortfolioSlotDefinitions()` (sourced from the generated
+ * `fragmentSlots.gen.ts`) enumerates — there is no named-slot coupling left
+ * to hand-maintain here. `app/portfolio/page.tsx` still looks up individual
+ * keys (`stream.slots.portfolioSummary`) because CHOOSING which slots get
+ * their own `<Suspense>` boundary and what fallback markup they render is
+ * genuine human-judgment JSX placement (A1's explicit carve-out) — not
+ * something codegen can or should decide.
+ */
 export type PortfolioFragmentSlotPromises = Record<
-  PortfolioSlotKey,
+  string,
   Promise<FragmentRenderResponse>
 >;
 
@@ -77,11 +94,6 @@ type FetchPortfolioFragmentSlotsOptions = {
   /** Override the fragment registry (tests inject one; empty forces degrade). */
   registry?: FragmentRegistry;
 };
-
-const PORTFOLIO_SLOT_KEYS: PortfolioSlotKey[] = [
-  "portfolioSummary",
-  "pnlChart",
-];
 
 /**
  * The page-portfolio runtime slots array. The static shape (fragment,
@@ -157,13 +169,19 @@ export function streamPortfolioFragmentSlots({
 
   const aggregate = stream.result.then(
     (execution): PortfolioFragmentAggregate => {
-      const diagnostics = {} as Record<
-        PortfolioSlotKey,
-        PortfolioSlotDiagnostic
-      >;
-      for (const key of PORTFOLIO_SLOT_KEYS) {
-        diagnostics[key] = toDiagnostic(execution.slots[key]);
-      }
+      // Generic per-slot diagnostics: every slot's result carries everything
+      // `toDiagnostic` needs (source/strategy/status/required), and the map
+      // key IS the slot's name, so there is no genuine reason to hand-list
+      // slot names here — iterate `execution.slots` (already `Record<string,
+      // FragmentSlotResult>`, see `packages/runtime/src/index.ts`) instead of
+      // repeating the 2 current names.
+      const diagnostics: Record<string, PortfolioSlotDiagnostic> =
+        Object.fromEntries(
+          Object.entries(execution.slots).map(([name, result]) => [
+            name,
+            toDiagnostic(result),
+          ]),
+        );
       return {
         diagnostics,
         scheduler: {
@@ -176,10 +194,10 @@ export function streamPortfolioFragmentSlots({
   );
 
   return {
-    slots: {
-      portfolioSummary: stream.slots.portfolioSummary,
-      pnlChart: stream.slots.pnlChart,
-    },
+    // `stream.slots` (`@mvp/runtime`'s `FragmentSlotStreamHandle.slots`) is
+    // already `Record<string, Promise<FragmentRenderResponse>>` — passed
+    // through as-is instead of re-listing each slot name into a new object.
+    slots: stream.slots,
     execution: stream.result,
     aggregate,
   };
@@ -197,18 +215,22 @@ export async function fetchPortfolioFragmentSlots(
   options: FetchPortfolioFragmentSlotsOptions = {},
 ): Promise<PortfolioFragmentHtml> {
   const stream = streamPortfolioFragmentSlots(options);
-  const [portfolioSummary, pnlChart, aggregate, execution] = await Promise.all([
-    stream.slots.portfolioSummary,
-    stream.slots.pnlChart,
+  // Resolve every slot's promise generically (whatever names `stream.slots`
+  // currently has) instead of destructuring two named fields — the "final
+  // returned HTML-string map" the A1 refactor targets.
+  const [slotEntries, aggregate, execution] = await Promise.all([
+    Promise.all(
+      Object.entries(stream.slots).map(async ([name, slotPromise]) => {
+        const response = await slotPromise;
+        return [name, response.html] as const;
+      }),
+    ),
     stream.aggregate,
     stream.execution,
   ]);
 
   return {
-    slots: {
-      portfolioSummary: portfolioSummary.html,
-      pnlChart: pnlChart.html,
-    },
+    slots: Object.fromEntries(slotEntries),
     diagnostics: aggregate.diagnostics,
     scheduler: aggregate.scheduler,
     traceLog: aggregate.traceLog,
