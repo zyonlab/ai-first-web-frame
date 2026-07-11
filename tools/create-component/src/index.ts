@@ -131,7 +131,7 @@ function createFragment(
   );
   writeText(
     files[2],
-    `import { loadDefaultBudget } from "@mvp/contracts";\n\nexport const manifest = {\n  name: "${kebab}",\n  version: "0.1.0",\n  owner: "generated",\n  renderMode: "ssr",\n  fallback: "<section>${name}</section>",\n  assets: { js: [], css: [] },\n  // Adjust shape/minHeight/fills to this fragment's real rendered geometry\n  // (shape: "bar" | "ladder" | "table" | "chart" | "panel"; see LayoutHint in tools/release-tools/src/unit-graph.ts).\n  layoutHint: { shape: "panel", minHeight: 120, fills: false },\n  budget: loadDefaultBudget("fragment", "${kebab}"),\n} as const;\n`,
+    `import { type FragmentManifest, loadDefaultBudget } from "@mvp/contracts";\n\n// \`satisfies FragmentManifest\` gives compile-time checking against the\n// contract schema; \`layoutHint\` is a repo convention outside the schema, so\n// the intersection keeps excess-property checking happy.\nexport const manifest = {\n  name: "${kebab}",\n  version: "0.1.0",\n  owner: "generated",\n  renderMode: "ssr",\n  renderStrategy: "dynamic-ssr",\n  fallback: "<section>${name}</section>",\n  assets: { js: [], css: [] },\n  // Adjust shape/minHeight/fills to this fragment's real rendered geometry\n  // (shape: "bar" | "ladder" | "table" | "chart" | "panel"; see LayoutHint in tools/release-tools/src/unit-graph.ts).\n  layoutHint: { shape: "panel", minHeight: 120, fills: false },\n  budget: loadDefaultBudget("fragment", "${kebab}"),\n} satisfies FragmentManifest & { layoutHint: Record<string, unknown> };\n`,
   );
   writeText(
     files[3],
