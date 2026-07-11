@@ -1,5 +1,317 @@
 {
   "tool": "bundle-budget-check",
   "status": "pass",
-  "checks": []
+  "checks": [
+    {
+      "scope": "fragment",
+      "unit": "account-bar",
+      "metric": "jsBytes",
+      "actual": 3091,
+      "budget": 8000,
+      "status": "pass",
+      "measurement": "esbuild bundle of fragments/account-bar/src/island.tsx (react/@mvp externals), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "chart-panel",
+      "metric": "jsBytes",
+      "actual": 5858,
+      "budget": 30000,
+      "status": "pass",
+      "measurement": "esbuild bundle of fragments/chart-panel/src/island.tsx (react/@mvp externals), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "funding-bar",
+      "metric": "jsBytes",
+      "actual": 0,
+      "budget": 2000,
+      "status": "pass",
+      "measurement": "no client entry (ssr-only fragment)",
+      "note": "inline SSR <script> content, if any, is not counted"
+    },
+    {
+      "scope": "fragment",
+      "unit": "market-header",
+      "metric": "jsBytes",
+      "actual": 4294,
+      "budget": 8000,
+      "status": "pass",
+      "measurement": "esbuild bundle of fragments/market-header/src/island.tsx (react/@mvp externals), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "markets-table",
+      "metric": "jsBytes",
+      "actual": 0,
+      "budget": 2000,
+      "status": "pass",
+      "measurement": "no client entry (ssr-only fragment)",
+      "note": "inline SSR <script> content, if any, is not counted"
+    },
+    {
+      "scope": "fragment",
+      "unit": "open-orders",
+      "metric": "jsBytes",
+      "actual": 0,
+      "budget": 30000,
+      "status": "pass",
+      "measurement": "no client entry (ssr-only fragment)",
+      "note": "inline SSR <script> content, if any, is not counted"
+    },
+    {
+      "scope": "fragment",
+      "unit": "order-book",
+      "metric": "jsBytes",
+      "actual": 2575,
+      "budget": 30000,
+      "status": "pass",
+      "measurement": "esbuild bundle of fragments/order-book/src/client.ts (react/@mvp externals), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "order-form",
+      "metric": "jsBytes",
+      "actual": 4663,
+      "budget": 30000,
+      "status": "pass",
+      "measurement": "esbuild bundle of fragments/order-form/src/island.browser.ts (react/@mvp externals), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "pnl-chart",
+      "metric": "jsBytes",
+      "actual": 0,
+      "budget": 2000,
+      "status": "pass",
+      "measurement": "no client entry (ssr-only fragment)",
+      "note": "inline SSR <script> content, if any, is not counted"
+    },
+    {
+      "scope": "fragment",
+      "unit": "portfolio-summary",
+      "metric": "jsBytes",
+      "actual": 0,
+      "budget": 0,
+      "status": "pass",
+      "measurement": "no client entry (ssr-only fragment)",
+      "note": "inline SSR <script> content, if any, is not counted"
+    },
+    {
+      "scope": "fragment",
+      "unit": "positions-table",
+      "metric": "jsBytes",
+      "actual": 0,
+      "budget": 30000,
+      "status": "pass",
+      "measurement": "no client entry (ssr-only fragment)",
+      "note": "inline SSR <script> content, if any, is not counted"
+    },
+    {
+      "scope": "fragment",
+      "unit": "promotion-banner",
+      "metric": "jsBytes",
+      "actual": 0,
+      "budget": 30000,
+      "status": "pass",
+      "measurement": "no client entry (ssr-only fragment)",
+      "note": "inline SSR <script> content, if any, is not counted"
+    },
+    {
+      "scope": "fragment",
+      "unit": "recommendation-widget",
+      "metric": "jsBytes",
+      "actual": 0,
+      "budget": 30000,
+      "status": "pass",
+      "measurement": "no client entry (ssr-only fragment)",
+      "note": "inline SSR <script> content, if any, is not counted"
+    },
+    {
+      "scope": "fragment",
+      "unit": "trades-feed",
+      "metric": "jsBytes",
+      "actual": 0,
+      "budget": 30000,
+      "status": "pass",
+      "measurement": "no client entry (ssr-only fragment)",
+      "note": "inline SSR <script> content, if any, is not counted"
+    },
+    {
+      "scope": "page",
+      "unit": "page-home",
+      "metric": "jsBytes",
+      "actual": 127694,
+      "budget": 180000,
+      "status": "pass",
+      "measurement": "Next first-load JS (.next manifests), gzipped bytes"
+    },
+    {
+      "scope": "page",
+      "unit": "page-markets",
+      "metric": "jsBytes",
+      "actual": 102531,
+      "budget": 180000,
+      "status": "pass",
+      "measurement": "Next first-load JS (.next manifests), gzipped bytes"
+    },
+    {
+      "scope": "page",
+      "unit": "page-portfolio",
+      "metric": "jsBytes",
+      "actual": 102531,
+      "budget": 180000,
+      "status": "pass",
+      "measurement": "Next first-load JS (.next manifests), gzipped bytes"
+    },
+    {
+      "scope": "page",
+      "unit": "page-product",
+      "metric": "jsBytes",
+      "actual": 108006,
+      "budget": 180000,
+      "status": "pass",
+      "measurement": "Next first-load JS (.next manifests), gzipped bytes"
+    },
+    {
+      "scope": "page",
+      "unit": "page-referrals",
+      "metric": "jsBytes",
+      "actual": 102531,
+      "budget": 110000,
+      "status": "pass",
+      "measurement": "Next first-load JS (.next manifests), gzipped bytes"
+    },
+    {
+      "scope": "page",
+      "unit": "page-trade",
+      "metric": "jsBytes",
+      "actual": 202009,
+      "budget": 220000,
+      "status": "pass",
+      "measurement": "Next first-load JS (.next manifests), gzipped bytes"
+    },
+    {
+      "scope": "page",
+      "unit": "page-vaults",
+      "metric": "jsBytes",
+      "actual": 102531,
+      "budget": 110000,
+      "status": "pass",
+      "measurement": "Next first-load JS (.next manifests), gzipped bytes"
+    }
+  ],
+  "unmeasured": [
+    {
+      "unit": "account-bar",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "chart-panel",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "funding-bar",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "market-header",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "markets-table",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "open-orders",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "order-book",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "order-form",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "pnl-chart",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "portfolio-summary",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "positions-table",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "promotion-banner",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "recommendation-widget",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "trades-feed",
+      "metric": "cssBytes",
+      "reason": "enforced by css-budget-check (pnpm audit:css)"
+    },
+    {
+      "unit": "page-home",
+      "metric": "cssBytes",
+      "reason": "build emits no extracted .css asset (page styles are inline-injected); not gated here"
+    },
+    {
+      "unit": "page-markets",
+      "metric": "cssBytes",
+      "reason": "build emits no extracted .css asset (page styles are inline-injected); not gated here"
+    },
+    {
+      "unit": "page-portfolio",
+      "metric": "cssBytes",
+      "reason": "build emits no extracted .css asset (page styles are inline-injected); not gated here"
+    },
+    {
+      "unit": "page-product",
+      "metric": "cssBytes",
+      "reason": "build emits no extracted .css asset (page styles are inline-injected); not gated here"
+    },
+    {
+      "unit": "page-referrals",
+      "metric": "cssBytes",
+      "reason": "build emits no extracted .css asset (page styles are inline-injected); not gated here"
+    },
+    {
+      "unit": "page-trade",
+      "metric": "cssBytes",
+      "reason": "build emits no extracted .css asset (page styles are inline-injected); not gated here"
+    },
+    {
+      "unit": "page-vaults",
+      "metric": "cssBytes",
+      "reason": "build emits no extracted .css asset (page styles are inline-injected); not gated here"
+    }
+  ],
+  "notes": [
+    "Fragment jsBytes = minified esbuild bundle of the fragment's client entry with react/react-dom/@mvp/* external (shared vendor is charged to the consuming page).",
+    "Page jsBytes = gzipped first-load client JS from the .next build manifests.",
+    "Fragment cssBytes ceilings are enforced by css-budget-check (pnpm audit:css), not here.",
+    "Runtime-only budget metrics (rscPayloadBytes, TTFB/LCP/INP/CLS, render/memory) are not statically measurable and are not gated by this audit."
+  ]
 }

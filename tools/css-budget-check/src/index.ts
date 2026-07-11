@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type CliOptions, parseArgs } from "../../_shared/args";
+import { loadUnitBudgets } from "../../_shared/budgets";
 import {
   findWorkspaceRoot,
   readJson,
@@ -28,6 +29,25 @@ type CssFinding = {
   value: string;
 };
 
+/**
+ * Per-unit `cssBytes` gate row. The budget side comes from the unit's own
+ * `src/budget.ts` (see `tools/_shared/budgets.ts` — historically those
+ * ceilings had zero consumers because this tool only read a root
+ * `budget.json` that does not exist). The actual side reuses this tool's
+ * existing measurement: the unit's source `.css` files, minified
+ * (lightningcss with a regex fallback), summed — pre-gzip bytes, matching
+ * the scale of the declared fragment ceilings (6-10KB).
+ */
+type UnitCheckRow = {
+  scope: "component" | "fragment" | "page" | "shell";
+  unit: string;
+  metric: "cssBytes";
+  actual: number;
+  budget: number;
+  status: "pass" | "fail";
+  note?: string;
+};
+
 export type CssReport = {
   tool: "css-budget-check";
   status: "pass" | "warn" | "fail";
@@ -44,6 +64,7 @@ export type CssReport = {
     };
   };
   budget: CssBudget;
+  checks: UnitCheckRow[];
   findings: CssFinding[];
 };
 
@@ -118,22 +139,64 @@ export async function runCssBudgetCheck(
             ),
     },
   };
-  const failureCount = Object.entries(budget).filter(([key, value]) => {
-    const actual = metrics[key as keyof CssBudgetMetrics];
-    return (
-      typeof value === "number" && typeof actual === "number" && actual > value
-    );
-  }).length;
+  const checks = await runUnitChecks(root);
+  const failureCount =
+    Object.entries(budget).filter(([key, value]) => {
+      const actual = metrics[key as keyof CssBudgetMetrics];
+      return (
+        typeof value === "number" &&
+        typeof actual === "number" &&
+        actual > value
+      );
+    }).length + checks.filter((check) => check.status === "fail").length;
   const report: CssReport = {
     tool: "css-budget-check",
     status: statusFromCounts(failureCount),
     metrics,
     budget,
+    checks,
     findings,
   };
 
   writeReports(root, "css-report", report, renderMarkdown(report));
   return report;
+}
+
+/**
+ * Gates each unit's own source CSS against the `cssBytes` ceiling declared
+ * in its `src/budget.ts`. Units with a ceiling but no CSS files on disk get
+ * an explicit zero-actual row (inline `<style>`/CSS-in-JS is not counted —
+ * said out loud instead of silently passing).
+ */
+async function runUnitChecks(root: string): Promise<UnitCheckRow[]> {
+  const checks: UnitCheckRow[] = [];
+  for (const unit of await loadUnitBudgets(root)) {
+    if (unit.cssBytes === undefined) {
+      continue;
+    }
+    const files = walkFiles(join(root, unit.dir), (path) =>
+      path.endsWith(".css"),
+    );
+    let actual = 0;
+    for (const file of files) {
+      actual += Buffer.byteLength(
+        await minifyWithLightningFallback(readFileSync(file, "utf8"), file),
+      );
+    }
+    checks.push({
+      scope: unit.scope,
+      unit: unit.name,
+      metric: "cssBytes",
+      actual,
+      budget: unit.cssBytes,
+      status: actual <= unit.cssBytes ? "pass" : "fail",
+      note:
+        files.length === 0
+          ? "no .css files in unit dir; inline/injected styles are not counted"
+          : `${files.length} css file(s), minified bytes`,
+    });
+  }
+  return checks;
 }
 
 function discoverCssFiles(root: string, cssPath?: string): string[] {
@@ -238,10 +301,22 @@ function isGlobalSelector(selector: string): boolean {
 }
 
 function renderMarkdown(report: CssReport): string {
+  const unitRows = report.checks.map(
+    (check) =>
+      `| ${check.scope} | ${check.unit} | ${check.actual} | ${check.budget} | ${check.status} | ${check.note ?? ""} |`,
+  );
   return [
     "# CSS Budget Report",
     "",
     `Status: ${report.status}`,
+    "",
+    "## Per-unit cssBytes (from each unit's src/budget.ts)",
+    "",
+    "| Scope | Unit | Actual | Budget | Status | Note |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...(unitRows.length > 0 ? unitRows : ["| - | - | - | - | - | - |"]),
+    "",
+    "## Global metrics",
     "",
     "| Metric | Actual | Budget |",
     "| --- | --- | --- |",

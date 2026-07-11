@@ -14,5 +14,196 @@
     }
   },
   "budget": {},
+  "checks": [
+    {
+      "scope": "fragment",
+      "unit": "account-bar",
+      "metric": "cssBytes",
+      "actual": 1346,
+      "budget": 6000,
+      "status": "pass",
+      "note": "1 css file(s), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "chart-panel",
+      "metric": "cssBytes",
+      "actual": 2424,
+      "budget": 10000,
+      "status": "pass",
+      "note": "1 css file(s), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "funding-bar",
+      "metric": "cssBytes",
+      "actual": 1814,
+      "budget": 10000,
+      "status": "pass",
+      "note": "1 css file(s), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "market-header",
+      "metric": "cssBytes",
+      "actual": 1205,
+      "budget": 8000,
+      "status": "pass",
+      "note": "1 css file(s), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "markets-table",
+      "metric": "cssBytes",
+      "actual": 2788,
+      "budget": 10000,
+      "status": "pass",
+      "note": "1 css file(s), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "open-orders",
+      "metric": "cssBytes",
+      "actual": 1346,
+      "budget": 10000,
+      "status": "pass",
+      "note": "1 css file(s), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "order-book",
+      "metric": "cssBytes",
+      "actual": 2176,
+      "budget": 10000,
+      "status": "pass",
+      "note": "1 css file(s), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "order-form",
+      "metric": "cssBytes",
+      "actual": 2446,
+      "budget": 10000,
+      "status": "pass",
+      "note": "1 css file(s), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "pnl-chart",
+      "metric": "cssBytes",
+      "actual": 2914,
+      "budget": 10000,
+      "status": "pass",
+      "note": "1 css file(s), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "portfolio-summary",
+      "metric": "cssBytes",
+      "actual": 3553,
+      "budget": 10000,
+      "status": "pass",
+      "note": "1 css file(s), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "positions-table",
+      "metric": "cssBytes",
+      "actual": 1740,
+      "budget": 10000,
+      "status": "pass",
+      "note": "1 css file(s), minified bytes"
+    },
+    {
+      "scope": "fragment",
+      "unit": "promotion-banner",
+      "metric": "cssBytes",
+      "actual": 0,
+      "budget": 10000,
+      "status": "pass",
+      "note": "no .css files in unit dir; inline/injected styles are not counted"
+    },
+    {
+      "scope": "fragment",
+      "unit": "recommendation-widget",
+      "metric": "cssBytes",
+      "actual": 0,
+      "budget": 10000,
+      "status": "pass",
+      "note": "no .css files in unit dir; inline/injected styles are not counted"
+    },
+    {
+      "scope": "fragment",
+      "unit": "trades-feed",
+      "metric": "cssBytes",
+      "actual": 1126,
+      "budget": 10000,
+      "status": "pass",
+      "note": "1 css file(s), minified bytes"
+    },
+    {
+      "scope": "page",
+      "unit": "page-home",
+      "metric": "cssBytes",
+      "actual": 0,
+      "budget": 50000,
+      "status": "pass",
+      "note": "no .css files in unit dir; inline/injected styles are not counted"
+    },
+    {
+      "scope": "page",
+      "unit": "page-markets",
+      "metric": "cssBytes",
+      "actual": 0,
+      "budget": 50000,
+      "status": "pass",
+      "note": "no .css files in unit dir; inline/injected styles are not counted"
+    },
+    {
+      "scope": "page",
+      "unit": "page-portfolio",
+      "metric": "cssBytes",
+      "actual": 0,
+      "budget": 50000,
+      "status": "pass",
+      "note": "no .css files in unit dir; inline/injected styles are not counted"
+    },
+    {
+      "scope": "page",
+      "unit": "page-product",
+      "metric": "cssBytes",
+      "actual": 0,
+      "budget": 50000,
+      "status": "pass",
+      "note": "no .css files in unit dir; inline/injected styles are not counted"
+    },
+    {
+      "scope": "page",
+      "unit": "page-referrals",
+      "metric": "cssBytes",
+      "actual": 0,
+      "budget": 50000,
+      "status": "pass",
+      "note": "no .css files in unit dir; inline/injected styles are not counted"
+    },
+    {
+      "scope": "page",
+      "unit": "page-trade",
+      "metric": "cssBytes",
+      "actual": 0,
+      "budget": 50000,
+      "status": "pass",
+      "note": "no .css files in unit dir; inline/injected styles are not counted"
+    },
+    {
+      "scope": "page",
+      "unit": "page-vaults",
+      "metric": "cssBytes",
+      "actual": 0,
+      "budget": 50000,
+      "status": "pass",
+      "note": "no .css files in unit dir; inline/injected styles are not counted"
+    }
+  ],
   "findings": []
 }

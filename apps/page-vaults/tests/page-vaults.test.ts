@@ -41,9 +41,13 @@ describe("page-vaults", () => {
     });
   });
 
-  it("declares a static page budget: 0 client JS, within 50KB CSS", () => {
+  it("declares a static page budget: framework-baseline JS ceiling, within 50KB CSS", () => {
     expect(vaultsPageBudget.scope).toBe("page");
-    expect(vaultsPageBudget.jsBytes).toBe(0);
+    // No page-owned client islands: the ceiling is the measured Next
+    // app-router first-load baseline (~102.5KB gzip) plus slack — see the
+    // calibration comment in src/budget.ts (audit:bundle gates the real
+    // number).
+    expect(vaultsPageBudget.jsBytes).toBe(110000);
     expect(vaultsPageBudget.cssBytes).toBeLessThanOrEqual(50000);
   });
 
