@@ -19,7 +19,14 @@ export const marketsPageManifest = {
   //  - fallback-isolation — "marketsTable" is `required: true` and
   //    executeFragmentSlots runs with `onRequiredFailure: "fallback"`, so an
   //    unavailable fragment service degrades the page instead of failing it.
-  demonstrates: ["cached-ssr-freshness", "fallback-isolation"],
+  //  - streaming:suspense-per-slot — streamMarketsFragmentSlots +
+  //    per-slot <Suspense><FragmentSlotStream/> boundaries in
+  //    app/markets/page.tsx.
+  demonstrates: [
+    "cached-ssr-freshness",
+    "fallback-isolation",
+    "streaming:suspense-per-slot",
+  ],
   slots: marketsPageSlots,
   budget: marketsPageBudget,
 } as const;

@@ -14,15 +14,20 @@ export const productPageManifest = {
     description: "Server-rendered product detail page with structured data.",
   },
   // Verified against src/manifest.slots.json + src/fragmentSlots.ts:
-  //  - ttl-cache-freshness — the "promotion" slot uses the "isr" strategy
-  //    (deprecated alias of "ttl-cache", normalizeRenderStrategy() in
-  //    packages/runtime; @mvp/runtime caches its response by cachePolicy.ttl
-  //    = 300s). Literal spelling is scheduled to change to "ttl-cache" by
-  //    the isr-literal-codemod task; the capability itself is real today.
+  //  - ttl-cache-freshness — the "promotion" slot uses the "ttl-cache"
+  //    strategy (@mvp/runtime caches its response by cachePolicy.ttl
+  //    = 300s).
   //  - reserved-slots — the "price-panel" slot is marked `reserved: true`,
   //    excluded from fragmentSlots.gen.ts by packages/registry/src/codegen.ts,
   //    and hand-rendered as a static aside in app/product/[id]/page.tsx.
-  demonstrates: ["ttl-cache-freshness", "reserved-slots"],
+  //  - streaming:suspense-per-slot — streamProductFragmentSlots +
+  //    per-slot <Suspense><FragmentSlotStream/> boundaries in
+  //    app/product/[id]/page.tsx.
+  demonstrates: [
+    "ttl-cache-freshness",
+    "reserved-slots",
+    "streaming:suspense-per-slot",
+  ],
   slots: productPageSlots,
   budget: productPageBudget,
 } as const;

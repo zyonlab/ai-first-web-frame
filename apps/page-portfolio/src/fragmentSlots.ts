@@ -113,8 +113,9 @@ export function buildPortfolioSlotDefinitions(
  *   cached, so they render fresh per request. Required: it is the page headline,
  *   so its failure reports the page degraded/unhealthy rather than silently
  *   empty.
- * - `pnlChart` (fragment `pnl-chart`) — `isr`: the cumulative PnL series is
- *   cache-friendly (revalidated on an interval), so it renders via ISR.
+ * - `pnlChart` (fragment `pnl-chart`) — `ttl-cache`: the cumulative PnL series
+ *   is cache-friendly (revalidated on an interval), so it renders via a
+ *   TTL-cached response.
  *   Optional: a missing chart degrades to a readable placeholder without
  *   failing the page.
  *

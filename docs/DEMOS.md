@@ -14,9 +14,9 @@ plan doc — as of this writing. Re-verify before trusting a stale copy.
 | Page | Route | `demonstrates` | Key files |
 | --- | --- | --- | --- |
 | `page-home` | `/` | `composition:static+cached-ssr+dynamic-ssr`, `streaming:suspense-per-slot`, `fallback-isolation`, `trace-panel` | `apps/page-home/src/manifest.slots.json`, `apps/page-home/src/fragmentSlots.ts` (`streamHomeFragmentSlots`), `apps/page-home/app/page.tsx` |
-| `page-product` | `/product/:id` | `ttl-cache-freshness`, `reserved-slots` | `apps/page-product/src/manifest.slots.json` (`promotion` slot), `apps/page-product/src/fragmentSlots.ts`, `apps/page-product/app/product/[id]/page.tsx` (hand-rendered `price-panel` aside) |
-| `page-markets` | `/markets` | `cached-ssr-freshness`, `fallback-isolation` | `apps/page-markets/src/manifest.slots.json` (`marketsTable` slot), `apps/page-markets/src/fragmentSlots.ts` |
-| `page-portfolio` | `/portfolio` | `private-data-dynamic-ssr`, `ttl-cache-freshness`, `fallback-isolation` | `apps/page-portfolio/src/manifest.slots.json` (`portfolioSummary`, `pnlChart` slots), `apps/page-portfolio/src/fragmentSlots.ts` |
+| `page-product` | `/product/:id` | `ttl-cache-freshness`, `reserved-slots`, `streaming:suspense-per-slot` | `apps/page-product/src/manifest.slots.json` (`promotion` slot), `apps/page-product/src/fragmentSlots.ts` (`streamProductFragmentSlots`), `apps/page-product/app/product/[id]/page.tsx` (hand-rendered `price-panel` aside) |
+| `page-markets` | `/markets` | `cached-ssr-freshness`, `fallback-isolation`, `streaming:suspense-per-slot` | `apps/page-markets/src/manifest.slots.json` (`marketsTable` slot), `apps/page-markets/src/fragmentSlots.ts` (`streamMarketsFragmentSlots`), `apps/page-markets/app/markets/page.tsx` |
+| `page-portfolio` | `/portfolio` | `private-data-dynamic-ssr`, `ttl-cache-freshness`, `fallback-isolation`, `streaming:suspense-per-slot` | `apps/page-portfolio/src/manifest.slots.json` (`portfolioSummary`, `pnlChart` slots), `apps/page-portfolio/src/fragmentSlots.ts` (`streamPortfolioFragmentSlots`), `apps/page-portfolio/app/portfolio/page.tsx` |
 | `page-trade` | `/trade/:symbol` | `dag-scheduling`, `cross-island-interaction:typed-bus`, `island-version-handshake`, `layout-hints`, `runtime-island-assets:spike` | `apps/page-trade/src/fragmentSlots.ts`, `apps/page-trade/src/hydrate.tsx`, `apps/page-trade/src/hydrateSpike.tsx`, `apps/page-trade/src/spikeImportMap.ts` |
 
 ## Capability definitions
@@ -29,14 +29,12 @@ plan doc — as of this writing. Re-verify before trusting a stale copy.
   short `cachePolicy.ttl` for a near-realtime, still-cacheable read
   (`page-markets`'s `marketsTable`, ttl 5s).
 - **`ttl-cache-freshness`** — a slot caches its response by
-  `cachePolicy.ttl` under the `ttl-cache` strategy family. Two slots
-  (`page-product`'s `promotion`, `page-portfolio`'s `pnlChart`) currently
-  spell this strategy as the deprecated `"isr"` alias, which
-  `normalizeRenderStrategy()` (`packages/contracts/src/index.ts`) and the
-  scheduler's cache-key logic (`packages/runtime/src/index.ts`) already
-  treat as identical to `"ttl-cache"`. The literal string is scheduled to
-  change to `"ttl-cache"` by a separate task (`fix/isr-literal-codemod`);
-  the caching behavior itself is real today regardless of spelling.
+  `cachePolicy.ttl` under the `ttl-cache` strategy family (`page-product`'s
+  `promotion`, ttl 300s; `page-portfolio`'s `pnlChart`, ttl 60s). Both
+  slots spell the strategy as `"ttl-cache"` (the deprecated `"isr"` alias
+  was codemodded away; `normalizeRenderStrategy()` in
+  `packages/contracts/src/index.ts` still accepts the alias for backwards
+  compatibility).
 - **`private-data-dynamic-ssr`** — a required slot renders `dynamic-ssr`
   with `cachePolicy.ttl: 0` because its data is user-private and must never
   be cached (`page-portfolio`'s `portfolioSummary`: equity, margin usage,
@@ -53,10 +51,16 @@ plan doc — as of this writing. Re-verify before trusting a stale copy.
 - **`streaming:suspense-per-slot`** — the page uses `streamFragmentSlots`
   (not the blocking `executeFragmentSlots`) and wraps each slot in its own
   `<Suspense><FragmentSlotStream/></Suspense>` boundary so slots flush to
-  the client independently as they settle. Currently only `page-home`; the
-  other four pages still use the blocking barrier API
-  (`fetch*FragmentSlots` + `executeFragmentSlots`) — rolling streaming out
-  to them is tracked separately (`feat/streaming-rollout`, Wave 3).
+  the client independently as they settle. Present on four of the five
+  pages: `page-home`, `page-product`, `page-markets`, `page-portfolio`
+  (each exports a `stream*FragmentSlots` entry point built on
+  `streamFragmentSlots`; rolled out by `feat/streaming-rollout`, W3-A,
+  PR #14). The one deliberate exclusion is `page-trade`, which stays on
+  the blocking barrier API (`fetchTradeFragmentSlots` +
+  `executeFragmentSlots`) because its `trade-nav.test.tsx` renders the
+  page through plain `react-dom/server`, which cannot execute async
+  Server Components outside Next's real RSC runtime (rationale recorded
+  in the W3-A section of `docs/REMEDIATION_PLAN.md` and PR #14).
 - **`trace-panel`** — a rendered `<section data-request-trace="...">` (or,
   for `page-trade`, `<TraceDrawer>`) exposes the per-request dependency-graph
   trace log built by `@mvp/observability`'s `createRequestTrace`. Verified
