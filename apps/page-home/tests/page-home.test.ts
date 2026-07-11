@@ -65,9 +65,9 @@ describe("page-home", () => {
       "http://localhost:4202/render",
       "http://localhost:4201/render",
     ]);
-    expect(slots.staticEditorial).toContain("Static SSG sample");
-    expect(slots.promotion).toContain("promotion-banner live");
-    expect(slots.recommendations).toContain("recommendation-widget live");
+    expect(slots.html.staticEditorial).toContain("Static SSG sample");
+    expect(slots.html.promotion).toContain("promotion-banner live");
+    expect(slots.html.recommendations).toContain("recommendation-widget live");
     expect(slots.diagnostics.staticEditorial).toMatchObject({
       source: "static",
       strategy: "static",
@@ -114,7 +114,7 @@ describe("page-home", () => {
     expect(slots.scheduler.health).toBe("degraded");
     expect(slots.diagnostics.promotion.status).toBe("ok");
     expect(slots.diagnostics.recommendations.status).toBe("fallback");
-    expect(slots.recommendations).toContain("data-fallback");
+    expect(slots.html.recommendations).toContain("data-fallback");
   });
 
   it("reports unhealthy when the required promotion slot fails", async () => {
@@ -169,8 +169,8 @@ describe("page-home", () => {
       timeoutMs: 5,
     });
 
-    expect(slots.promotion).toContain("data-fallback");
-    expect(slots.recommendations).toContain("data-fallback");
+    expect(slots.html.promotion).toContain("data-fallback");
+    expect(slots.html.recommendations).toContain("data-fallback");
   });
 
   it("fragment failure keeps SEO core content", () => {
