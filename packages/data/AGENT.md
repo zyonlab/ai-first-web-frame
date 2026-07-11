@@ -108,12 +108,17 @@ import { createDataClient, defineDataSource, DataDependencyError } from "@mvp/da
 import { createRequestContext } from "@mvp/request-context";
 import type { DataDependency } from "@mvp/contracts";
 
+// `defineDataSource` parses this against `DataDependencySchema` at
+// definition time — an incomplete or contradictory declaration throws.
 const recommendationsDependency: DataDependency = {
   id: "recommendations",
+  owner: "page",
+  source: "api",
   freshness: "near-realtime",
   privacy: "user-segment",
-  cachePolicy: { ttl: 30, tags: ["recommendations"] },
+  cachePolicy: { ttl: 30, tags: ["recommendations"], vary: ["tenant", "experiment", "props"] },
   invalidationTags: ["recommendations"],
+  dependsOn: [],
 };
 
 const recommendationsSource = defineDataSource({

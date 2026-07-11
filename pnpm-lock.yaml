@@ -1044,6 +1044,9 @@ importers:
       '@mvp/runtime':
         specifier: workspace:*
         version: link:../runtime
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
     devDependencies:
       tsdown:
         specifier: ^0.11.0
@@ -1076,6 +1079,10 @@ importers:
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/routes:
+    dependencies:
+      '@mvp/contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       tsdown:
         specifier: ^0.11.0
@@ -1215,7 +1222,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/optimizer
 
-  tools/release-tools: {}
+  tools/release-tools:
+    dependencies:
+      '@mvp/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
 
   tools/server-client-boundary-check: {}
 

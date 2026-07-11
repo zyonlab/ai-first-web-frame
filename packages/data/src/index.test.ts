@@ -63,6 +63,26 @@ const statsDependency: DataDependency = {
 };
 
 describe("@mvp/data", () => {
+  it("rejects a dependency violating DataDependencySchema invariants at definition time", () => {
+    // M2: the superRefine rules ("subscription sources must be realtime", ...)
+    // used to be type-level only; defineDataSource now actually runs them.
+    expect(() =>
+      defineDataSource({
+        id: "broken-subscription",
+        dependency: {
+          id: "broken-subscription",
+          owner: "client-island",
+          source: "subscription",
+          freshness: "static",
+          privacy: "public",
+          invalidationTags: [],
+          dependsOn: [],
+        },
+        load: async () => ({}),
+      }),
+    ).toThrow(/DataDependencySchema.*subscription sources must be realtime/);
+  });
+
   it("dedupes concurrent SSR reads with the same dependency key", async () => {
     const load = vi.fn(async () => ({ id: "123", title: "Pack" }));
     const source = defineDataSource({

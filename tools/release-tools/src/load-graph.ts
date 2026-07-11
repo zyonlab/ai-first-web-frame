@@ -8,6 +8,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { FragmentManifestSchema } from "@mvp/contracts";
 import {
   buildUnitGraph,
   type FragmentManifestLike,
@@ -32,7 +33,44 @@ function readMvpDeps(pkgJsonPath: string): string[] {
   }
 }
 
-/** Loads one fragment's `manifest.ts` object (or null if absent). */
+/**
+ * Fragment manifests carry repo-convention fields the contracts schema does
+ * not model (`layoutHint`, `consumes`, `produces`, `dataDependencies`,
+ * `endpoint`, `metadata`, ...). `.passthrough()` keeps them out of scope here:
+ * the contract fields are validated hard, everything extra rides along
+ * untouched. Adding those fields to `@mvp/contracts` is a separate decision.
+ */
+const FragmentManifestLoaderSchema = FragmentManifestSchema.passthrough();
+
+/**
+ * Validates a found manifest object against `FragmentManifestSchema` (H1).
+ * A malformed manifest must kill graph construction loudly — the graph feeds
+ * the affected engine and CI matrices, so silently accepting a duck-typed
+ * object turns one bad manifest into garbage downstream.
+ */
+function parseFragmentManifest(
+  fragment: string,
+  manifest: FragmentManifestLike,
+): FragmentManifestLike {
+  const result = FragmentManifestLoaderSchema.safeParse(manifest);
+  if (!result.success) {
+    const issues = result.error.issues
+      .slice(0, 3)
+      .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+      .join("; ");
+    throw new Error(
+      `FragmentManifestSchema: fragment "${fragment}" has an invalid manifest.ts — ${issues}`,
+    );
+  }
+  // Return the original object (not the parse output) so unknown convention
+  // fields and the exact shapes of valid manifests reach the graph unchanged.
+  return manifest;
+}
+
+/**
+ * Loads one fragment's `manifest.ts` object (or null if absent).
+ * Throws with the schema name if the manifest fails `FragmentManifestSchema`.
+ */
 export async function loadFragmentManifest(
   root: string,
   name: string,
@@ -43,14 +81,16 @@ export async function loadFragmentManifest(
     string,
     unknown
   >;
-  return (
-    (Object.values(mod).find(
-      (v): v is FragmentManifestLike =>
-        typeof v === "object" &&
-        v !== null &&
-        typeof (v as { name?: unknown }).name === "string",
-    ) as FragmentManifestLike | undefined) ?? null
+  // The fragment exports `<camelName>Manifest`; pick the object literal that
+  // looks like a manifest (has a string `name`).
+  const manifest = Object.values(mod).find(
+    (v): v is FragmentManifestLike =>
+      typeof v === "object" &&
+      v !== null &&
+      typeof (v as { name?: unknown }).name === "string",
   );
+  if (!manifest) return null;
+  return parseFragmentManifest(name, manifest);
 }
 
 /** Loads every fragment's `manifest.ts` and normalizes it to the graph shape. */
@@ -59,20 +99,7 @@ async function loadFragments(root: string): Promise<FragmentManifestLike[]> {
   if (!existsSync(dir)) return [];
   const out: FragmentManifestLike[] = [];
   for (const name of readdirSync(dir)) {
-    const manifestPath = join(dir, name, "src", "manifest.ts");
-    if (!existsSync(manifestPath)) continue;
-    const mod = (await import(pathToFileURL(manifestPath).href)) as Record<
-      string,
-      unknown
-    >;
-    // The fragment exports `<camelName>Manifest`; pick the object literal that
-    // looks like a manifest (has a string `name`).
-    const manifest = Object.values(mod).find(
-      (v): v is FragmentManifestLike =>
-        typeof v === "object" &&
-        v !== null &&
-        typeof (v as { name?: unknown }).name === "string",
-    );
+    const manifest = await loadFragmentManifest(root, name);
     if (manifest)
       out.push({
         ...manifest,
