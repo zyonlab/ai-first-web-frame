@@ -46,7 +46,7 @@ it easy to *install* into an agent's MCP config, not a repo-independent tool.
 | `mount_slot` | `{ page, slot?, fragment?, strategy?, channel?, timeoutMs?, remove?, check? }` | `scripts/mount-slot.mts` |
 | `promote_fragment` | `{ name }` | `scripts/promote-fragment.mts` |
 | `rollback_fragment` | `{ name, to? }` | `scripts/rollback-fragment.mts` |
-| `affected` | `{ base?, head? }` | `scripts/affected.mts --list` |
+| `affected` | `{ base?, head? }` | `scripts/affected-graph.mts --json` |
 
 - **`mount_slot`'s `check` flag**: `slot`/`fragment` are only required when
   neither `remove` nor `check` is set — `{ page, check: true }` alone is a
@@ -61,8 +61,18 @@ it easy to *install* into an agent's MCP config, not a repo-independent tool.
   "page" | "component" | "data-source" | "slice"`.
 - **`affected_units`**: runs `loadUnitGraph(root)` then `affectedClosure(graph,
   changed)` — also in-process; `changed` is a list of unit ids (not file
-  paths — use `affected`/`scripts/affected.mts` to go from a git diff to unit
-  ids first).
+  paths — use `affected`/`scripts/affected-graph.mts` to go from a git diff to
+  unit ids first).
+- **`affected`**: a lifecycle (subprocess) tool, unlike `query_registry` and
+  `affected_units` above — it shells to `scripts/affected-graph.mts --json
+  [--base <ref>] [--head <ref>]`, the same graph engine `.github/workflows/ci.yml`
+  and `scripts/deploy-affected.mts` use, so a given diff always produces one
+  answer. Result JSON: `{ status, seeds, global, affectedUnits, deployables,
+  affectedPages }` — `global: true` means a shared/unresolvable path forced a
+  full rebuild. Prefer `affected` when you have a git diff (or want the repo's
+  current working-tree diff, the default with no input) and `affected_units`
+  when you already know the changed unit ids and just want the reverse-graph
+  closure.
 
 ### Transport (`src/server.ts`)
 

@@ -136,6 +136,27 @@ describe("lifecycle arg mapping (pure)", () => {
       script("rollback_fragment").args({ name: "order-book", to: "0.1.0" }),
     ).toEqual(["--name", "order-book", "--to", "0.1.0"]);
   });
+
+  it("affected shells to the graph engine (scripts/affected-graph.mts), not the retired heuristic engine", () => {
+    const tool = script("affected");
+    expect(tool.command).toEqual([
+      "exec",
+      "tsx",
+      "scripts/affected-graph.mts",
+      "--json",
+    ]);
+    expect(tool.args({})).toEqual([]);
+    expect(tool.args({ base: "origin/main" })).toEqual([
+      "--base",
+      "origin/main",
+    ]);
+    expect(tool.args({ base: "origin/main", head: "HEAD" })).toEqual([
+      "--base",
+      "origin/main",
+      "--head",
+      "HEAD",
+    ]);
+  });
 });
 
 describe("query_registry handler (in-process, real repo)", () => {
