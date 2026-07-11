@@ -60,7 +60,9 @@ and any build-frozen client code is detected, not silent.
   never silently mis-hydrates (today: unguarded skew window).
 - C3. (Stretch, decide at P3 gate) island JS resolved at runtime via import map +
   versioned asset URLs from the registry, making island changes independently
-  shippable too.
+  shippable too. **Decided 2026-07-11: no-go for this cycle** — mechanism
+  proven by the merged spike (PR #1), full rollout deferred until real
+  island-only-ship demand exists; see the decision record in §4.3.
 
 ## 1. Findings that force this refactor (condensed)
 
@@ -422,9 +424,27 @@ regex-heuristic check (`island-bus-without-escape-hatch`) fails any
 `fragments/*/src/island.tsx` that calls `createInteractionBus` without also
 declaring a `bus?`/`props.bus` escape hatch, preventing recurrence.
 
-**Status: item 3 (C3) — spike, validated on one fragment, merged to main
-as PR #1 (`spike/p3-c3-island-import-map`); the go/no-go decision on a full
-rollout is still open.** A risk-controlled
+**Status: item 3 (C3) — spike validated on one fragment, merged to main as
+PR #1 (`spike/p3-c3-island-import-map`). Go/no-go decided 2026-07-11:
+NO-GO for this cycle.** The plan's own gate criterion was "real demand for
+island-only ships", and none exists: the repo has exactly four React
+islands, all demo-owned with no external consumers, and every island change
+to date shipped comfortably inside a page rebuild. Goal C's definition of
+done is already met without C3 — C1 gives SSR/patch-only fragments
+zero-rebuild ships, and C2 turns island version skew into explicit
+degradation rather than breakage. Against that absent demand stands the
+known, non-trivial rollout cost (items (a)–(f) below: a dependency-graph-
+driven vendor-chunk builder, immutable versioned asset URLs, scoped CORS,
+real-artifact budget wiring, an `assetsUrl` env-override story, and an
+import-map caching policy), and §8's guardrail against building
+distribution work that blocks no goal's definition of done. **Reopen
+trigger:** a concrete island-only-ship need — an island hotfix that must
+go live without rebuilding consumer pages, or an external page consuming
+registry-pinned islands at runtime. When that happens, the merged spike is
+the implementation blueprint and items (a)–(f) are the work plan; nothing
+needs re-discovery. The spike stays on main as reference: additive,
+sandbox-mounted, order-form only, with the production static-import path
+untouched.
 spike, scoped to exactly one React island (`order-form`), proved the
 mechanism works end to end in a real browser without touching the other
 three islands' production (build-time static import) path. Findings, in the
@@ -656,7 +676,7 @@ publisher ACL, hard gates, HTTP failure isolation, lifecycle CLI).
 
 | Mature source | Capability | Decision | Where |
 | --- | --- | --- | --- |
-| Podium | podlet manifest with runtime-resolved, versioned asset URLs | **Adopt** (C3) | §4.3.3 |
+| Podium | podlet manifest with runtime-resolved, versioned asset URLs | **Spiked, then no-go for this cycle** (C3 decision, 2026-07-11) | §4.3.3 |
 | Podium | MessageBus | **Skip** — ours is typed + ACL'd; theirs is weaker | — |
 | OpenComponents | immutable, versioned artifacts in a registry | **Adapt**: enforce `versions[x]` immutability in `@mvp/registry` mutations (append-only, no overwrite) | §2.2, §4.2 |
 | OpenComponents | registry as an HTTP service | **Defer** — file registry + env overrides suffice until multi-repo consumers exist | — |
@@ -744,7 +764,7 @@ triggers GLOBAL, deploy gates).
 | **P0 Truth & safety** | §3.4 drift check*, §4.1 narrow affected*, §4.2 atomic writes, §3.5 mount-slot hardening, `/render` parse + channel enum + fallback metadata, `isr` rename | A2 A3 A4, B1 | verify green; drift impossible to reintroduce silently |
 | **P1 Re-layering** | §2 moves + layering audit + registry into workspace | B2 B3, unblocks npm | zero domain tokens in `packages/`; affected tests updated |
 | **P2 Manifest-driven composition** | §3 codegen + `<FragmentSlot>` | **A1** | next fragment mounts with 0 hand edits |
-| **P3 Island runtime** | §4.3 handshake + bus unification; C3 go/no-go | C2 (C3?) | skew produces explicit degradation event, not breakage |
+| **P3 Island runtime** | §4.3 handshake + bus unification; C3 go/no-go | C2 (C3: spiked, no-go) | skew produces explicit degradation event, not breakage |
 | **P4 Rendering** | §4.4 streaming/SSG/PPR; generalized `verify:runtime` wired into `deploy-affected` | C-freshness, A | home streams; runtime gate covers all pages from manifests |
 | **P5 Distribution** | §2.3 changesets + publish, §6 demo acceptance, §7 docs + MCP | product | dry-run `npm pack` for all packages; docs-test green; demo matrix complete |
 
