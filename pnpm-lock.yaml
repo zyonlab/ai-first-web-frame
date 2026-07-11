@@ -988,6 +988,10 @@ importers:
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
   packages/islands:
+    dependencies:
+      '@mvp/contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       react:
         specifier: ^18.3.1

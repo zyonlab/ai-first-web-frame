@@ -1,3 +1,4 @@
+import { IslandSnapshotSchema } from "@mvp/contracts";
 import { type ComponentType, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
@@ -96,8 +97,18 @@ export interface SnapshotMismatchInfo {
   expected: { version?: string; contractHash?: string };
   /** What the live SSR snapshot actually carried. */
   actual: { fragment?: string; version?: string; contractHash?: string };
-  /** Which comparison failed. */
-  reason: "version-mismatch" | "contract-hash-mismatch";
+  /**
+   * Which comparison failed. `"invalid-snapshot"` is the A2 case (README
+   * goal "never silent fallback"): the inline snapshot JSON was unparseable
+   * or failed `IslandSnapshotSchema` validation (`@mvp/contracts`) — it is
+   * not a version disagreement, just a corrupted/malformed payload.
+   */
+  reason: "version-mismatch" | "contract-hash-mismatch" | "invalid-snapshot";
+  /**
+   * Present only when `reason` is `"invalid-snapshot"`: the JSON-parse error
+   * or Zod validation issues that failed, for telemetry/debugging.
+   */
+  issues?: string[];
 }
 
 /**
@@ -159,48 +170,71 @@ export function getIsland(name: string): IslandComponent<never> | undefined {
   return registry.get(name);
 }
 
+/** Reads the raw text of the inline JSON snapshot script, if any is present. */
+function readSnapshotScriptText(el: Element): string | undefined {
+  const script = el.querySelector(
+    'script[type="application/json"]',
+  ) as HTMLScriptElement | null;
+  return script?.textContent ?? undefined;
+}
+
+/**
+ * A2 (README goal "never silent fallback"): parses + validates raw inline
+ * snapshot JSON against `IslandSnapshotSchema` (`@mvp/contracts`). Unlike
+ * {@link readIslandSnapshot}, this reports WHY a snapshot is invalid instead
+ * of silently degrading — {@link mountIsland} uses it to decide whether to
+ * skip hydration entirely (mirroring the C2 version-mismatch path) rather
+ * than hydrate a component with an unvalidated/empty prop shape.
+ */
+function parseIslandSnapshotText<TProps>(
+  rawText: string,
+):
+  | { ok: true; snapshot: IslandSnapshot<TProps> }
+  | { ok: false; issues: string[] } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    return {
+      ok: false,
+      issues: [
+        `invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
+      ],
+    };
+  }
+  const result = IslandSnapshotSchema.safeParse(parsed);
+  if (!result.success) {
+    return {
+      ok: false,
+      issues: result.error.issues.map(
+        (issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`,
+      ),
+    };
+  }
+  return { ok: true, snapshot: result.data as IslandSnapshot<TProps> };
+}
+
 /**
  * Reads the inline `<script type="application/json">` snapshot adjacent to (a
- * child of) a mount node. Missing or malformed JSON degrades to an empty
- * snapshot so a broken snapshot never crashes hydration — the SSR first paint
- * simply stays static.
+ * child of) a mount node. No script present, or a script whose JSON is
+ * malformed/invalid, degrades to an empty snapshot — this function never
+ * throws, matching its pre-A2 contract for callers that just want a
+ * best-effort read.
+ *
+ * {@link mountIsland} does NOT rely on this lenient fallback for hydration
+ * decisions: it calls {@link parseIslandSnapshotText} itself first and skips
+ * hydration outright on an invalid snapshot (A2), only falling through to a
+ * validated snapshot here once that check has passed.
  */
 export function readIslandSnapshot<TProps = Record<string, unknown>>(
   el: Element,
 ): IslandSnapshot<TProps> {
-  const script = el.querySelector(
-    'script[type="application/json"]',
-  ) as HTMLScriptElement | null;
-  if (!script?.textContent) {
+  const rawText = readSnapshotScriptText(el);
+  if (rawText === undefined) {
     return { props: {} as TProps };
   }
-  try {
-    const parsed = JSON.parse(script.textContent) as unknown;
-    if (parsed && typeof parsed === "object") {
-      const record = parsed as {
-        props?: unknown;
-        slice?: unknown;
-        fragment?: unknown;
-        version?: unknown;
-        contractHash?: unknown;
-      };
-      return {
-        props: (record.props ?? {}) as TProps,
-        slice: typeof record.slice === "string" ? record.slice : undefined,
-        fragment:
-          typeof record.fragment === "string" ? record.fragment : undefined,
-        version:
-          typeof record.version === "string" ? record.version : undefined,
-        contractHash:
-          typeof record.contractHash === "string"
-            ? record.contractHash
-            : undefined,
-      };
-    }
-  } catch {
-    // fall through to the empty snapshot
-  }
-  return { props: {} as TProps };
+  const result = parseIslandSnapshotText<TProps>(rawText);
+  return result.ok ? result.snapshot : { props: {} as TProps };
 }
 
 /**
@@ -277,6 +311,15 @@ function detectSnapshotMismatch(
  * mismatch is reported via `console.warn` (always) and the
  * `configureIslandRuntime` hook (if set), then a no-op handle is returned so
  * callers never need to null-check.
+ *
+ * A2 snapshot validation: before any of the above, the raw inline snapshot
+ * JSON (if present) is parsed and validated against `IslandSnapshotSchema`
+ * (`@mvp/contracts`). A snapshot that is unparseable JSON, not an object, or
+ * has a field of the wrong type is reported via the SAME skip-hydration path
+ * as a C2 mismatch (`reason: "invalid-snapshot"`) — never silently hydrated
+ * with empty/garbage props. A snapshot that is simply missing optional
+ * fields (e.g. no `version` — an old, non-participating fragment) is NOT
+ * invalid and hydrates exactly as before.
  */
 export function mountIsland<TProps = Record<string, unknown>>(
   el: HTMLElement,
@@ -292,24 +335,52 @@ export function mountIsland<TProps = Record<string, unknown>>(
   if (!component) {
     throw new Error(`mountIsland: no registered island named "${name}"`);
   }
-  const snapshot = readIslandSnapshot<TProps>(el);
 
-  const mismatch = detectSnapshotMismatch(name, snapshot);
-  if (mismatch) {
-    console.warn(
-      `[@mvp/islands] snapshot mismatch for island "${name}" (fragment ` +
-        `"${mismatch.actual.fragment ?? "unknown"}"): expected version ` +
-        `"${mismatch.expected.version}", got "${mismatch.actual.version}" ` +
-        `(${mismatch.reason}). Skipping hydration; the SSR HTML remains the ` +
-        "static final state.",
-      mismatch,
-    );
-    mismatchHandler?.(mismatch);
+  const skipHydration = (
+    info: SnapshotMismatchInfo,
+    message: string,
+  ): IslandHandle => {
+    console.warn(`[@mvp/islands] ${message}`, info);
+    mismatchHandler?.(info);
     return {
       unmount() {
         // No React root was ever created for a mismatched/skipped island.
       },
     };
+  };
+
+  const rawText = readSnapshotScriptText(el);
+  let snapshot: IslandSnapshot<TProps>;
+  if (rawText === undefined) {
+    snapshot = { props: {} as TProps };
+  } else {
+    const parsed = parseIslandSnapshotText<TProps>(rawText);
+    if (!parsed.ok) {
+      return skipHydration(
+        {
+          island: name,
+          expected: {},
+          actual: {},
+          reason: "invalid-snapshot",
+          issues: parsed.issues,
+        },
+        `invalid snapshot for island "${name}": ${parsed.issues.join("; ")}. ` +
+          "Skipping hydration; the SSR HTML remains the static final state.",
+      );
+    }
+    snapshot = parsed.snapshot;
+  }
+
+  const mismatch = detectSnapshotMismatch(name, snapshot);
+  if (mismatch) {
+    return skipHydration(
+      mismatch,
+      `snapshot mismatch for island "${name}" (fragment ` +
+        `"${mismatch.actual.fragment ?? "unknown"}"): expected version ` +
+        `"${mismatch.expected.version}", got "${mismatch.actual.version}" ` +
+        `(${mismatch.reason}). Skipping hydration; the SSR HTML remains the ` +
+        "static final state.",
+    );
   }
 
   const props = opts.props ?? snapshot.props;

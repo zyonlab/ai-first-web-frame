@@ -508,6 +508,27 @@ export type FragmentRenderResponse = z.infer<
 >;
 
 /**
+ * Validates the inline `<script type="application/json" data-island-props>`
+ * snapshot a fragment stamps next to a `@mvp/islands` mount node (the C2
+ * handshake payload; see `packages/islands/src/index.ts`'s `IslandSnapshot`).
+ * Only `props` is structurally required (and defaults to `{}` when the field
+ * itself is absent, matching the pre-existing lenient behavior); every other
+ * field is optional so a snapshot from an old/non-participating fragment
+ * (no `version`/`slice`/`fragment`/`contractHash`) still validates — this
+ * schema exists to reject genuinely malformed payloads (unparseable JSON,
+ * wrong top-level shape, or a field present with the wrong type), not to
+ * require the full C2 handshake.
+ */
+export const IslandSnapshotSchema = z.object({
+  props: z.record(z.unknown()).default({}),
+  slice: z.string().optional(),
+  fragment: z.string().optional(),
+  version: z.string().optional(),
+  contractHash: z.string().optional(),
+});
+export type IslandSnapshot = z.infer<typeof IslandSnapshotSchema>;
+
+/**
  * Converts a Zod schema into a plain JSON Schema object (draft-07 by
  * default, per `zod-to-json-schema`'s default target) so non-TypeScript
  * agents/tools that only speak JSON Schema can validate against the same
