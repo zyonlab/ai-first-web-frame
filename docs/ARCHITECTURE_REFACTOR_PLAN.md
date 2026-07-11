@@ -444,9 +444,12 @@ trigger:** a concrete island-only-ship need — an island hotfix that must
 go live without rebuilding consumer pages, or an external page consuming
 registry-pinned islands at runtime. When that happens, the merged spike is
 the implementation blueprint and items (a)–(f) are the work plan; nothing
-needs re-discovery. The spike stays on main as reference: additive,
-sandbox-mounted, order-form only, with the production static-import path
-untouched.
+needs re-discovery. The spike stays on main as DORMANT reference code
+(order-form only, production static-import path untouched): after the
+decision, the loader was unmounted from `page-trade`'s page.tsx and the
+`build:spike-vendor` / `build:island-browser` steps were unchained from
+their packages' `build` scripts (both remain runnable manually), so no
+per-render mount or per-build cost is paid on the declined path.
 spike, scoped to exactly one React island (`order-form`), proved the
 mechanism works end to end in a real browser without touching the other
 three islands' production (build-time static import) path. Findings, in the
