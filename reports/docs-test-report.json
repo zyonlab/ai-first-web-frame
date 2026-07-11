@@ -1,8 +1,43 @@
 {
   "tool": "docs-test",
-  "generatedAt": "2026-07-11T11:20:17.707Z",
+  "generatedAt": "2026-07-11T11:50:08.608Z",
   "status": "pass",
   "packages": [
+    {
+      "agentMd": "domains/trade-chart/AGENT.md",
+      "package": "@mvp/trade-chart",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "domains/trade-contracts/AGENT.md",
+      "package": "@mvp/trade-contracts",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "domains/trade-data/AGENT.md",
+      "package": "@mvp/trade-data",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "domains/trade-prefs/AGENT.md",
+      "package": "@mvp/trade-prefs",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "domains/trade-theme/AGENT.md",
+      "package": "@mvp/trade-theme",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
     {
       "agentMd": "packages/contracts/AGENT.md",
       "package": "@mvp/contracts",
