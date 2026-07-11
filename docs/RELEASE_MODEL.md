@@ -14,7 +14,8 @@ change on a branch
   |
   v
 [1] CI verify (.github/workflows/ci.yml, job: verify)          IMPLEMENTED
-      pnpm verify: typecheck, lint, format, tests, build, audits
+      pnpm verify (13 gates): typecheck, lint, format, manifest-gen,
+      docs:test, tests, build, 6 audits
   |
   v
 [2] Affected detection (job: affected)                         IMPLEMENTED
@@ -49,7 +50,8 @@ change on a branch
 [7] Metric-gated auto rollback                                  SKELETON
       infra/argo-rollouts/analysis-templates.yaml
       success-rate >= 99%, p95 latency <= 500ms
-      blocked on services exposing Prometheus /metrics
+      blocked on the Next.js page apps exposing Prometheus /metrics
+      (shell-gateway and all fragment services already do)
 ```
 
 ## Affected Detection
@@ -97,9 +99,12 @@ and the `@mvp/mcp` `affected` tool all converged on the graph engine.)
 
 - `/health` on shell-gateway (4100), promotion-banner (4201),
   recommendation-widget (4202).
-- Rendered pages for the Next.js apps, which expose no `/health` route yet:
-  page-home root (4101, marker `data-page="home"`) and the product demo page
-  (4102, marker `data-page="product"`).
+- Rendered pages for the Next.js apps: page-home root (4101, marker
+  `data-page="home"`) and the product demo page (4102, marker
+  `data-page="product"`). The page apps all expose `/health` now
+  (`apps/page-*/app/health/route.ts`), but the smoke checks
+  (`tools/release-tools/src/smoke.ts`) still probe the rendered pages and
+  have not been repointed to `/health` yet — a separate code fix.
 - Composed shell routes on 4100 (`/` and `/product/123`) including the
   `data-shell-gateway="true"` marker.
 
@@ -110,7 +115,9 @@ Polling logic is unit tested in `tools/release-tools/src/smoke.ts`.
 
 - All Deployments in `infra/k8s/` carry readiness and liveness probes and
   conservative resource requests/limits. Fastify services probe `/health`;
-  the Next.js page apps probe `/` until they expose `/health`.
+  the Next.js page apps expose `/health` (`apps/page-*/app/health/route.ts`)
+  but their k8s manifests still probe `/` and have not been repointed yet —
+  a separate code fix.
 - Image tags are parameterized through `infra/k8s/kustomization.yaml`.
   Manifests keep the `:dev` tag for local clusters; a release retargets a
   unit with:
@@ -137,7 +144,7 @@ Current boundary:
 | Stage | Status |
 | --- | --- |
 | Canary steps (10/50/100) with analysis wiring | Implemented in manifests |
-| AnalysisTemplates (success rate, p95 latency) | Skeleton; queries reference `http_requests_total` / `http_request_duration_seconds_bucket`, which the services do not export yet (no `/metrics` endpoint, see GAP_ANALYSIS 2.4) |
+| AnalysisTemplates (success rate, p95 latency) | Skeleton; queries reference `http_requests_total` / `http_request_duration_seconds_bucket`, which shell-gateway and all fragment services already export at `/metrics` (`packages/observability/src/metrics.ts`) — only the Next.js page apps (including the rollout target page-product) lack a `/metrics` endpoint |
 | Automatic trigger from CI to the cluster | Not implemented; no cluster credentials in CI |
 | Prometheus deployment | Not part of this repo; templates default to `http://prometheus.monitoring.svc.cluster.local:9090` |
 

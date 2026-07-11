@@ -8,6 +8,12 @@
 
 ## Docs
 
+This index is curated, not exhaustive: historical and proposal documents
+(GAP_ANALYSIS, REMEDIATION_PLAN, AI_NATIVE_DEVX,
+AI_NATIVE_PRODUCTION_READY_FRAMEWORK_PLAN, MONOREPO_DEPLOYMENT,
+PERFORMANCE_BUDGET, TDD_GUIDE, AI_COMPONENT_GUIDE, docs/trade-demo/) are
+deliberately unlisted — consult `docs/` directly for history.
+
 - [docs/OPERATIONS.md](docs/OPERATIONS.md): the fragment lifecycle
   (scaffold -> implement+test -> register -> mount -> verify -> promote ->
   rollback) as exact commands, flags, and JSON result envelopes. Consult this

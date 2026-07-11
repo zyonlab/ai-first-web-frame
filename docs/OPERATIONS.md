@@ -101,7 +101,7 @@ pnpm exec tsx scripts/register-fragment.mts \
 **Result envelope** (`RegisterResult`, from `scripts/register-fragment.mts`)
 ```ts
 {
-  status: "registered" | "failed";
+  status: "registered" | "failed" | "conflict";
   name: string;
   version?: string;
   channel?: string;
@@ -109,9 +109,10 @@ pnpm exec tsx scripts/register-fragment.mts \
   compose?: { service: string; port: number; action: "added" | "unchanged" };
   files: string[];       // registry.data.json (+ docker-compose.yml if --with-compose); [] on failure
   error?: string;
+  retry?: boolean;       // present ("true") on "conflict": rerun the same command
 }
 ```
-Exit 0 on `"registered"`, 1 on `"failed"`.
+Exit 0 on `"registered"`, 1 on `"failed"` and `"conflict"`.
 
 **Accept**: `"status": "registered"`. Idempotency check: rerun the exact same
 command — `"status": "registered"` again but `"action": "unchanged"` and
@@ -120,7 +121,9 @@ command — `"status": "registered"` again but `"action": "unchanged"` and
 **Failure recovery**: missing required flags → `"failed"` with a usage
 `error` string, no files touched. `--with-compose` with a taken `--port` →
 `"failed"`; omit `--port` to let the script scan for a free one, or pick an
-explicitly free port. Wrong registry state after a bad manual edit → fix by
+explicitly free port. `"status": "conflict"` means another process wrote the
+registry file between load and write; rerun the same command (`retry: true`).
+Wrong registry state after a bad manual edit → fix by
 re-running `register-fragment` with correct values (writer overwrites the
 named fragment's entry) or `rollback-fragment` (step 7).
 
@@ -215,9 +218,11 @@ and the generated file, not that wrapper.
 
 ## 5. Verify
 
-Runs the full repo gate (11 steps): typecheck, lint, format check,
+Runs the full repo gate (13 steps): typecheck, lint, format check,
 `verify:manifest-gen` (fails if any page's `fragmentSlots.gen.ts` has drifted
-from its `manifest.slots.json` — see step 4's `--check` mode), all tests,
+from its `manifest.slots.json` — see step 4's `--check` mode), `docs:test`
+(executes every AGENT.md fenced TypeScript snippet for real, so a drifted doc
+example fails like a broken test), all tests,
 build, and six audits (similarity, bundle, css, deps, optimizer, boundary).
 Writes a machine-readable report; this is the step CI and `pnpm verify` both
 run.
@@ -248,7 +253,7 @@ step. Exit 0 only if every step's `status === "passed"`.
 has no entry with `"status": "failed"`.
 
 **Failure recovery**: read the failing entry's `stdout`/`stderr` tail in the
-report (or the console `FAIL <command>` line) to find which of the 11 steps
+report (or the console `FAIL <command>` line) to find which of the 13 steps
 broke. Budget failures (`audit:bundle`/`audit:css`) require shrinking JS/CSS
 or splitting the unit — see each unit's `budget.ts`. Similarity failures
 (`audit:similarity`) mean reuse the flagged existing component instead of
@@ -272,15 +277,18 @@ pnpm exec tsx scripts/promote-fragment.mts --name <kebab-name>
 **Result envelope** (`PromoteResult`, from `scripts/promote-fragment.mts`)
 ```ts
 {
-  status: "promoted" | "unchanged" | "failed";
+  status: "promoted" | "unchanged" | "failed" | "conflict";
   name: string;
   from?: string;          // previous stable version (rollback target)
   to?: string;             // newly promoted version
   files: string[];         // registry.data.json + releases.json; [] otherwise
   error?: string;
+  retry?: boolean;         // present ("true") on "conflict": rerun the same command
 }
 ```
-Exit 0 on `"promoted"` and `"unchanged"`; exit 1 only on `"failed"`.
+Exit 0 on `"promoted"` and `"unchanged"`; exit 1 on `"failed"` and
+`"conflict"` (another process wrote the registry between load and write —
+rerun the same command).
 
 **Accept**: `"status": "promoted"` with `from`/`to` matching the expected
 previous/new stable versions.
@@ -306,15 +314,17 @@ pnpm exec tsx scripts/rollback-fragment.mts --name <kebab-name> [--to <version>]
 **Result envelope** (`RollbackResult`, from `scripts/rollback-fragment.mts`)
 ```ts
 {
-  status: "rolled-back" | "unchanged" | "failed";
+  status: "rolled-back" | "unchanged" | "failed" | "conflict";
   name: string;
   from?: string;           // stable version before rollback
   to?: string;              // version rolled back to
   files: string[];          // registry.data.json + releases.json; [] otherwise
   error?: string;
+  retry?: boolean;          // present ("true") on "conflict": rerun the same command
 }
 ```
-Exit 0 on `"rolled-back"` and `"unchanged"`; exit 1 only on `"failed"`.
+Exit 0 on `"rolled-back"` and `"unchanged"`; exit 1 on `"failed"` and
+`"conflict"` (rerun the same command).
 
 **Accept**: `"status": "rolled-back"` with `to` equal to the expected target
 version.

@@ -1,7 +1,8 @@
 # AI Agent Operations Manual
 
-pnpm monorepo for an AI-native micro-frontend framework. Shell gateway (4100) composes pages
-(page-home 4101, page-product 4102) which fetch SSR fragments (4201+) via `@mvp/registry`.
+pnpm monorepo for an AI-native micro-frontend framework. Shell gateway (4100) composes 7 pages
+(home 4101, product 4102, trade 4103, markets 4104, portfolio 4105, vaults 4106, referrals 4107)
+which fetch SSR fragments (14 services, 4201-4214) via `@mvp/registry`.
 
 ## Hard rules
 
@@ -15,13 +16,21 @@ pnpm monorepo for an AI-native micro-frontend framework. Shell gateway (4100) co
 
 ## Directory map
 
-- `apps/` — shell-gateway, page-home, page-product (Next.js pages; slots data in `src/manifest.slots.json`)
-- `fragments/` — SSR fragment services (fastify, one Dockerfile each)
+- `apps/` — shell-gateway + 7 Next.js pages (page-home, page-product, page-trade, page-markets,
+  page-portfolio, page-vaults, page-referrals; slots data in `src/manifest.slots.json`)
+- `fragments/` — 14 SSR fragment services (fastify, one Dockerfile each)
+- `domains/` — trade demo domain layer (trade-contracts, trade-data, trade-prefs, trade-theme,
+  trade-chart); import rule is three-layer: apps/fragments → domains → packages, never upward
 - `packages/` — `@mvp/*` libraries (contracts, runtime, data, request, ui, observability, optimizer, registry,
   routes, ...); `@mvp/registry` (fragment registry) and `@mvp/routes` (route registry) are real workspace packages
 - `registry/` — fragment/route registry runtime state, not package source: `registry/registry.data.json` and
   release history `registry/releases.json`, loaded by `@mvp/registry` via an explicit repo-root-relative path
-- `tools/` — audits + `create-component` scaffolder; `scripts/` — repo-level CLIs (tsx); `infra/docker/` — compose
+- `tools/` — audits + `create-component` scaffolder; `scripts/` — repo-level CLIs (tsx); `infra/docker/` — compose;
+  `e2e/` — Playwright specs (shell/product/fragments/no-js/trade-hydration)
+
+Every `packages/*` and `domains/*` package ships an `AGENT.md` whose fenced ts/tsx snippets are
+EXECUTED by `docs:test` inside `pnpm verify` — editing an AGENT.md example into something that
+doesn't run fails CI.
 
 ## Fragment lifecycle (end to end)
 
@@ -56,7 +65,8 @@ pnpm monorepo for an AI-native micro-frontend framework. Shell gateway (4100) co
    (`diffManifestAgainstRuntime` from `@mvp/registry`'s `packages/registry/src/slots.ts`) as a
    belt-and-suspenders check, though `--check`/`verify:manifest-gen` now makes manifest↔runtime
    drift structurally impossible rather than merely detected.
-5. **Verify** the whole repo (typecheck, lint, format, tests, build, 6 audits; writes `reports/`):
+5. **Verify** the whole repo (13 gates: typecheck, lint, check, verify:manifest-gen, docs:test,
+   test, build, 6 audits; writes `reports/`):
    `pnpm verify`
    Accept: exit 0. Never ship with a failing audit or budget.
 6. **Promote** canary -> stable (records previous stable in `versions` history + appends to `releases.json`):

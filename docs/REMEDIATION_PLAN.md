@@ -1,5 +1,18 @@
 # Post-Audit Remediation Plan — Parallel-Agent Task Document
 
+> ⛔️ **CLOSED / SUPERSEDED — 2026-07-11.** Every item in this plan was executed
+> via PRs #3–#22 (with follow-ups #23–#33). This document is retained as
+> history only — do NOT claim tasks from it. For current status, consult the
+> per-phase status blocks in
+> [ARCHITECTURE_REFACTOR_PLAN.md](ARCHITECTURE_REFACTOR_PLAN.md) and the
+> [COMPOSITION](COMPOSITION.md) / [CONTRACTS](CONTRACTS.md) /
+> [INTERACTION](INTERACTION.md) / [DELIVERY](DELIVERY.md) docs.
+>
+> In particular, the "Do NOT remove `isr` from `RenderStrategySchema`"
+> directive (Wave 2, and the matching "Deliberately NOT in this plan" bullet)
+> was superseded by PR #29: the `isr` alias has been retired and is now
+> rejected by `RenderStrategySchema`.
+
 > Created 2026-07-10 from a code-level acceptance audit of the P0–P5 refactor
 > (see [ARCHITECTURE_REFACTOR_PLAN.md](ARCHITECTURE_REFACTOR_PLAN.md)). Every
 > finding below was verified against actual code, NOT against that doc's own
