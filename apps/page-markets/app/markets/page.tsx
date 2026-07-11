@@ -3,7 +3,6 @@ import { headers } from "next/headers";
 import { Suspense } from "react";
 import {
   type MarketsFragmentAggregate,
-  type MarketsSlotKey,
   streamMarketsFragmentSlots,
 } from "../../src/fragmentSlots";
 import { MARKETS_LAYOUT_CLASS } from "../../src/gridStyles";
@@ -35,10 +34,6 @@ async function SchedulerDiagnostics({
   aggregate: Promise<MarketsFragmentAggregate>;
 }) {
   const diag = await aggregate;
-  const diagnosticsList = Object.entries(diag.diagnostics) as [
-    MarketsSlotKey,
-    (typeof diag.diagnostics)[MarketsSlotKey],
-  ][];
 
   return (
     <>
@@ -50,7 +45,7 @@ async function SchedulerDiagnostics({
           Page health: <span data-field="health">{diag.scheduler.health}</span>
         </p>
         <ul data-field="slot-status">
-          {diagnosticsList.map(([name, slotDiag]) => (
+          {Object.entries(diag.diagnostics).map(([name, slotDiag]) => (
             <li key={name} data-slot={name}>
               {name}: {slotDiag.status}
               {slotDiag.required ? " (required)" : " (optional)"}
@@ -115,6 +110,21 @@ export default async function MarketsPage() {
           <span data-filter="starred">Starred only</span>
         </div>
 
+        {/*
+          `stream.slots` is `Record<string, Promise<FragmentRenderResponse>>`
+          (@mvp/runtime's own generic shape — see fragmentSlots.ts). Dot access
+          below still type-checks (this repo's tsconfig does not set
+          `noPropertyAccessFromIndexSignature`) and is what biome's
+          `useLiteralKeys` lint rule expects, so it is kept — the generic type
+          already removes the hand-maintained per-slot TypeScript interface;
+          switching to bracket notation here would be cosmetic, not
+          functional. WHICH slots get their own <Suspense> boundary and what
+          fallback markup they show remains genuine human judgment (A1's
+          explicit carve-out), not something codegen can decide: mounting a
+          new slot never requires touching fragmentSlots.ts, but wiring it
+          into this JSX (a new <Suspense><FragmentSlotStream/></Suspense>
+          block) is the one deliberate hand-edit A1 carves out.
+        */}
         <div data-area="markets-table" data-slot="marketsTable">
           <Suspense fallback={MARKETS_TABLE_FALLBACK}>
             <FragmentSlotStream

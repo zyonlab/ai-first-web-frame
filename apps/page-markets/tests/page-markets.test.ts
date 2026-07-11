@@ -147,7 +147,7 @@ describe("page-markets", () => {
     expect(calls.map(portOf)).toEqual([MARKETS_TABLE_PORT]);
     expect(calls[0]).toContain("/render");
 
-    expect(result.slots.marketsTable).toContain('href="/trade/BTC"');
+    expect(result.html.marketsTable).toContain('href="/trade/BTC"');
     expect(result.diagnostics.marketsTable).toMatchObject({
       status: "ok",
       strategy: "cached-ssr",
@@ -170,7 +170,7 @@ describe("page-markets", () => {
     });
 
     expect(result.diagnostics.marketsTable.status).toBe("fallback");
-    expect(result.slots.marketsTable).toContain('data-fallback="true"');
+    expect(result.html.marketsTable).toContain('data-fallback="true"');
     expect(result.scheduler.health).toBe("unhealthy");
   });
 
@@ -186,7 +186,7 @@ describe("page-markets", () => {
     });
 
     expect(result.diagnostics.marketsTable.status).toBe("fallback");
-    expect(result.slots.marketsTable).toContain('data-fallback="true"');
+    expect(result.html.marketsTable).toContain('data-fallback="true"');
     expect(result.scheduler.health).toBe("unhealthy");
   });
 
@@ -195,7 +195,7 @@ describe("page-markets", () => {
       registry: TEST_REGISTRY,
       fetchImpl: makeMarketsFetch(),
     });
-    const html = renderMarketsHtml({ marketsTable: result.slots.marketsTable });
+    const html = renderMarketsHtml({ marketsTable: result.html.marketsTable });
 
     expect(html).toContain('data-page="markets"');
     expect(html).toContain('href="/trade/BTC"');
