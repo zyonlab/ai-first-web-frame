@@ -34,7 +34,7 @@
   demonstrates a specific composition/streaming/island capability instead of
   re-deriving it from source.
 - [docs/COMPOSITION.md](docs/COMPOSITION.md): slot model, render strategies
-  (incl. the deprecated `isr` → `ttl-cache` alias), the manifest → codegen →
+  (incl. why the retired `isr` alias is now rejected), the manifest → codegen →
   `<FragmentSlot>` pipeline, DAG/timeout/fallback execution and streaming
   semantics, and the two-tier fragment independence table (SSR-only vs.
   React-island). Consult before composing or reasoning about a page's slots.

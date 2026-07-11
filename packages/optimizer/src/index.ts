@@ -6,10 +6,7 @@ import type {
   OptimizationFinding,
   RenderStrategy,
 } from "@mvp/contracts";
-import {
-  normalizeRenderStrategy,
-  OptimizationFindingSchema,
-} from "@mvp/contracts";
+import { OptimizationFindingSchema } from "@mvp/contracts";
 import type { RequestTraceSnapshot, TraceNode } from "@mvp/observability";
 
 export type OptimizationThresholds = {
@@ -379,7 +376,7 @@ function findLowCacheHitRates(
       } else if (node.kind === "fragment") {
         const strategy =
           typeof node.attributes.strategy === "string"
-            ? normalizeRenderStrategy(node.attributes.strategy)
+            ? node.attributes.strategy
             : undefined;
         if (strategy !== "cached-ssr" && strategy !== "ttl-cache") continue;
         const fragmentName = fragmentNameOf(node);
@@ -473,8 +470,8 @@ function findStaticSlotCandidates(
   return slots
     .filter(
       (slot) =>
-        normalizeRenderStrategy(slot.strategy ?? "dynamic-ssr") ===
-          "dynamic-ssr" && (slot.dependsOn ?? []).length === 0,
+        (slot.strategy ?? "dynamic-ssr") === "dynamic-ssr" &&
+        (slot.dependsOn ?? []).length === 0,
     )
     .map((slot) =>
       OptimizationFindingSchema.parse({

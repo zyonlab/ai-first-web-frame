@@ -2,7 +2,6 @@ import {
   type FragmentRegistry,
   type FragmentRenderRequest,
   type FragmentRenderResponse,
-  normalizeRenderStrategy,
   type PageManifest,
   parseFragmentRenderResponse,
   type ReleaseChannel,
@@ -826,9 +825,6 @@ export async function fetchFragmentSlot({
   parentSpanId?: string;
 }): Promise<FragmentSlotResult> {
   const strategy = slot.strategy ?? DEFAULT_RENDER_STRATEGY;
-  // Normalize once: the deprecated "isr" alias compares as "ttl-cache"
-  // internally while the reported strategy keeps the configured value.
-  const normalizedStrategy = normalizeRenderStrategy(strategy);
   const slotSpanId = trace?.startSpan(`slot:${slot.name}`, "fragment", {
     parentId: parentSpanId,
     attributes: {
@@ -850,7 +846,7 @@ export async function fetchFragmentSlot({
       trace?.addDependency(`data:${dependency}`, slotSpanId, "depends-on");
   }
   try {
-    if (normalizedStrategy === "static") {
+    if (strategy === "static") {
       const result: FragmentSlotResult = {
         slot,
         strategy,
@@ -897,8 +893,7 @@ export async function fetchFragmentSlot({
     }
 
     const request: FragmentRenderRequest = { ctx, props: slot.props ?? {} };
-    const cacheable =
-      normalizedStrategy === "cached-ssr" || normalizedStrategy === "ttl-cache";
+    const cacheable = strategy === "cached-ssr" || strategy === "ttl-cache";
     const cacheKey = cacheable
       ? createFragmentCacheKey(slot, fragment, request)
       : undefined;
@@ -983,8 +978,7 @@ export function createFragmentCacheKey(
   const parts: Record<string, unknown> = {
     fragment: slot.fragment,
     version: fragment.version,
-    // Normalized so "isr" and "ttl-cache" slots share cache entries.
-    strategy: normalizeRenderStrategy(slot.strategy ?? DEFAULT_RENDER_STRATEGY),
+    strategy: slot.strategy ?? DEFAULT_RENDER_STRATEGY,
   };
   if (vary.includes("tenant")) parts.tenant = request.ctx.tenant;
   if (vary.includes("locale")) parts.locale = request.ctx.locale;

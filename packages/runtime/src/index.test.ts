@@ -1077,7 +1077,7 @@ describe("@mvp/runtime", () => {
       expect(DEFAULT_RENDER_STRATEGY).toBe("dynamic-ssr");
     });
 
-    it("treats deprecated isr slots as cacheable ttl-cache slots", async () => {
+    it("caches ttl-cache slots across requests", async () => {
       const fetchImpl = vi.fn(async () =>
         Response.json({
           html: '<section data-fragment="promotion-banner">promo</section>',
@@ -1088,7 +1088,7 @@ describe("@mvp/runtime", () => {
       ) as unknown as typeof fetch;
       const cache = new Map();
       const slots: FragmentSlotDefinition[] = [
-        { name: "promo", fragment: "promotion-banner", strategy: "isr" },
+        { name: "promo", fragment: "promotion-banner", strategy: "ttl-cache" },
       ];
       const first = await fetchFragmentSlots({
         slots,
@@ -1105,47 +1105,9 @@ describe("@mvp/runtime", () => {
         cache,
       });
       expect(first.promo.source).toBe("network");
-      // The reported strategy stays as configured (alias, not a rename).
-      expect(first.promo.strategy).toBe("isr");
+      expect(first.promo.strategy).toBe("ttl-cache");
       expect(second.promo.source).toBe("cache");
       expect(fetchImpl).toHaveBeenCalledTimes(1);
-    });
-
-    it("caches ttl-cache slots and shares the cache with isr-configured slots", async () => {
-      const fetchImpl = vi.fn(async () =>
-        Response.json({
-          html: '<section data-fragment="promotion-banner">promo</section>',
-          assets: { js: [], css: [] },
-          cache: { ttl: 60, tags: [] },
-          metadata: { name: "promotion-banner", version: "0.1.0" },
-        }),
-      ) as unknown as typeof fetch;
-      const cache = new Map();
-      const first = await fetchFragmentSlots({
-        slots: [
-          { name: "promo", fragment: "promotion-banner", strategy: "isr" },
-        ],
-        registry,
-        ctx,
-        fetchImpl,
-        cache,
-      });
-      const second = await fetchFragmentSlots({
-        slots: [
-          {
-            name: "promo",
-            fragment: "promotion-banner",
-            strategy: "ttl-cache",
-          },
-        ],
-        registry,
-        ctx,
-        fetchImpl,
-        cache,
-      });
-      expect(first.promo.source).toBe("network");
-      expect(second.promo.source).toBe("cache");
-      expect(second.promo.strategy).toBe("ttl-cache");
     });
   });
 

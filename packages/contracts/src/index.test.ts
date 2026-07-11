@@ -18,7 +18,6 @@ import {
   I18nManifestSchema,
   loadDefaultBudget,
   mergeBudget,
-  normalizeRenderStrategy,
   OptimizationFindingSchema,
   PageManifestJsonSchema,
   PageManifestSchema,
@@ -305,14 +304,16 @@ describe("@mvp/contracts", () => {
     ).toBe("network");
   });
 
-  it("accepts ttl-cache as canonical strategy and keeps isr as deprecated alias", () => {
+  it("accepts ttl-cache and rejects the retired isr slot-strategy alias", () => {
     expect(RenderStrategySchema.parse("ttl-cache")).toBe("ttl-cache");
-    expect(RenderStrategySchema.parse("isr")).toBe("isr");
-    expect(normalizeRenderStrategy("isr")).toBe("ttl-cache");
-    expect(normalizeRenderStrategy("ttl-cache")).toBe("ttl-cache");
-    expect(normalizeRenderStrategy("dynamic-ssr")).toBe("dynamic-ssr");
-    expect(normalizeRenderStrategy("cached-ssr")).toBe("cached-ssr");
-    expect(normalizeRenderStrategy("static")).toBe("static");
+    expect(RenderStrategySchema.parse("cached-ssr")).toBe("cached-ssr");
+    expect(RenderStrategySchema.parse("dynamic-ssr")).toBe("dynamic-ssr");
+    expect(RenderStrategySchema.parse("static")).toBe("static");
+    // The deprecation window closed: "isr" as a SLOT strategy is gone (it
+    // collided with Next.js ISR, goal A4). The unrelated "isr" members of
+    // PageManifestSchema.renderMode and DataFreshnessSchema mean actual
+    // Next.js ISR and stay.
+    expect(() => RenderStrategySchema.parse("isr")).toThrow();
   });
 
   it("marks fallback render responses via metadata.fallback", () => {

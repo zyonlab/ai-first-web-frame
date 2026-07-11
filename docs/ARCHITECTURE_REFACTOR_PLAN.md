@@ -33,7 +33,9 @@ with a machine-readable contract, and misuse fails loudly at the earliest edge.
   envelope (already true) **and** refuses semantically-invalid operations
   (mounting an unregistered fragment is an error, not a warning).
 - A4. No two framework concepts share a name with different semantics
-  (today: slot-strategy `isr` vs Next ISR).
+  (today: slot-strategy `isr` vs Next ISR). **Done 2026-07-11: the slot
+  strategy was renamed to `ttl-cache` (PR #9) and the deprecated `isr`
+  alias fully retired from the schema after the window (§4.4.1 status).**
 
 ### 🎯B — Minimal blast radius
 The affected set for any change is the true dependency closure, never GLOBAL for
@@ -609,10 +611,11 @@ the 5 composed pages now stream. page-trade deliberately stays on the barrier
 reverted, because `react-dom/server` cannot execute async Server Components
 outside Next's real RSC runtime and `trade-nav.test.tsx` would need bespoke
 test infra (documented in docs/DEMOS.md). Item 1 — the `isr` → `ttl-cache`
-rename — shipped for live slot manifests via CLI codemod (PR #9); the schema
-keeps `"isr"` as a deprecated alias during the deprecation window, and the
-separate fragment-manifest `renderMode: "isr"` enum value (a different
-concept) is untouched.**
+rename — is fully done: live slot manifests were codemodded in PR #9, and
+after the deprecation window the alias itself was retired — `"isr"` removed
+from `RenderStrategySchema` and the `normalizeRenderStrategy()` shim deleted
+(2026-07-11), closing A4. The separate `renderMode: "isr"` /
+`DataFreshnessSchema "isr"` enum values mean actual Next.js ISR and stay.**
 
 - Item 2: `packages/runtime/src/index.ts` gained `streamFragmentSlots`, which
   runs the same DAG-aware scheduling `executeFragmentSlots` always has, but

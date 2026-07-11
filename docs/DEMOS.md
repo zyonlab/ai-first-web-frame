@@ -32,9 +32,9 @@ plan doc — as of this writing. Re-verify before trusting a stale copy.
   `cachePolicy.ttl` under the `ttl-cache` strategy family (`page-product`'s
   `promotion`, ttl 300s; `page-portfolio`'s `pnlChart`, ttl 60s). Both
   slots spell the strategy as `"ttl-cache"` (the deprecated `"isr"` alias
-  was codemodded away; `normalizeRenderStrategy()` in
-  `packages/contracts/src/index.ts` still accepts the alias for backwards
-  compatibility).
+  was codemodded away in PR #9 and later fully retired from
+  `RenderStrategySchema` — a manifest declaring `"isr"` now fails slot
+  validation).
 - **`private-data-dynamic-ssr`** — a required slot renders `dynamic-ssr`
   with `cachePolicy.ttl: 0` because its data is user-private and must never
   be cached (`page-portfolio`'s `portfolioSummary`: equity, margin usage,

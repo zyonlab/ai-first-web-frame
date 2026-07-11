@@ -43,32 +43,31 @@ Slot fields (from `PageManifestSchema.slots`, `packages/contracts/src/index.ts`)
 ## 2. Render strategies
 
 The strategy enum is `RenderStrategySchema` (`packages/contracts/src/index.ts`):
-`"static" | "isr" | "ttl-cache" | "cached-ssr" | "dynamic-ssr"`.
+`"static" | "ttl-cache" | "cached-ssr" | "dynamic-ssr"`.
 
 | Strategy | Behavior (`fetchFragmentSlot`, `packages/runtime/src/index.ts`) |
 | --- | --- |
 | `static` | No network. Renders `slot.staticHtml` (fallback HTML with reason `"missing static html"` if absent). Cache TTL defaults to 31,536,000s. |
 | `ttl-cache` | Fetch `POST <serviceUrl>/render`, cache the response in the in-memory `FragmentCache` under a key from `createFragmentCacheKey` for `slot.cachePolicy.ttl ?? response.cache.ttl` seconds. Fallback responses are never cached. |
-| `isr` | **Deprecated alias for `ttl-cache`.** Kept only for a deprecation window; identical semantics. |
-| `cached-ssr` | Same caching path as `ttl-cache` (both compare equal after normalization for cacheability); by convention used for short-TTL near-realtime slots (e.g. `page-markets`, 5s TTL). |
+| `cached-ssr` | Same caching path as `ttl-cache`; by convention used for short-TTL near-realtime slots (e.g. `page-markets`, 5s TTL). |
 | `dynamic-ssr` | Always fetch `POST /render` per request. The default when a slot declares no strategy. |
 
-**The `isr` alias**: slot-strategy `isr` collided with Next.js ISR semantics
-(a *page-level* concept), violating goal A4 ("no two framework concepts share
-a name with different semantics", `docs/ARCHITECTURE_REFACTOR_PLAN.md` §0/§4.4.1).
-The rename to `ttl-cache` shipped as a CLI codemod (PR #9); the schema keeps
-`"isr"` parsing during the window, and `normalizeRenderStrategy()`
-(`packages/contracts/src/index.ts` — note the exact name; there is no
-`normalizeSlotStrategy`) maps `"isr" -> "ttl-cache"`. The runtime normalizes
-once before comparing (`packages/runtime/src/index.ts`, `fetchFragmentSlot`)
-and normalizes inside `createFragmentCacheKey` so `isr` and `ttl-cache` slots
-share cache entries. Two *different* concepts spelled `"isr"` are untouched
-and unrelated: `PageManifestSchema.renderMode: "isr"` and
-`DataFreshnessSchema`'s `"isr"` member.
+**The retired `isr` alias**: slot-strategy `isr` collided with Next.js ISR
+semantics (a *page-level* concept), violating goal A4 ("no two framework
+concepts share a name with different semantics",
+`docs/ARCHITECTURE_REFACTOR_PLAN.md` §0/§4.4.1). The rename to `ttl-cache`
+shipped as a CLI codemod over live manifests (PR #9), and after the
+deprecation window the alias was removed outright: `"isr"` is no longer a
+member of `RenderStrategySchema` (a manifest declaring it fails slot
+validation with a `ZodIssue` naming the enum), and the
+`normalizeRenderStrategy()` shim is gone. Two *different* concepts spelled
+`"isr"` are untouched and unrelated — they mean actual Next.js ISR:
+`PageManifestSchema.renderMode: "isr"` and `DataFreshnessSchema`'s `"isr"`
+member.
 
 Cache keys vary on `slot.cachePolicy.vary` (default
 `["tenant", "locale", "experiment", "props"]`; `"device"` opt-in) plus
-fragment name, resolved version, and normalized strategy
+fragment name, resolved version, and strategy
 (`createFragmentCacheKey`, `packages/runtime/src/index.ts`).
 
 ## 3. Codegen pipeline: manifest → generated slots → thin wrapper → JSX
