@@ -32,7 +32,7 @@ spec:
           # 2xx/3xx as probe success, so the root path works as the probe.
           readinessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 4102
             initialDelaySeconds: 10
             periodSeconds: 10
@@ -40,7 +40,7 @@ spec:
             failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 4102
             initialDelaySeconds: 20
             periodSeconds: 20
