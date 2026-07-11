@@ -242,19 +242,38 @@ export function seedsFromPaths(
     const frag = /^fragments\/([^/]+)\//.exec(path);
     const app = /^apps\/([^/]+)\//.exec(path);
     const pkg = /^packages\/([^/]+)\//.exec(path);
-    if (frag && hasUnit(frag[1])) seeds.add(frag[1]);
-    else if (app && hasUnit(app[1])) seeds.add(app[1]);
-    else if (pkg) {
+    // domains/* packages (e.g. @mvp/trade-contracts) are modeled exactly like
+    // packages/* — same PackageInput shape, same `uses-package` reverse-edge
+    // closure — so a domain-only change narrows to its dependents instead of
+    // silently producing an empty seed set (the bug this branch fixes: before
+    // this, a domains/** path matched none of the branches below and fell
+    // through with no seed added and `global` left false).
+    const domain = /^domains\/([^/]+)\//.exec(path);
+    if (frag && hasUnit(frag[1])) {
+      seeds.add(frag[1]);
+    } else if (app && hasUnit(app[1])) {
+      seeds.add(app[1]);
+    } else if (pkg) {
       // Narrow a workspace-package change to the units that depend on it (via
       // the `uses-package` closure) instead of rebuilding everything.
       const unit = packageForDir(pkg[1]);
       if (unit) seeds.add(unit.id);
       else global = true; // unknown package → conservative
+    } else if (domain) {
+      const unit = packageForDir(domain[1]);
+      if (unit) seeds.add(unit.id);
+      else global = true; // unknown domain package → conservative
+    } else {
+      // Anything else — an unrecognized fragment/app directory, repo-root
+      // config (lockfile, tsconfig, biome), or any other top-level directory
+      // this resolver doesn't model at all — can't be narrowed to a single
+      // unit. Stay conservative and rebuild everything rather than silently
+      // producing an empty seed set (the exact "silent under-build" failure
+      // mode this module exists to prevent). The two registry data files and
+      // registry/routes code above are the deliberate narrowing exceptions
+      // per §4.1 / module doc; everything else defaults to GLOBAL.
+      global = true;
     }
-    // Repo-root config (lockfile, tsconfig, biome) is cross-cutting: rebuild
-    // all. (The two registry data files and registry/routes code above are
-    // the exceptions per §4.1 / module doc.)
-    else if (!path.includes("/")) global = true;
   }
   return { seeds: [...seeds].sort(), global };
 }

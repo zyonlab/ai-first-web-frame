@@ -1,4 +1,11 @@
 /**
+ * @deprecated (W1-A, docs/REMEDIATION_PLAN.md) Superseded by
+ * `scripts/affected-graph.mts` (the graph engine), which both
+ * `.github/workflows/ci.yml` and `scripts/deploy-affected.mts` now use — see
+ * `tools/release-tools/src/affected.ts`'s module doc for why this file is
+ * kept rather than deleted (`packages/mcp/src/tools.ts`'s `affected` tool
+ * still calls it). Do not add features here; add them to the graph engine.
+ *
  * Affected deployable-unit detection CLI.
  *
  * Computes which of the five deployable units (shell-gateway, page-home,

@@ -1,4 +1,22 @@
 /**
+ * @deprecated (W1-A, docs/REMEDIATION_PLAN.md) This is the OLD heuristic
+ * affected-detection engine. It hardcodes a stale list of 5 `DEPLOYABLE_UNITS`
+ * (shell-gateway, page-home, page-product, promotion-banner,
+ * recommendation-widget) that predates most of the current fragments/pages
+ * (order-book, order-form, page-trade, page-markets, page-portfolio,
+ * page-vaults, page-referrals, ...) and never became aware of `domains/*`
+ * packages either — both are real correctness gaps, not just staleness.
+ *
+ * `.github/workflows/ci.yml` and `scripts/deploy-affected.mts` now both use
+ * the graph engine instead (`tools/release-tools/src/affected-graph.ts` /
+ * `scripts/affected-graph.mts`, driven by `tools/release-tools/src/unit-graph.ts`
+ * + `load-graph.ts`, which does model every fragment/page/package/domain as a
+ * graph unit). This module is kept only because `packages/mcp/src/tools.ts`'s
+ * `affected` MCP tool still shells out to `scripts/affected.mts --list`
+ * (that file is outside W1-A's owned-files list, so migrating/removing it is
+ * left for a follow-up task — flagged in the W1-A PR). Do not extend this
+ * engine further; extend the graph engine instead.
+ *
  * Affected deployable-unit detection.
  *
  * nx is configured in nx.json but is not installed in this workspace, so the
