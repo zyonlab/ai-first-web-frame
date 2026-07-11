@@ -162,10 +162,13 @@ describe("chart-panel budget (hard gate, React + canvas on shared chunk)", () =>
 
   it("self-audit: fragment JS ships only island glue; React/canvas/Tabs are shared", async () => {
     const { chartPanelManifest } = await import("./manifest");
-    // The canvas renderer + React ride @mvp/trade-client; the interval Tabs ride
-    // @mvp/ui/shadcn. The fragment owns only the island glue.
-    expect(chartPanelManifest.assets.js).toContain("@mvp/trade-client");
-    expect(chartPanelManifest.assets.js).toContain("@mvp/ui/shadcn");
+    // React/canvas/Tabs ship in the consuming page bundle (static import).
+    // The fragment owns only the island glue — no bare package-name
+    // placeholders (the dead @mvp/trade-client and never-resolved
+    // @mvp/ui/shadcn entries were removed).
+    expect(chartPanelManifest.assets.js).toEqual([
+      "/assets/chart-panel.island.js",
+    ]);
     const ownGlue = chartPanelManifest.assets.js.filter((a) =>
       a.startsWith("/assets/"),
     );

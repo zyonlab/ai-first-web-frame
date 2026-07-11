@@ -41,10 +41,11 @@ describe("chart-panel fragment service", () => {
     const response = await server.inject({ method: "GET", url: "/manifest" });
     const manifest = response.json();
     expect(validateChartPanelManifest(manifest)).toBe(true);
-    expect(manifest.renderStrategy).toBe("isr");
+    expect(manifest.renderStrategy).toBe("ttl-cache");
     expect(manifest.cachePolicy.ttl).toBe(60);
-    expect(manifest.assets.js).toContain("@mvp/trade-client");
-    expect(manifest.assets.js).toContain("@mvp/ui/shadcn");
+    // Dead package-name placeholders removed (trade-client deleted in P1;
+    // shadcn ships in the consuming page bundle, never as a fragment asset).
+    expect(manifest.assets.js).toEqual(["/assets/chart-panel.island.js"]);
     expect(manifest.dataDependencies).toEqual(
       expect.arrayContaining(["candles.history.BTC.1m", "candles.BTC.1m"]),
     );
@@ -54,7 +55,7 @@ describe("chart-panel fragment service", () => {
     const server = buildServer();
     const response = await server.inject({ method: "GET", url: "/assets" });
     expect(response.json()).toMatchObject({
-      js: expect.arrayContaining(["@mvp/trade-client", "@mvp/ui/shadcn"]),
+      js: ["/assets/chart-panel.island.js"],
       css: expect.any(Array),
     });
   });

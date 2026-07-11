@@ -20,9 +20,10 @@ export const openOrdersManifest = {
     '<section data-fragment="open-orders" data-fallback="true">Open orders temporarily unavailable</section>',
   assets: {
     // Patch-only: React is NOT bundled here. The island mounts through the
-    // shared @mvp/trade-client chunk (deduped by @mvp/assets so it ships once),
-    // plus this fragment's own tiny vanilla patch asset (upsert/remove/cancel).
-    js: ["@mvp/trade-client", "/assets/open-orders.patch.js"],
+    // This fragment's own tiny vanilla patch asset (upsert/remove/cancel).
+    // (Dead "@mvp/trade-client" placeholder removed — package deleted in P1,
+    // nothing ever resolved it.)
+    js: ["/assets/open-orders.patch.js"],
     css: ["/assets/open-orders.css"],
   },
   budget: openOrdersBudget,

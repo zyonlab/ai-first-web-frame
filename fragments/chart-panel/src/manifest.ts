@@ -5,12 +5,12 @@ import { chartPanelBudget } from "./budget";
  * chart-panel fragment manifest (A2-chart). Mirrors the market-header /
  * order-form manifest shape and is validated by {@link validateChartPanelManifest}.
  *
- * - `renderStrategy: "isr"` — the candle **history** bootstrap (C5
+ * - `renderStrategy: "ttl-cache"` — the candle **history** bootstrap (C5
  *   `candles.history.<symbol>.<interval>`) is ISR with a short 60s TTL; the
  *   near-realtime latest candle (`candles.<symbol>.<interval>`) is streamed by
  *   the island on top, so the SSR snapshot never blocks on live data.
  * - `assets.js` lists the shared client chunks as **shared dependencies** rather
- *   than re-bundling them: `@mvp/trade-client` carries React + the island
+ *   than re-bundling them: the consuming page's bundle carries React + the island
  *   runtime + the canvas candle renderer (`drawCandles` / `CandleChart`, README
  *   §14 D2), and `@mvp/ui/shadcn` carries the vendored Radix Tabs interval
  *   control. `@mvp/assets` dedupes both so React/canvas ship exactly once for
@@ -29,7 +29,7 @@ export const chartPanelManifest = {
   owner: "market-data",
   version: "0.1.0",
   renderMode: "ssr",
-  renderStrategy: "isr",
+  renderStrategy: "ttl-cache",
   cachePolicy: {
     // ISR history bootstrap: short TTL so the SSR candle series is fresh while
     // the island streams the latest live candle on top.
@@ -41,13 +41,11 @@ export const chartPanelManifest = {
   fallback:
     '<section data-fragment="chart-panel" data-fallback="true">Chart unavailable</section>',
   assets: {
-    // Shared React + canvas renderer chunk + shadcn interval control (deduped by
-    // @mvp/assets) + the small island glue this fragment owns.
-    js: [
-      "@mvp/trade-client",
-      "@mvp/ui/shadcn",
-      "/assets/chart-panel.island.js",
-    ],
+    // The small island glue this fragment owns. (The dead "@mvp/trade-client"
+    // and never-resolved "@mvp/ui/shadcn" package-name placeholders were
+    // removed — React and shadcn ship inside the consuming page's bundle via
+    // TradeHydrator's static import.)
+    js: ["/assets/chart-panel.island.js"],
     css: ["/assets/chart-panel.css"],
   },
   budget: chartPanelBudget,

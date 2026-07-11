@@ -102,7 +102,7 @@ export function initialChartState(
 }
 
 /**
- * The chart-panel island. Mounts through `@mvp/trade-client`
+ * The chart-panel island. Mounts through the page's hydration bootstrap
  * (`registerIsland("chart", ChartPanelIsland)`), reading its props from the
  * inline JSON snapshot. Only this component re-renders on a live candle; the
  * surrounding SSR fragment stays static.

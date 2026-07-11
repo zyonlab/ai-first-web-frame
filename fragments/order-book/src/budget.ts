@@ -2,7 +2,7 @@ export const orderBookBudget = {
   scope: "fragment",
   name: "order-book",
   // Patch-only island: no React shipped from the fragment, only the small
-  // vanilla patch client (declared as a shared @mvp/trade-client chunk +
+  // vanilla patch client (a page-bundled shared runtime +
   // the fragment's own patch asset). 30KB JS ceiling is the hard gate.
   jsBytes: 30000,
   cssBytes: 10000,

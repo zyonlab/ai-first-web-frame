@@ -48,7 +48,7 @@ describe("market-header fragment service", () => {
     const manifest = response.json();
     expect(manifest.renderStrategy).toBe("cached-ssr");
     expect(manifest.cachePolicy.ttl).toBe(5);
-    expect(manifest.assets.js).toContain("@mvp/trade-client");
+    expect(manifest.assets.js).toEqual(["/assets/market-header.island.js"]);
     // ticker + funding data deps for the default symbol.
     expect(manifest.dataDependencies).toEqual(
       expect.arrayContaining(["ticker.BTC", "funding.BTC"]),
@@ -59,7 +59,7 @@ describe("market-header fragment service", () => {
     const server = buildServer();
     const response = await server.inject({ method: "GET", url: "/assets" });
     expect(response.json()).toMatchObject({
-      js: expect.arrayContaining(["@mvp/trade-client"]),
+      js: ["/assets/market-header.island.js"],
       css: expect.any(Array),
     });
   });

@@ -3,7 +3,7 @@
  *
  * The fragment ships NO chart library and NO React of its own: React, the
  * canvas candle renderer (`drawCandles` / `CandleChart`), the island runtime and
- * the store client all live in the shared `@mvp/trade-client` chunk, and the
+ * the store client all ship inside the consuming page's bundle, and the
  * shadcn Tabs interval control lives in `@mvp/ui/shadcn` — both declared in the
  * manifest's `assets.js` as shared dependencies (deduped by `@mvp/assets`). The
  * fragment's own JS is only the island glue that reads the inline candle

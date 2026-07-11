@@ -8,7 +8,7 @@ import { positionsTableBudget } from "./budget";
  *   positions feed is user-private realtime data).
  * - `cachePolicy.ttl: 0` — realtime, never cached at the fragment layer; tags
  *   let a symbol switch / position update invalidate the slot.
- * - `assets.js` declares the shared `@mvp/trade-client` chunk (shared
+ * - `assets.js` declares only the fragment-local patch asset (shared
  *   dependency, deduped by `@mvp/assets`, NOT re-bundled) plus the fragment's
  *   own vanilla patch client. No React ships from this fragment.
  * - `dataDependencies` references the C5 global `positions` source id.
@@ -31,9 +31,9 @@ export const positionsTableManifest = {
     '<section data-fragment="positions-table" data-fallback="true">Positions unavailable</section>',
   assets: {
     // Patch-only: React is NOT bundled here. The island mounts through the
-    // shared @mvp/trade-client chunk (deduped by @mvp/assets so it ships once),
-    // plus this fragment's own tiny vanilla patch asset.
-    js: ["@mvp/trade-client", "/assets/positions-table.patch.js"],
+    // This fragment's own tiny vanilla patch asset. (Dead "@mvp/trade-client"
+    // placeholder removed — package deleted in P1, nothing ever resolved it.)
+    js: ["/assets/positions-table.patch.js"],
     css: ["/assets/positions-table.css"],
   },
   budget: positionsTableBudget,

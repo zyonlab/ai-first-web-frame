@@ -27,7 +27,7 @@ describe("positions-table server", () => {
     const manifest = await server.inject({ method: "GET", url: "/manifest" });
     expect(manifest.json().name).toBe("positions-table");
     const assets = await server.inject({ method: "GET", url: "/assets" });
-    expect(assets.json().js).toContain("@mvp/trade-client");
+    expect(assets.json().js).toEqual(["/assets/positions-table.patch.js"]);
     await server.close();
   });
 

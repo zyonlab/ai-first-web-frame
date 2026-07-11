@@ -9,7 +9,7 @@ import { marketHeaderBudget } from "./budget";
  * - `renderStrategy: "cached-ssr"` with a short 5s TTL: the header is
  *   near-realtime, so SSR serves a last-known-good snapshot behind a tiny TTL
  *   while the island patches mark/change/countdown live.
- * - `assets.js` lists `@mvp/trade-client` as a **shared dependency** (D3 /
+ * - `assets.js` lists only the fragment-local island glue (D3 /
  *   spine §11) so React/Radix bundle once; only the small island glue is
  *   fragment-owned. `@mvp/assets` dedupes the shared chunk across fragments.
  * - `dataDependencies` are the C5 source ids for the default symbol; the slot
@@ -34,9 +34,10 @@ export const marketHeaderManifest = {
   fallback:
     '<section data-fragment="market-header" data-fallback="true">Market header unavailable</section>',
   assets: {
-    // Shared React runtime chunk (deduped by @mvp/assets) + the small island
-    // glue this fragment owns.
-    js: ["@mvp/trade-client", "/assets/market-header.island.js"],
+    // The small island glue this fragment owns. (React ships inside the
+    // consuming page's bundle via TradeHydrator's static import; the dead
+    // "@mvp/trade-client" placeholder that used to claim otherwise is gone.)
+    js: ["/assets/market-header.island.js"],
     css: ["/assets/market-header.css"],
   },
   budget: marketHeaderBudget,

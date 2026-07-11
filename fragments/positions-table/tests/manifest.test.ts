@@ -14,11 +14,11 @@ describe("positions-table manifest", () => {
     expect(validatePositionsTableManifest()).toBe(true);
   });
 
-  it("declares the shared trade-client chunk + its own patch asset (no React)", () => {
-    expect(positionsTableManifest.assets.js).toContain("@mvp/trade-client");
-    expect(positionsTableManifest.assets.js).toContain(
+  it("declares only its own patch asset (no React, no dead placeholders)", () => {
+    expect(positionsTableManifest.assets.js).toEqual([
       "/assets/positions-table.patch.js",
-    );
+    ]);
+    expect(positionsTableManifest.assets.js).not.toContain("@mvp/trade-client");
     expect(positionsTableManifest.assets.css).toContain(
       "/assets/positions-table.css",
     );
