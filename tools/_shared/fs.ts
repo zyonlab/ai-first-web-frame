@@ -54,6 +54,8 @@ export function walkFiles(
         entry === "node_modules" ||
         entry === ".git" ||
         entry === "dist" ||
+        entry === "dist-browser" ||
+        entry === ".next" ||
         entry === "coverage"
       ) {
         continue;

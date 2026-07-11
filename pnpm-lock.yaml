@@ -1198,7 +1198,11 @@ importers:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
 
-  tools/bundle-budget-check: {}
+  tools/bundle-budget-check:
+    devDependencies:
+      esbuild:
+        specifier: ^0.28.1
+        version: 0.28.1
 
   tools/component-similarity-check: {}
 

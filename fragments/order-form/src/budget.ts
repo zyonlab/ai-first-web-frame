@@ -8,11 +8,13 @@
  * vendor chunk + import map, not this bundle. The fragment's own JS is only
  * its island glue (islandLogic/placeOrderFlow + the OrderFormIsland
  * component itself): ~4.6KB minified as measured
- * (`dist-browser/island.browser.js`), well under this 30KB budget. Note this
- * `jsBytes`/`cssBytes` pair is declarative only — `tools/bundle-budget-check`
- * compares a root `stats.json` against `budget.json`, not this file's
- * numbers against the real built artifact; wiring the two together is a
- * real gap a full C3 rollout would need to close (spike finding, §4.3.3).
+ * (`dist-browser/island.browser.js`), well under this 30KB budget. This
+ * `jsBytes`/`cssBytes` pair is now a REAL gate — the "declarative only" gap
+ * the C3 spike flagged here (§4.3.3) is closed: `tools/bundle-budget-check`
+ * bundles `src/island.browser.ts` with the same externals and fails
+ * `pnpm verify` when the minified bytes exceed `jsBytes`, and
+ * `tools/css-budget-check` gates the fragment's minified source CSS against
+ * `cssBytes`.
  */
 export const orderFormBudget = {
   scope: "fragment",

@@ -51,9 +51,13 @@ describe("page-referrals", () => {
     });
   });
 
-  it("declares a static page budget: 0 client JS, within 50KB CSS", () => {
+  it("declares a static page budget: framework-baseline JS ceiling, within 50KB CSS", () => {
     expect(referralsPageBudget.scope).toBe("page");
-    expect(referralsPageBudget.jsBytes).toBe(0);
+    // No page-owned client islands: the ceiling is the measured Next
+    // app-router first-load baseline (~102.5KB gzip) plus slack — see the
+    // calibration comment in src/budget.ts (audit:bundle gates the real
+    // number).
+    expect(referralsPageBudget.jsBytes).toBe(110000);
     expect(referralsPageBudget.cssBytes).toBeLessThanOrEqual(50000);
   });
 

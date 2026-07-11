@@ -116,7 +116,11 @@ describe("page-trade", () => {
 
   it("declares page budget and UI component usage", () => {
     expect(tradePageBudget.scope).toBe("page");
-    expect(tradePageBudget.jsBytes).toBeLessThanOrEqual(180000);
+    // 220000 = measured gzipped first-load baseline (202KB: React + shared
+    // vendor + every trade island's glue, by D3 design) + headroom — see the
+    // calibration comment in src/budget.ts; audit:bundle gates the real
+    // number against this ceiling.
+    expect(tradePageBudget.jsBytes).toBeLessThanOrEqual(220000);
     expect(tradePageBudget.cssBytes).toBeLessThanOrEqual(50000);
     expect(usedUiComponents).toContain("DataTable");
   });
