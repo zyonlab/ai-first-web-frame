@@ -22,8 +22,8 @@ describe("createDefaultSmokeChecks", () => {
       "shell-gateway-health",
       "promotion-banner-health",
       "recommendation-widget-health",
-      "page-home-root",
-      "page-product-page",
+      "page-home-health",
+      "page-product-health",
       "shell-home-composed",
       "shell-product-composed",
     ]);

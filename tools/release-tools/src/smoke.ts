@@ -61,18 +61,16 @@ export function createDefaultSmokeChecks(host = "localhost"): SmokeCheck[] {
       expectSubstrings: ['"status":"ok"'],
     },
     {
-      // page-home has no /health route yet; the rendered page is the probe.
-      id: "page-home-root",
-      url: `http://${host}:4101/`,
+      id: "page-home-health",
+      url: `http://${host}:4101/health`,
       expectStatus: 200,
-      expectSubstrings: ['data-page="home"'],
+      expectSubstrings: ['"status":"ok"', "page-home"],
     },
     {
-      // page-product has no /health route yet; the demo product page is the probe.
-      id: "page-product-page",
-      url: `http://${host}:4102/product/123`,
+      id: "page-product-health",
+      url: `http://${host}:4102/health`,
       expectStatus: 200,
-      expectSubstrings: ['data-page="product"'],
+      expectSubstrings: ['"status":"ok"', "page-product"],
     },
     {
       id: "shell-home-composed",

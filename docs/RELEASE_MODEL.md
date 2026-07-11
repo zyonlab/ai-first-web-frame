@@ -99,14 +99,10 @@ and the `@mvp/mcp` `affected` tool all converged on the graph engine.)
 
 - `/health` on shell-gateway (4100), promotion-banner (4201),
   recommendation-widget (4202).
-- Rendered pages for the Next.js apps: page-home root (4101, marker
-  `data-page="home"`) and the product demo page (4102, marker
-  `data-page="product"`). The page apps all expose `/health` now
-  (`apps/page-*/app/health/route.ts`), but the smoke checks
-  (`tools/release-tools/src/smoke.ts`) still probe the rendered pages and
-  have not been repointed to `/health` yet — a separate code fix.
+- `/health` on the Next.js page apps too (page-home 4101, page-product
+  4102 — every page ships `apps/page-*/app/health/route.ts`).
 - Composed shell routes on 4100 (`/` and `/product/123`) including the
-  `data-shell-gateway="true"` marker.
+  `data-shell-gateway="true"` and rendered `data-page` markers.
 
 It prints a JSON report to stdout and exits non-zero on timeout or failure.
 Polling logic is unit tested in `tools/release-tools/src/smoke.ts`.
@@ -114,10 +110,9 @@ Polling logic is unit tested in `tools/release-tools/src/smoke.ts`.
 ## Kubernetes Deployment
 
 - All Deployments in `infra/k8s/` carry readiness and liveness probes and
-  conservative resource requests/limits. Fastify services probe `/health`;
-  the Next.js page apps expose `/health` (`apps/page-*/app/health/route.ts`)
-  but their k8s manifests still probe `/` and have not been repointed yet —
-  a separate code fix.
+  conservative resource requests/limits. Every service — fastify fragments
+  and Next.js page apps alike — probes `/health`
+  (pages: `apps/page-*/app/health/route.ts`).
 - Image tags are parameterized through `infra/k8s/kustomization.yaml`.
   Manifests keep the `:dev` tag for local clusters; a release retargets a
   unit with:
