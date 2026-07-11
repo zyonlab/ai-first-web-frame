@@ -4,6 +4,7 @@ import {
   type FragmentRenderResponse,
   normalizeRenderStrategy,
   type PageManifest,
+  parseFragmentRenderResponse,
   type ReleaseChannel,
   type RenderStrategy,
   type RequestContext,
@@ -16,7 +17,7 @@ export type { FragmentRenderResponse, ReleaseChannel } from "@mvp/contracts";
 /** The strategy used when a slot does not declare one. */
 export const DEFAULT_RENDER_STRATEGY: RenderStrategy = "dynamic-ssr";
 
-type RuntimeTrace = {
+export type RuntimeTrace = {
   startSpan: (
     name: string,
     kind?:
@@ -241,6 +242,10 @@ export async function fetchFragment(
       },
     },
   );
+  // Set when the fragment degraded because of an error (bad status, invalid
+  // JSON, schema violation) as opposed to a plain timeout — surfaced on the
+  // trace span so the fallback is never a silent one (goal A2).
+  let degradeReason: string | undefined;
   try {
     const response = await withTimeout(
       fetchImpl(`${fragment.serviceUrl}/render`, {
@@ -251,15 +256,36 @@ export async function fetchFragment(
         .then(async (response) => {
           if (!response.ok)
             throw new Error(`fragment status ${response.status}`);
-          return (await response.json()) as FragmentRenderResponse;
+          const parsed = parseFragmentRenderResponse(await response.json());
+          if (!parsed.ok) {
+            const detail = parsed.issues
+              .map(
+                (issue) =>
+                  `${issue.path.join(".") || "(root)"}: ${issue.message}`,
+              )
+              .join("; ");
+            const message = `fragment response failed FragmentRenderResponseSchema (${fragment.serviceUrl}): ${detail}`;
+            // A schema violation is a contract bug in the fragment, not a
+            // normal degradation like a timeout — always say so out loud.
+            console.warn(`[runtime] ${message}`);
+            throw new Error(message);
+          }
+          return parsed.response;
         })
-        .catch(() => fallback),
+        .catch((error: unknown) => {
+          degradeReason =
+            error instanceof Error ? error.message : String(error);
+          return fallback;
+        }),
       options.timeoutMs ?? 200,
       fallback,
     );
     options.trace?.endSpan(spanId ?? "", {
       status: isFallbackResponse(response) ? "fallback" : "ok",
-      attributes: { fallback: isFallbackResponse(response) },
+      attributes: {
+        fallback: isFallbackResponse(response),
+        ...(degradeReason ? { error: degradeReason } : {}),
+      },
     });
     return response;
   } catch (error) {

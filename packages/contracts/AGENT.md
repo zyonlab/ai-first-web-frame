@@ -29,6 +29,13 @@ else in the framework layer depends on it, never the other way around.
 - `FragmentRenderRequestSchema` / `FragmentRenderResponseSchema` — the exact
   wire contract for `POST /render` on a fragment service
   (`{ ctx, props }` in, `{ html, assets, cache, metadata }` out).
+- `parseFragmentRenderRequest(body): { ok: true, request, strict } | { ok: false, issues }`
+  / `parseFragmentRenderResponse(body): { ok: true, response } | { ok: false, issues }`
+  — the two edge parsers for that wire contract: the request side accepts a
+  lenient partial envelope (fragments own graceful degradation), the response
+  side is strict (a fragment that can't produce a valid response is failed,
+  and the page runtime degrades that slot to its fallback). Both return
+  result objects with `ZodIssue[]` instead of throwing.
 - `FragmentRegistrySchema` / `type FragmentRegistry` — shape of
   `registry/registry.data.json` (loaded by `@mvp/registry`): a map of fragment
   name to `{ stable?, canary?, preview?, versions? }`, each entry

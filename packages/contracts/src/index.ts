@@ -514,6 +514,26 @@ export type FragmentRenderResponse = z.infer<
   typeof FragmentRenderResponseSchema
 >;
 
+export type ParseFragmentRenderResponseResult =
+  | { ok: true; response: FragmentRenderResponse }
+  | { ok: false; issues: z.ZodIssue[] };
+
+/**
+ * Validates a fragment's POST /render response body at the page-runtime edge
+ * (the consuming mirror of `parseFragmentRenderRequest`). Unlike the
+ * request side there is no lenient tier: a fragment that cannot produce a
+ * structurally valid FragmentRenderResponse is treated as failed, and the
+ * composing page degrades that slot to its fallback instead of letting a
+ * malformed body flow into composition.
+ */
+export function parseFragmentRenderResponse(
+  body: unknown,
+): ParseFragmentRenderResponseResult {
+  const parsed = FragmentRenderResponseSchema.safeParse(body);
+  if (parsed.success) return { ok: true, response: parsed.data };
+  return { ok: false, issues: parsed.error.issues };
+}
+
 /**
  * Validates the inline `<script type="application/json" data-island-props>`
  * snapshot a fragment stamps next to a `@mvp/islands` mount node (the C2
