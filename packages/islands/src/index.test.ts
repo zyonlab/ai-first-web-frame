@@ -275,6 +275,120 @@ describe("C2 snapshot version handshake", () => {
   });
 });
 
+describe("A2 island snapshot schema validation", () => {
+  it("skips hydration and reports reason: invalid-snapshot on malformed JSON", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onSnapshotMismatch = vi.fn<(info: SnapshotMismatchInfo) => void>();
+    configureIslandRuntime({ onSnapshotMismatch });
+    registerIsland("orderForm", (props: { symbol?: string }) =>
+      createElement("span", { "data-testid": "sym" }, props.symbol),
+    );
+    const el = document.createElement("div");
+    el.setAttribute("data-island", "orderForm");
+    const script = document.createElement("script");
+    script.setAttribute("type", "application/json");
+    script.textContent = "{not json";
+    el.appendChild(script);
+    // Snapshot the SSR-only markup before attempting to hydrate — a skipped
+    // hydration must leave it byte-identical, exactly like the C2 mismatch path.
+    const ssrHtmlBefore = el.innerHTML;
+    document.body.appendChild(el);
+
+    let handle: { unmount(): void } | undefined;
+    act(() => {
+      handle = mountIsland(el);
+    });
+
+    expect(el.querySelector("[data-testid='sym']")).toBeNull();
+    expect(el.innerHTML).toBe(ssrHtmlBefore);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/invalid snapshot/i);
+    expect(onSnapshotMismatch).toHaveBeenCalledTimes(1);
+    expect(onSnapshotMismatch.mock.calls[0]?.[0]?.reason).toBe(
+      "invalid-snapshot",
+    );
+    expect(onSnapshotMismatch.mock.calls[0]?.[0]?.island).toBe("orderForm");
+
+    // The returned handle is a safe no-op (callers never need to null-check).
+    expect(() => handle?.unmount()).not.toThrow();
+    warnSpy.mockRestore();
+  });
+
+  it("skips hydration when the snapshot is valid JSON but not an object (e.g. an array)", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onSnapshotMismatch = vi.fn<(info: SnapshotMismatchInfo) => void>();
+    configureIslandRuntime({ onSnapshotMismatch });
+    registerIsland("orderForm", () =>
+      createElement("span", { "data-testid": "sym" }),
+    );
+    const el = document.createElement("div");
+    el.setAttribute("data-island", "orderForm");
+    const script = document.createElement("script");
+    script.setAttribute("type", "application/json");
+    script.textContent = JSON.stringify([1, 2, 3]);
+    el.appendChild(script);
+    document.body.appendChild(el);
+
+    act(() => {
+      mountIsland(el);
+    });
+
+    expect(el.querySelector("[data-testid='sym']")).toBeNull();
+    expect(onSnapshotMismatch).toHaveBeenCalledTimes(1);
+    expect(onSnapshotMismatch.mock.calls[0]?.[0]?.reason).toBe(
+      "invalid-snapshot",
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("skips hydration when a typed field has the wrong type (e.g. version is a number)", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onSnapshotMismatch = vi.fn<(info: SnapshotMismatchInfo) => void>();
+    configureIslandRuntime({ onSnapshotMismatch });
+    registerIsland("orderForm", () =>
+      createElement("span", { "data-testid": "sym" }),
+    );
+    const el = document.createElement("div");
+    el.setAttribute("data-island", "orderForm");
+    const script = document.createElement("script");
+    script.setAttribute("type", "application/json");
+    script.textContent = JSON.stringify({ props: {}, version: 123 });
+    el.appendChild(script);
+    document.body.appendChild(el);
+
+    act(() => {
+      mountIsland(el);
+    });
+
+    expect(el.querySelector("[data-testid='sym']")).toBeNull();
+    expect(onSnapshotMismatch.mock.calls[0]?.[0]?.reason).toBe(
+      "invalid-snapshot",
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("still hydrates normally for a snapshot missing every optional field (old fragment, no version)", () => {
+    // A2's new validation must not regress the pre-existing backward-compat
+    // guarantee: a snapshot that only carries `props` (no slice/fragment/
+    // version/contractHash — an old, non-participating fragment) is a VALID
+    // snapshot, not a malformed one, and still hydrates exactly as today.
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    registerIsland("orderForm", (props: { symbol?: string }) =>
+      createElement("span", { "data-testid": "sym" }, props.symbol),
+    );
+    const el = buildMountNode("orderForm", { props: { symbol: "BTC" } });
+    document.body.appendChild(el);
+
+    act(() => {
+      mountIsland(el);
+    });
+
+    expect(el.querySelector("[data-testid='sym']")?.textContent).toBe("BTC");
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+});
+
 describe("hydrateIslands", () => {
   it("mounts every data-island node under the root and returns handles", () => {
     registerIsland("a", () => createElement("i", { "data-mark": "a" }, "A"));
