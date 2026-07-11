@@ -55,7 +55,7 @@ Browser-facing demo endpoints:
 The framework supports slot-level render strategies through page manifests and the runtime scheduler:
 
 - `static` - no runtime fragment service call; emits prerender-safe HTML.
-- `isr` - runtime fetch with TTL cache semantics for revalidation-style content.
+- `ttl-cache` - runtime fetch with TTL cache semantics for revalidation-style content (formerly aliased `isr`; the alias is retired and now rejected).
 - `cached-ssr` - SSR fragment call with a bounded cache key.
 - `dynamic-ssr` - SSR fragment call on every request with timeout and fallback.
 
@@ -65,7 +65,7 @@ Demo coverage:
 - `page-home` promotion banner: `cached-ssr`.
 - `page-home` recommendations: `dynamic-ssr`.
 - `page-product` static proof block: `static`.
-- `page-product` product promotion: `isr`.
+- `page-product` product promotion: `ttl-cache`.
 - `page-product` recommendations: `dynamic-ssr`.
 
 The runtime scheduler executes fragment slots in parallel, isolates failures with fallback HTML, and uses cache keys derived from fragment, version, tenant, locale, experiment, and props.
@@ -91,7 +91,7 @@ The home and product demos render a `Request trace` section showing one request'
 
 ## Quality Gates
 
-`pnpm verify` runs typecheck, lint, format check, coverage tests, build, similarity, bundle, CSS, dependency, and server/client boundary audits. Reports are written to `reports/`.
+`pnpm verify` runs 13 gates (see `scripts/verify.mts`): typecheck, lint, format check, `verify:manifest-gen` (page manifest codegen sync), `docs:test` (executes every AGENT.md fenced TypeScript snippet), unit tests, build, and six audits (similarity, bundle, CSS, dependency, optimizer, server/client boundary). Reports are written to `reports/`.
 
 ## Known Limitations
 

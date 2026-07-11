@@ -92,8 +92,8 @@ boundary rejects bad data against them today.
 
 | Export | Validates | Enforced at |
 | --- | --- | --- |
-| `PerformanceBudgetSchema` (+ `loadDefaultBudget`, `mergeBudget`, `assertBudget`, `createBudgetReport`) | Component/fragment/page/shell budgets (hard gates in `pnpm verify`) | `packages/contracts/src/index.ts:637` (`mergeBudget` parses the merged result); budget refinements are embedded in the manifest schemas above. |
-| `OptimizationFindingSchema` (+ `OptimizationFindingLocationSchema`, `OptimizationEvidenceSchema`) | One optimizer finding (severity, category, evidence, recommendation) | `packages/optimizer/src/index.ts` — every emitted finding is built via `.parse` (lines 227, 306, 415, 447, 480). |
+| `PerformanceBudgetSchema` (+ `loadDefaultBudget`, `mergeBudget`, `assertBudget`, `createBudgetReport`) | Component/fragment/page/shell budgets (hard gates in `pnpm verify`) | `packages/contracts/src/index.ts:646` (`mergeBudget` parses the merged result); budget refinements are embedded in the manifest schemas above. |
+| `OptimizationFindingSchema` (+ `OptimizationFindingLocationSchema`, `OptimizationEvidenceSchema`) | One optimizer finding (severity, category, evidence, recommendation) | `packages/optimizer/src/index.ts` — every emitted finding is built via `.parse` (lines 224, 303, 412, 444, 477). |
 
 ## 2. JSON Schema exports (for non-TS agents)
 

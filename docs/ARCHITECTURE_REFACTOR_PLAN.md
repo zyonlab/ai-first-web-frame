@@ -747,21 +747,17 @@ Three tiers, all generated or verified in CI so they cannot rot:
    fields, unit-tested); the `mount_slot` tool now also covers P2's
    `mount-slot --check` freshness mode.
 
-> **P5-prep status:** `AGENT.md` now exists for the 8 packages whose public API
-> is not part of the current refactor (`packages/contracts`, `packages/runtime`,
-> `packages/request`, `packages/request-context`, `packages/observability`,
-> `packages/optimizer`, `packages/ui`, `packages/design-tokens`), and root
-> `docs/OPERATIONS.md` + `llms.txt` are drafted covering the full lifecycle and
-> doc index. A future pass just needs to extend `AGENT.md` coverage to the
-> remaining packages (`interaction`, `data`, `storage`, `design-system`,
-> `trade-client`, the new `domains/*`/`registry`/`store`/`islands` packages)
-> once the P1 migration settles their APIs.
+> **P5-prep status (updated 2026-07-11):** `AGENT.md` coverage is effectively
+> complete: 17 of 19 `packages/*` (all except `packages/assets` and
+> `packages/workers`), all 5 `domains/*`, and `tools/create-component`
+> (1 of 11 `tools/*` entries), every fenced ts/tsx snippet executed by
+> `docs:test` inside `pnpm verify`. Real remainder: `packages/assets`,
+> `packages/workers`, the other `tools/*`, and an undecided policy on whether
+> `fragments/*`/`apps/*` get their own `AGENT.md`.
 
-Doc pages to write/complete, in priority order: `OPERATIONS.md` (lifecycle),
-`COMPOSITION.md` (slots/strategies/streaming semantics incl. the two-tier
-independence table), `CONTRACTS.md` (schema index, generated), `INTERACTION.md`
-(bus/store/ACL model + orphan-bus warning), `DELIVERY.md` (affected model, what
-triggers GLOBAL, deploy gates).
+The doc pages formerly listed here as "to write" all exist now:
+`OPERATIONS.md` (lifecycle), plus `COMPOSITION.md`, `CONTRACTS.md`,
+`INTERACTION.md`, and `DELIVERY.md` (landed in PR #25).
 
 ## 8. Phasing, gates, and guardrails
 

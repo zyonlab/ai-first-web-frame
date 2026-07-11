@@ -1,6 +1,6 @@
 # Monorepo Deployment
 
-Monorepo does not mean one deployment. Every shell, page, and fragment has its own package, build target, Dockerfile, and deployment example.
+Monorepo does not mean one deployment. Every shell, page, and fragment (all 22 deployable units) has its own package, build target, and Dockerfile. Kubernetes deployment examples in `infra/k8s/` cover a 5-unit subset — shell-gateway, page-home, page-product, promotion-banner, recommendation-widget — the other 17 units ship Dockerfiles (and compose services) only.
 
 Shell release: change `apps/shell-gateway`, run affected tests and build, publish `shell-gateway:<sha>`, canary, then promote or roll back.
 

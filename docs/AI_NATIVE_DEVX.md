@@ -24,8 +24,10 @@ parallel, with low coupling, at high speed**. The bones are already right:
   unit can run without any real backend.
 - **Per-unit deploy** — one Dockerfile per fragment, `register-fragment` /
   `mount-slot` / `promote-fragment` / `rollback-fragment` (canary→stable), env
-  URL overrides (`ORDER_BOOK_URL`), and **`scripts/affected.mts`** already
-  computes affected deployable units from a git diff.
+  URL overrides (`ORDER_BOOK_URL`), and **`scripts/affected-graph.mts`**
+  computes affected deployable units from a git diff over the unit dependency
+  graph (the legacy path-heuristic `scripts/affected.mts` was deleted in
+  PR #17).
 
 The friction is **the open interface**, not the architecture:
 
@@ -33,8 +35,9 @@ The friction is **the open interface**, not the architecture:
    `CLAUDE.md`** — not a declarative surface an agent can query and call.
 2. **No isolated component dev.** You bring up the whole stack (or read code) to
    exercise a component that depends on cross-component data/interaction.
-3. **`affected` is not wired into verify/deploy** and only knows the original 5
-   units, not the trade-demo fragments.
+3. ~~**`affected` is not wired into verify/deploy** and only knows the original 5
+   units, not the trade-demo fragments.~~ **Closed** — the graph engine covers
+   every unit and `pnpm deploy:affected` / CI are wired to it (§9, Phase 2b).
 4. **No runtime/visual gate.** Every trade-demo defect this cycle — fragment CSS
    not delivered, React #418, the `ticker.ETH not found` symbol-switch crash,
    layout voids — **passed `pnpm verify` green and was only caught in a browser.**
@@ -78,7 +81,7 @@ type UnitManifest = {
   };
 
   // ── deploy / runtime ──────────────────────────────────────────────
-  renderStrategy?: "static" | "isr" | "cached-ssr" | "dynamic-ssr";
+  renderStrategy?: "static" | "ttl-cache" | "cached-ssr" | "dynamic-ssr";
   endpoint?: string;             // "/render" for fragments
   assets?: { js?: string[]; css?: string[] };
   budget: UnitBudget;            // already exists (budget.ts)
@@ -166,8 +169,10 @@ the fragment's own `/render` + client bundle, `@mvp/assets` for the asset plane.
 
 ## 5. Capability C — affected-only verify / build / deploy
 
-`scripts/affected.mts` already computes affected deployable units from a diff.
-Finish it:
+`scripts/affected-graph.mts` computes affected deployable units from a diff
+over the unit graph (this capability shipped — see §9 Phase 2b; the legacy
+`scripts/affected.mts` it replaced was deleted in PR #17). The original
+finish-it plan, retained for context:
 
 1. **Extend the unit set** from the original 5 to every fragment + page + shell
    (drive it off the manifest graph, not a hardcoded list).
@@ -311,7 +316,7 @@ micro-component system into a genuinely parallel, low-coupling AI iteration base
 ### Appendix — first concrete PRs
 
 1. `tools/release-tools/buildUnitGraph()` + `query_registry` (Phase 1/3 shared).
-2. `packages/mcp-devx` — MCP server wrapping the 8 lifecycle scripts (Phase 1).
+2. `packages/mcp` (`@mvp/mcp`) — MCP server wrapping the 8 lifecycle scripts (Phase 1).
 3. `manifest.ts` schema bump: `consumes`/`produces`/`layoutHint` + a codemod to
    backfill from existing `dataDependencies` + island `bus.subscribe` sites.
 4. `scripts/dev-component.mts` + `apps/_harness` mock shell (Phase 3).
