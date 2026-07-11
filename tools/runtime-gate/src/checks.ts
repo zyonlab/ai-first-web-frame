@@ -20,6 +20,16 @@ export type PaneObservation = {
   contentHeight: number;
 };
 
+/**
+ * Which selector produced `panes`. Only the trade page emits `[data-area]`
+ * grid cells; every composed page (home/product/markets/portfolio/trade)
+ * emits `[data-fragment]` on each fragment's own root element (success and
+ * fallback paths both carry it — see fragment `render.ts` modules), so that
+ * is the generic fallback measurement plane. `"none"` means neither selector
+ * matched anything on the page.
+ */
+export type PaneSource = "data-area" | "data-fragment" | "none";
+
 export type RuntimeObservation = {
   /** Uncaught page errors (already filtered of benign noise by the driver). */
   pageErrors: string[];
@@ -27,15 +37,31 @@ export type RuntimeObservation = {
   consoleErrors: string[];
   /** Requests to /_next/static or /assets (asset-delivery plane). */
   staticRequests: StaticRequest[];
-  /** Panes (e.g. `[data-area]`) with their fill geometry (layout-fit plane). */
+  /** Panes with their fill geometry (layout-fit plane); see `paneSource`. */
   panes: PaneObservation[];
+  /** Which selector `panes` came from. Defaults to inferring from `panes`
+   * (non-empty → `"data-area"`) when omitted, for older callers/fixtures. */
+  paneSource?: PaneSource;
   /** Document horizontal overflow in px (0 = none). */
   horizontalOverflowPx: number;
-  /** Optional interaction-contract result (e.g. order-book → order-form price). */
-  interaction?: { name: string; ok: boolean; detail?: string };
+  /** Optional interaction-contract result (e.g. order-book → order-form price).
+   * `skipped: true` means the contract doesn't apply to this page (e.g. no
+   * order-book present) — reported explicitly rather than omitted, so a
+   * reader can tell "not applicable" apart from "not collected". */
+  interaction?: {
+    name: string;
+    ok: boolean;
+    detail?: string;
+    skipped?: boolean;
+  };
 };
 
-export type RuntimeCheck = { name: string; ok: boolean; detail?: string };
+export type RuntimeCheck = {
+  name: string;
+  ok: boolean;
+  detail?: string;
+  skipped?: boolean;
+};
 
 export type RuntimeThresholds = {
   /** Max tolerated pane void (areaHeight − contentHeight) before it's a fail. */
@@ -91,7 +117,12 @@ export function evaluateRuntime(
   });
 
   // Layout fit — no pane strands its content above a large void (the 490px
-  // header-void / 806px empty-rail class).
+  // header-void / 806px empty-rail class). Measured against `[data-area]`
+  // grid cells when the page has them (trade), falling back to each
+  // `[data-fragment]` section's own box on every other composed page —
+  // same void-threshold logic either way, just a different pane source.
+  const paneSource: PaneSource =
+    obs.paneSource ?? (obs.panes.length > 0 ? "data-area" : "none");
   const worstVoid = obs.panes
     .map((p) => ({ ...p, void: p.areaHeight - p.contentHeight }))
     .sort((a, b) => b.void - a.void)[0];
@@ -100,8 +131,8 @@ export function evaluateRuntime(
     name: "layout-fit",
     ok: voidOk,
     detail: worstVoid
-      ? `worst pane void ${Math.round(worstVoid.void)}px @ ${worstVoid.area} (max ${thresholds.maxPaneVoidPx})`
-      : "no panes measured",
+      ? `worst pane void ${Math.round(worstVoid.void)}px @ ${worstVoid.area} (source: ${paneSource}, max ${thresholds.maxPaneVoidPx})`
+      : "no panes measured (tried [data-area], [data-fragment])",
   });
 
   // No horizontal page overflow.
@@ -111,12 +142,16 @@ export function evaluateRuntime(
     detail: `${obs.horizontalOverflowPx}px (max ${thresholds.maxHorizontalOverflowPx})`,
   });
 
-  // Interaction contract (optional).
+  // Interaction contract (optional; explicit about being conditional). Pages
+  // without an order-book (every composed page except trade) report this as
+  // `skipped: true` rather than omitting it, so a reader can tell "this
+  // page's contract doesn't apply" apart from "this wasn't collected".
   if (obs.interaction) {
     checks.push({
       name: `interaction:${obs.interaction.name}`,
-      ok: obs.interaction.ok,
+      ok: obs.interaction.skipped ? true : obs.interaction.ok,
       detail: obs.interaction.detail,
+      skipped: obs.interaction.skipped,
     });
   }
 

@@ -85,4 +85,73 @@ describe("evaluateRuntime", () => {
       evaluateRuntime(obs, { ...DEFAULT_THRESHOLDS, maxPaneVoidPx: 24 }).ok,
     ).toBe(false);
   });
+
+  it("measures layout-fit via [data-fragment] panes on non-trade pages", () => {
+    const obs: RuntimeObservation = {
+      ...clean,
+      panes: [
+        { area: "promotion-banner", areaHeight: 96, contentHeight: 94 },
+        { area: "recommendation-widget", areaHeight: 240, contentHeight: 236 },
+      ],
+      paneSource: "data-fragment",
+    };
+    const { ok, checks } = evaluateRuntime(obs);
+    expect(ok).toBe(true);
+    const layoutFit = checks.find((c) => c.name === "layout-fit");
+    expect(layoutFit?.ok).toBe(true);
+    expect(layoutFit?.detail).toContain("data-fragment");
+  });
+
+  it("fails a large void measured via the [data-fragment] fallback", () => {
+    const { checks } = evaluateRuntime({
+      ...clean,
+      panes: [
+        { area: "recommendation-widget", areaHeight: 400, contentHeight: 40 },
+      ],
+      paneSource: "data-fragment",
+    });
+    const layoutFit = checks.find((c) => c.name === "layout-fit");
+    expect(layoutFit?.ok).toBe(false);
+    expect(layoutFit?.detail).toContain("recommendation-widget");
+    expect(layoutFit?.detail).toContain("data-fragment");
+  });
+
+  it("reports no panes measured, naming both tried selectors", () => {
+    const { checks } = evaluateRuntime({
+      ...clean,
+      panes: [],
+      paneSource: "none",
+    });
+    const layoutFit = checks.find((c) => c.name === "layout-fit");
+    expect(layoutFit?.ok).toBe(true);
+    expect(layoutFit?.detail).toContain("[data-area]");
+    expect(layoutFit?.detail).toContain("[data-fragment]");
+  });
+
+  it("infers data-area as the pane source when paneSource is omitted (back-compat)", () => {
+    const { checks } = evaluateRuntime({
+      ...clean,
+      panes: [{ area: "header", areaHeight: 557, contentHeight: 67 }],
+      paneSource: undefined,
+    });
+    const layoutFit = checks.find((c) => c.name === "layout-fit");
+    expect(layoutFit?.detail).toContain("data-area");
+  });
+
+  it("reports a skipped interaction check as passing and explicit, not silently absent", () => {
+    const { ok, checks } = evaluateRuntime({
+      ...clean,
+      interaction: {
+        name: "orderbook→order-form-price",
+        ok: false,
+        skipped: true,
+        detail: "no order-book on this page — skipped",
+      },
+    });
+    expect(ok).toBe(true);
+    const interaction = checks.find((c) => c.name.startsWith("interaction:"));
+    expect(interaction?.ok).toBe(true);
+    expect(interaction?.skipped).toBe(true);
+    expect(interaction?.detail).toContain("skipped");
+  });
 });
