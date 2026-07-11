@@ -6,20 +6,30 @@
  * Usage:
  *   pnpm affected:graph [--base <ref>] [--head <ref>] [--json]
  *   pnpm affected:graph --base origin/main
+ *   pnpm affected:graph --base "$BASE" --github-output "$GITHUB_OUTPUT"
  *
  * Base resolution: --base ref (if it exists) → origin/main → HEAD~1.
+ *
+ * This is the single affected-detection engine (W1-A): `.github/workflows/ci.yml`
+ * and `scripts/deploy-affected.mts` both consume it, so a given diff always
+ * produces one answer. The `--github-output` flag mirrors the output contract
+ * the CI docker-matrix job previously read from the old heuristic engine
+ * (`scripts/affected.mts`, still present only because `packages/mcp/src/tools.ts`'s
+ * `affected` MCP tool shells to it — see that engine's deprecation note).
  */
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   type AffectedPlan,
   affectedFromChangedPaths,
   type RegistryFileReader,
+  SHELL_UNIT,
 } from "../tools/release-tools/src/affected-graph.ts";
 import { loadUnitGraph } from "../tools/release-tools/src/load-graph.ts";
+import type { UnitGraph } from "../tools/release-tools/src/unit-graph.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -83,16 +93,66 @@ function registryFileReader(base: string, head?: string): RegistryFileReader {
   });
 }
 
+/** Loads the graph once and computes the plan against it — shared by
+ * `computeAffectedPlan` (back-compat for `deploy-affected.mts`) and the
+ * `--github-output` matrix builder below, which needs the graph to resolve
+ * each deployable id's `dir`/`dockerfile`. */
+export async function computeAffectedPlanWithGraph(
+  base?: string,
+  head?: string,
+): Promise<{ graph: UnitGraph; plan: AffectedPlan }> {
+  const graph = await loadUnitGraph(ROOT);
+  const resolvedBase = resolveBase(base);
+  const paths = changedPaths(resolvedBase, head);
+  const plan = affectedFromChangedPaths(graph, paths, {
+    getRegistryFileContent: registryFileReader(resolvedBase, head),
+  });
+  return { graph, plan };
+}
+
 export async function computeAffectedPlan(
   base?: string,
   head?: string,
 ): Promise<AffectedPlan> {
-  const graph = await loadUnitGraph(ROOT);
-  const resolvedBase = resolveBase(base);
-  const paths = changedPaths(resolvedBase, head);
-  return affectedFromChangedPaths(graph, paths, {
-    getRegistryFileContent: registryFileReader(resolvedBase, head),
-  });
+  return (await computeAffectedPlanWithGraph(base, head)).plan;
+}
+
+/** Every deployable's Docker build context, matching the compose/CI convention
+ * `fragments/<id>/Dockerfile`, `apps/<id>/Dockerfile` (shell-gateway included). */
+function matrixEntry(
+  graph: UnitGraph,
+  id: string,
+): { unit: string; dir: string; dockerfile: string } {
+  const kind =
+    id === SHELL_UNIT
+      ? "page"
+      : (graph.units.find((u) => u.id === id)?.kind ?? "component");
+  const dir =
+    kind === "page" || id === SHELL_UNIT ? `apps/${id}` : `fragments/${id}`;
+  return { unit: id, dir, dockerfile: `${dir}/Dockerfile` };
+}
+
+/** GitHub Actions matrix payload for the docker build job — same shape as the
+ * old engine's `toGithubMatrix` (`{ include: [{unit, dir, dockerfile}] }`). */
+export function toGithubMatrix(
+  graph: UnitGraph,
+  plan: AffectedPlan,
+): { include: Array<{ unit: string; dir: string; dockerfile: string }> } {
+  return { include: plan.deployables.map((id) => matrixEntry(graph, id)) };
+}
+
+function writeGithubOutput(
+  file: string,
+  graph: UnitGraph,
+  plan: AffectedPlan,
+): void {
+  const matrix = toGithubMatrix(graph, plan);
+  const lines = [
+    `has_units=${plan.deployables.length > 0 ? "true" : "false"}`,
+    `units=${JSON.stringify(plan.deployables)}`,
+    `matrix=${JSON.stringify(matrix)}`,
+  ];
+  appendFileSync(file, `${lines.join("\n")}\n`);
 }
 
 async function main() {
@@ -104,11 +164,16 @@ async function main() {
   const head = argv[argv.indexOf("--head") + 1]?.startsWith("-")
     ? undefined
     : argv[argv.indexOf("--head") + 1];
+  const githubOutput = argv.includes("--github-output")
+    ? argv[argv.indexOf("--github-output") + 1]
+    : undefined;
 
-  const plan = await computeAffectedPlan(
+  const { graph, plan } = await computeAffectedPlanWithGraph(
     argv.includes("--base") ? base : undefined,
     argv.includes("--head") ? head : undefined,
   );
+
+  if (githubOutput) writeGithubOutput(githubOutput, graph, plan);
 
   if (json) {
     process.stdout.write(

@@ -100,9 +100,19 @@ function loadPages(root: string): PageInput[] {
   return out;
 }
 
-/** Reads every workspace package's name + `@mvp/*` deps for the package graph. */
-function loadPackages(root: string): PackageInput[] {
-  const dir = join(root, "packages");
+/**
+ * Reads every workspace package's name + `@mvp/*` deps under `<root>/<group>`
+ * for the package graph. Used for both `packages/` and `domains/` (W1-A):
+ * domain packages (`domains/trade-contracts`, `trade-data`, `trade-prefs`,
+ * `trade-theme`, `trade-chart`) are workspace packages in exactly the same
+ * shape as `packages/*` — a `package.json` name + `@mvp/*` deps — so they get
+ * the same `package` graph unit + `uses-package` reverse-dependency-closure
+ * treatment. Before this, `domains/**` was never scanned at all: a change
+ * under a domain package produced an empty seed set instead of pulling in
+ * the fragments/pages that depend on it (silent under-build).
+ */
+function loadPackageGroup(root: string, group: string): PackageInput[] {
+  const dir = join(root, group);
   if (!existsSync(dir)) return [];
   const out: PackageInput[] = [];
   for (const name of readdirSync(dir)) {
@@ -157,7 +167,10 @@ export async function loadUnitGraph(root: string): Promise<UnitGraph> {
     fragments,
     pages: loadPages(root),
     routes,
-    packages: loadPackages(root),
+    packages: [
+      ...loadPackageGroup(root, "packages"),
+      ...loadPackageGroup(root, "domains"),
+    ],
     // biome-ignore lint/suspicious/noExplicitAny: registry JSON shape is consumed defensively by the builder.
     registry: loadRegistry(root) as any,
   });

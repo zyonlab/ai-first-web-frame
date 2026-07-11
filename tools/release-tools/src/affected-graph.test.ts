@@ -18,7 +18,7 @@ const graph = buildUnitGraph({
       name: "order-form",
       dataDependencies: ["account"],
       consumes: { slices: ["trade.order-draft.price"] },
-      packageDependencies: ["@mvp/interaction"],
+      packageDependencies: ["@mvp/interaction", "@mvp/trade-contracts"],
     },
     { name: "promotion-banner", packageDependencies: ["@mvp/runtime"] },
   ],
@@ -46,6 +46,10 @@ const graph = buildUnitGraph({
     { name: "@mvp/data", dir: "data" },
     { name: "@mvp/runtime", dir: "runtime" },
     { name: "@mvp/contracts", dir: "contracts" },
+    // A domains/* unit (§ W1-A): modeled exactly like a packages/* unit —
+    // fragments/order-form depends on it (see packageDependencies above), so
+    // its reverse-dependency closure must reach order-form + page-trade.
+    { name: "@mvp/trade-contracts", dir: "trade-contracts" },
   ],
   routes: [
     { path: "/trade/:symbol", page: "page-trade" },
@@ -72,6 +76,32 @@ describe("seedsFromPaths", () => {
     ]);
     expect(seeds).toEqual(["@mvp/interaction"]);
     expect(global).toBe(false);
+  });
+
+  it("maps a modeled domains/* package to its unit (not global, not empty)", () => {
+    // Regression test for the "silent under-build" bug: a domains/* change
+    // used to fall through every branch (no fragments/apps/packages prefix
+    // matched) and produce seeds=[] / global=false, which under-built.
+    const { seeds, global } = seedsFromPaths(graph, [
+      "domains/trade-contracts/src/index.ts",
+    ]);
+    expect(seeds).toEqual(["@mvp/trade-contracts"]);
+    expect(global).toBe(false);
+  });
+
+  it("stays global for an unknown domains/* directory", () => {
+    expect(
+      seedsFromPaths(graph, ["domains/unknown-domain/src/index.ts"]).global,
+    ).toBe(true);
+  });
+
+  it("stays global for an unrecognized top-level directory (not silently empty)", () => {
+    // Regression guard: a top-level dir this resolver doesn't model at all
+    // (not fragments/, apps/, packages/, domains/, and not on the ignored
+    // list) must never silently produce an empty seed set.
+    const { seeds, global } = seedsFromPaths(graph, ["newthing/file.ts"]);
+    expect(global).toBe(true);
+    expect(seeds).toEqual([]);
   });
 
   it("stays global for registry/routes code, root config, unknown packages", () => {
@@ -269,5 +299,19 @@ describe("affectedFromChangedPaths", () => {
       "apps/page-home/src/manifest.slots.json",
     ]);
     expect(plan.deployables).toEqual(["page-home"]);
+  });
+
+  it("a domains/* change closes over its fragment + page dependents (not empty, not global)", () => {
+    // Reproduces the reported bug directly: a change under domains/trade-contracts
+    // must seed trade-contracts and its closure must include order-form (which
+    // declares @mvp/trade-contracts as a package dependency) + page-trade
+    // (which mounts order-form) — not an empty affected set.
+    const plan = affectedFromChangedPaths(graph, [
+      "domains/trade-contracts/src/index.ts",
+    ]);
+    expect(plan.global).toBe(false);
+    expect(plan.seeds).toEqual(["@mvp/trade-contracts"]);
+    expect(plan.deployables).toEqual(["order-form", "page-trade"]);
+    expect(plan.affectedPages).toEqual(["page-trade"]);
   });
 });

@@ -56,6 +56,13 @@ jobs:
           cache: pnpm
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
+      # The graph engine (scripts/affected-graph.mts) reads each fragment's
+      # manifest.ts via a real dynamic import, and a few manifests have
+      # runtime (non-type-only) imports from workspace packages/domains — so
+      # those need a built dist/ to resolve. Scoped to packages/+domains/
+      # (fast tsdown builds) rather than the full `pnpm build` (which also
+      # builds every Next.js app and is what `verify`'s own build gate does).
+      - run: pnpm --filter "./packages/*" --filter "./domains/*" build
       - name: Compute affected deployable units
         id: affected
         run: |
@@ -63,11 +70,12 @@ jobs:
             BASE="origin/${{ github.base_ref }}"
           else
             # Previous commit of the push; all zeros on force push/new branch,
-            # which the script detects and falls back from.
+            # which the script's base resolution (git rev-parse --verify)
+            # detects as nonexistent and falls back from.
             BASE="${{ github.event.before }}"
           fi
-          pnpm exec tsx scripts/affected.mts --base "$BASE" --github-output "$GITHUB_OUTPUT"
-          pnpm exec tsx scripts/affected.mts --base "$BASE"
+          pnpm exec tsx scripts/affected-graph.mts --base "$BASE" --github-output "$GITHUB_OUTPUT"
+          pnpm exec tsx scripts/affected-graph.mts --base "$BASE"
 
   docker:
     name: docker (${{ matrix.unit }})
