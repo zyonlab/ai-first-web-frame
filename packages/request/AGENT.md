@@ -58,7 +58,7 @@ behavior (like `@mvp/runtime`) must catch at the call site.
 
 ## Example
 
-```ts
+```ts no-run
 import { createRequestClient, RequestPolicyError, RequestTimeoutError } from "@mvp/request";
 import { createRequestContext } from "@mvp/request-context";
 import type { RequestPolicy } from "@mvp/contracts";

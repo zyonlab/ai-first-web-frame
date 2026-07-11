@@ -109,7 +109,7 @@ hydration, `console.warn`s, and calls the configured
 
 ## Example
 
-```ts
+```ts no-run
 import {
   registerIsland,
   hydrateIslands,

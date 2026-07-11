@@ -34,7 +34,7 @@ pnpm --filter @mvp/create-component start -- <PascalCaseName> --type fragment|ui
 
 **Result envelope** (`CreateComponentResult`, from
 `tools/create-component/src/index.ts`)
-```ts
+```ts no-run
 {
   status: "created" | "failed";
   type: "ui" | "fragment";
@@ -105,7 +105,7 @@ either delete the partial directory or rerun with `--force`.
 
 ## Example
 
-```ts
+```ts no-run
 import { runCreateComponent } from "@mvp/create-component";
 // (in-repo: import { runCreateComponent } from "../../tools/create-component/src/index";)
 
