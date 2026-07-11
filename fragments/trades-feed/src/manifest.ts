@@ -18,9 +18,10 @@ export const tradesFeedManifest = {
     '<section data-fragment="trades-feed" data-fallback="true">Trades feed temporarily unavailable</section>',
   assets: {
     // Patch-only: React is NOT bundled here. The island mounts through the
-    // shared @mvp/trade-client chunk (deduped by @mvp/assets so it ships once),
-    // plus this fragment's own tiny vanilla patch asset.
-    js: ["@mvp/trade-client", "/assets/trades-feed.patch.js"],
+    // This fragment's own tiny vanilla patch asset. (A dead "@mvp/trade-client"
+    // placeholder — a package deleted in P1 that nothing ever resolved — was
+    // removed from this list.)
+    js: ["/assets/trades-feed.patch.js"],
     css: ["/assets/trades-feed.css"],
   },
   budget: tradesFeedBudget,

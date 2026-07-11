@@ -12,7 +12,7 @@ import {
  * runtime. Island packages consume it via:
  *
  * ```ts
- * // packages/trade-client/tailwind.config.ts  (build-time only)
+ * // <consumer-package>/tailwind.config.ts  (build-time only)
  * import { tailwindPreset } from "@mvp/design-system";
  * export default {
  *   presets: [tailwindPreset],

@@ -2,7 +2,7 @@ export const openOrdersBudget = {
   scope: "fragment",
   name: "open-orders",
   // Patch-only island: the fragment ships NO React. Its only browser JS is the
-  // shared @mvp/trade-client chunk plus a small vanilla patch asset (row
+  // page-bundled shared runtime plus a small vanilla patch asset (row
   // upsert/remove + the cancel flow), so the 30KB JS ceiling has generous
   // headroom. Kept aligned with the doc 02 §3 draft (12KB) as the practical
   // target; 30KB is the hard framework gate.

@@ -93,7 +93,7 @@ const COUNTDOWN_TICK_MS = 1000;
 /**
  * The small near-realtime header island. Only this component re-renders on a
  * tick; the surrounding SSR fragment stays static. Mounts through
- * `@mvp/trade-client` (`registerIsland("marketHeader", MarketHeaderIsland)`),
+ * the page bundle (`registerIsland("marketHeader", MarketHeaderIsland)`),
  * reading its props from the inline JSON snapshot.
  *
  * Behaviour:

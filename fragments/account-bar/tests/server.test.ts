@@ -47,7 +47,7 @@ describe("account-bar fragment service", () => {
     const manifest = response.json();
     expect(manifest.renderStrategy).toBe("dynamic-ssr");
     expect(manifest.cachePolicy.ttl).toBe(0);
-    expect(manifest.assets.js).toContain("@mvp/trade-client");
+    expect(manifest.assets.js).toEqual(["/assets/account-bar.island.js"]);
     expect(manifest.dataDependencies).toEqual(["account"]);
   });
 
@@ -55,7 +55,7 @@ describe("account-bar fragment service", () => {
     const server = buildServer();
     const response = await server.inject({ method: "GET", url: "/assets" });
     expect(response.json()).toMatchObject({
-      js: expect.arrayContaining(["@mvp/trade-client"]),
+      js: ["/assets/account-bar.island.js"],
       css: expect.any(Array),
     });
   });

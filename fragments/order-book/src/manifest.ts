@@ -6,7 +6,7 @@ import { orderBookBudget } from "./budget";
  *
  * - `renderMode: ssr`, `renderStrategy: dynamic-ssr` (realtime ladder).
  * - `cachePolicy.ttl: 0` — realtime, never cached at the fragment layer.
- * - `assets.js` declares the shared `@mvp/trade-client` chunk (D3 shared
+ * - `assets.js` declares only the fragment-local patch client (D3 shared
  *   dependency, deduped by `@mvp/assets`, NOT re-bundled) plus the fragment's
  *   own vanilla patch client. No React ships from this fragment.
  * - `dataDependencies` references the C5 book source id template `book.l2.<symbol>`.
@@ -22,7 +22,7 @@ export const orderBookManifest = {
   fallback:
     '<section data-fragment="order-book" data-fallback="true">Order book unavailable</section>',
   assets: {
-    js: ["@mvp/trade-client", "/assets/order-book.client.js"],
+    js: ["/assets/order-book.client.js"],
     css: ["/assets/order-book.css"],
   },
   // dependsOn / dataDependencies use the C5 symbol-scoped book id template.

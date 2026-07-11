@@ -10,7 +10,7 @@ import { accountBarBudget } from "./budget";
  *   / margin usage / withdrawable resolve per SSR request) *and* realtime
  *   (margin patches live). There is no shared TTL — `cachePolicy.ttl = 0` — so
  *   every request re-reads the user-private account frame.
- * - `assets.js` lists `@mvp/trade-client` as a **shared dependency** (C2 /
+ * - `assets.js` lists only the fragment-local island glue (C2 /
  *   spine §11) so React/Radix bundle once; only the small island glue is
  *   fragment-owned. `@mvp/assets` dedupes the shared chunk across fragments.
  * - `dataDependencies` is the single C5 `account` id. This id is **shared** with
@@ -35,9 +35,10 @@ export const accountBarManifest = {
   fallback:
     '<section data-fragment="account-bar" data-fallback="true">Account bar unavailable</section>',
   assets: {
-    // Shared React runtime chunk (deduped by @mvp/assets) + the small island
-    // glue this fragment owns.
-    js: ["@mvp/trade-client", "/assets/account-bar.island.js"],
+    // The small island glue this fragment owns. (React ships inside the
+    // consuming page's bundle via TradeHydrator's static import; the dead
+    // "@mvp/trade-client" placeholder that used to claim otherwise is gone.)
+    js: ["/assets/account-bar.island.js"],
     css: ["/assets/account-bar.css"],
   },
   budget: accountBarBudget,

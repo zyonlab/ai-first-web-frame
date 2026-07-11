@@ -70,7 +70,9 @@ describe("manifest + budget contract", () => {
     const { accountBarManifest } = await import("./manifest");
     expect(accountBarManifest.renderStrategy).toBe("dynamic-ssr");
     expect(accountBarManifest.cachePolicy.ttl).toBe(0);
-    expect(accountBarManifest.assets.js).toContain("@mvp/trade-client");
+    expect(accountBarManifest.assets.js).toEqual([
+      "/assets/account-bar.island.js",
+    ]);
     // Shared `account` data node (dedupe with order-form / positions-table).
     expect(accountBarManifest.dataDependencies).toEqual(["account"]);
   });

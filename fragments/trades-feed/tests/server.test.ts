@@ -48,7 +48,8 @@ describe("trades-feed fragment service", () => {
     const server = buildServer();
     const response = await server.inject({ method: "GET", url: "/assets" });
     const assets = response.json();
-    expect(assets.js).toContain("@mvp/trade-client");
+    // Dead "@mvp/trade-client" placeholder removed (package deleted in P1).
+    expect(assets.js).not.toContain("@mvp/trade-client");
     expect(assets.js).toContain("/assets/trades-feed.patch.js");
     expect(assets.css).toContain("/assets/trades-feed.css");
   });

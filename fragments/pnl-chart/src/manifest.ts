@@ -19,7 +19,7 @@ export const pnlChartManifest = {
   owner: "portfolio",
   version: "0.1.0",
   renderMode: "ssr",
-  renderStrategy: "isr",
+  renderStrategy: "ttl-cache",
   cachePolicy: {
     // Equity curve is deterministic + slow-moving: revalidate periodically.
     ttl: 60,

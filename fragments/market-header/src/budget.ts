@@ -1,7 +1,7 @@
 export const marketHeaderBudget = {
   scope: "fragment",
   name: "market-header",
-  // Small island: React itself ships once via the shared @mvp/trade-client
+  // Small island: React ships once inside the consuming page's bundle
   // chunk (D3) and is NOT counted against this fragment. Only the island glue
   // + inline snapshot are charged here, so the JS budget stays tiny.
   jsBytes: 8000,
