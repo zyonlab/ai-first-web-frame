@@ -1,6 +1,7 @@
 {
   "name": "@mvp/trade-data",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.js",
