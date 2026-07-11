@@ -12,7 +12,7 @@ export const marketsTableCss = `/**
  * markets-table scoped styles.
  *
  * Pure SSR, no island: semantic up/down colors come from design tokens
- * (\`--mvp-color-up\` / \`--mvp-color-down\`) with token fallbacks only. Numeric
+ * (\`--trade-up\` / \`--trade-down\`) with token fallbacks only. Numeric
  * columns are equal-width tabular-nums monospace so prices align. Each row is a
  * deep-link anchor; the row highlights on hover/focus. All selectors are scoped
  * under \`[data-fragment="markets-table"]\`.
@@ -97,11 +97,11 @@ export const marketsTableCss = `/**
 }
 
 [data-fragment="markets-table"] .markets-table__change--up {
-  color: var(--mvp-color-up, #12a150);
+  color: var(--trade-up, #12a150);
 }
 
 [data-fragment="markets-table"] .markets-table__change--down {
-  color: var(--mvp-color-down, #d1363f);
+  color: var(--trade-down, #d1363f);
 }
 
 [data-fragment="markets-table"] .markets-table__change--flat {

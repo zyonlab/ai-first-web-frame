@@ -12,9 +12,9 @@ export const portfolioSummaryCss = `/**
  * portfolio-summary scoped styles.
  *
  * Pure SSR, no island: the four overview cards + open-positions table are
- * static server HTML. Semantic up/down colors come from design tokens
- * (\`--mvp-color-up\` / \`--mvp-color-down\`, with \`--trade-buy\` / \`--trade-sell\`
- * fallbacks); numbers use tabular (mono) digits. All selectors are scoped under
+ * static server HTML. Semantic up/down colors come from the trade-owned
+ * \`--trade-up\` / \`--trade-down\` tokens (\`@mvp/trade-theme\`, theme-scoped);
+ * numbers use tabular (mono) digits. All selectors are scoped under
  * \`[data-fragment="portfolio-summary"]\`.
  */
 
@@ -63,11 +63,11 @@ export const portfolioSummaryCss = `/**
 }
 
 [data-fragment="portfolio-summary"] .ps-value--up {
-  color: var(--mvp-color-up, var(--trade-buy, #1ea97c));
+  color: var(--trade-up, #1ea97c);
 }
 
 [data-fragment="portfolio-summary"] .ps-value--down {
-  color: var(--mvp-color-down, var(--trade-sell, #e5504d));
+  color: var(--trade-down, #e5504d);
 }
 
 [data-fragment="portfolio-summary"] .ps-meter {
@@ -149,19 +149,19 @@ export const portfolioSummaryCss = `/**
 }
 
 [data-fragment="portfolio-summary"] .ps-side--long {
-  color: var(--mvp-color-up, var(--trade-buy, #1ea97c));
+  color: var(--trade-up, #1ea97c);
 }
 
 [data-fragment="portfolio-summary"] .ps-side--short {
-  color: var(--mvp-color-down, var(--trade-sell, #e5504d));
+  color: var(--trade-down, #e5504d);
 }
 
 [data-fragment="portfolio-summary"] .ps-pnl--up {
-  color: var(--mvp-color-up, var(--trade-buy, #1ea97c));
+  color: var(--trade-up, #1ea97c);
 }
 
 [data-fragment="portfolio-summary"] .ps-pnl--down {
-  color: var(--mvp-color-down, var(--trade-sell, #e5504d));
+  color: var(--trade-down, #e5504d);
 }
 
 [data-fragment="portfolio-summary"] .ps-empty td {

@@ -252,10 +252,10 @@ export const tradeGridCss = `
   font-size: 10px;
 }
 .rail-watchlist__chg--up {
-  color: var(--mvp-color-up);
+  color: var(--trade-up);
 }
 .rail-watchlist__chg--down {
-  color: var(--mvp-color-down);
+  color: var(--trade-down);
 }
 
 /* Framework-observability drawer: a bottom-docked request-trace waterfall.
@@ -297,13 +297,13 @@ export const tradeGridCss = `
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--mvp-color-buy);
+  background: var(--trade-buy);
 }
 .trace-drawer__tab-dot[data-health="degraded"] {
   background: var(--mvp-color-signal);
 }
 .trace-drawer__tab-dot[data-health="unhealthy"] {
-  background: var(--mvp-color-sell);
+  background: var(--trade-sell);
 }
 .trace-drawer__panel {
   position: fixed;
@@ -344,13 +344,13 @@ export const tradeGridCss = `
   color: var(--mvp-color-text-muted);
 }
 .trace-drawer__health[data-health="ok"] {
-  color: var(--mvp-color-buy);
+  color: var(--trade-buy);
 }
 .trace-drawer__health[data-health="degraded"] {
   color: var(--mvp-color-signal);
 }
 .trace-drawer__health[data-health="unhealthy"] {
-  color: var(--mvp-color-sell);
+  color: var(--trade-sell);
 }
 .trace-drawer__legend {
   display: inline-flex;
@@ -434,10 +434,10 @@ export const tradeGridCss = `
 }
 .trace-wf__dot[data-kind="fragment"],
 .trace-wf__bar[data-kind="fragment"] {
-  background: var(--mvp-color-buy);
+  background: var(--trade-buy);
 }
 .trace-wf__bar[data-status="error"] {
-  background: var(--mvp-color-sell);
+  background: var(--trade-sell);
 }
 .trace-wf__dur {
   position: absolute;

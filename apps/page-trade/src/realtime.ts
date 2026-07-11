@@ -23,11 +23,7 @@
  * re-subscribe for the new symbol; the full layer teardown cancels everything.
  */
 
-import type {
-  DataSubscriptionEvent,
-  MockScheduler,
-  OrderbookL2Frame,
-} from "@mvp/data";
+import type { DataSubscriptionEvent } from "@mvp/data";
 import {
   buildLadder,
   diffLadder,
@@ -54,7 +50,12 @@ import {
 import { createRequestContext } from "@mvp/request-context";
 import type { SliceStore } from "@mvp/store";
 import { TRADE_ACTIVE_SYMBOL, type TradeSlices } from "@mvp/trade-contracts";
-import { createTradeDataClient, type TradeDataClient } from "@mvp/trade-data";
+import {
+  createTradeDataClient,
+  type MockScheduler,
+  type OrderbookL2Frame,
+  type TradeDataClient,
+} from "@mvp/trade-data";
 
 /** Options for {@link startTradeRealtime} — all optional; tests inject a scheduler. */
 export type TradeRealtimeOptions = {

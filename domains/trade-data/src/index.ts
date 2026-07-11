@@ -9,9 +9,17 @@
  * ergonomic helper (contract C4) that pre-registers them all and auto-wires the
  * frozen A0-mock transport for realtime feeds.
  *
- * Nothing here modifies the core or the transport — it only composes them.
+ * Also owns the trade-only mock realtime transport (seeded frame generators,
+ * deterministic fixtures, and `createMockSubscriptionTransport`) under
+ * `./transport` — this is the A0-mock slot, moved here from `@mvp/data`
+ * because it is entirely trade-market-data-specific (`OrderbookL2Frame`,
+ * `TradePrintFrame`, `TickerFrame`, `FundingFrame`, `Candle`, ...), not a
+ * framework-generic primitive.
+ *
+ * Nothing here modifies the core — it only composes it.
  */
 
 export * from "./sourceIds";
 export * from "./tradeClient";
 export * from "./tradeSources";
+export * from "./transport";

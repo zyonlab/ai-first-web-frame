@@ -1,6 +1,5 @@
 "use client";
 
-import type { FundingFrame, TickerFrame } from "@mvp/data";
 import { createInteractionBus, type InteractionBus } from "@mvp/interaction";
 import { createRequestContext } from "@mvp/request-context";
 import {
@@ -8,7 +7,11 @@ import {
   TRADE_ACTIVE_SYMBOL,
   tradeSliceContracts,
 } from "@mvp/trade-contracts";
-import { createTradeDataClient } from "@mvp/trade-data";
+import {
+  createTradeDataClient,
+  type FundingFrame,
+  type TickerFrame,
+} from "@mvp/trade-data";
 import { useEffect, useMemo, useReducer } from "react";
 import {
   computeCountdown,

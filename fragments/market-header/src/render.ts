@@ -64,7 +64,7 @@ export type MarketHeaderIslandProps = {
  * Layout mirrors 01-ui-layout §1.3/§4: one dense stat row (pair · mark · oracle
  * · 24h · funding · volume · countdown). The 24h change cell carries a
  * `data-direction` attribute and a `market-header__change--{up,down}` class so
- * the scoped CSS colors it with `--mvp-color-up` / `--mvp-color-down`.
+ * the scoped CSS colors it with `--trade-up` / `--trade-down`.
  */
 export function renderMarketHeaderHtml(
   view: MarketHeaderView,

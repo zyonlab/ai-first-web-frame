@@ -1,6 +1,5 @@
 "use client";
 
-import type { CandleFrame, Candle as DataCandle } from "@mvp/data";
 import { createInteractionBus, type InteractionBus } from "@mvp/interaction";
 import { createRequestContext } from "@mvp/request-context";
 import { CandleChart, type Candle as ChartCandle } from "@mvp/trade-chart";
@@ -14,7 +13,11 @@ import {
   TRADE_CHART_INTERVAL,
   tradeSliceContracts,
 } from "@mvp/trade-contracts";
-import { createTradeDataClient } from "@mvp/trade-data";
+import {
+  type CandleFrame,
+  createTradeDataClient,
+  type Candle as DataCandle,
+} from "@mvp/trade-data";
 import { Tabs, TabsList, TabsTrigger } from "@mvp/ui/shadcn";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {

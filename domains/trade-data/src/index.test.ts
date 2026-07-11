@@ -3,11 +3,11 @@ import {
   createDataKey,
   createMemorySubscriptionTransport,
   defineDataSource,
-  FIXTURE_SEED,
 } from "@mvp/data";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createTradeDataClient,
+  FIXTURE_SEED,
   GLOBAL_SOURCE_IDS,
   mockTransportFor,
   normalizeSymbol,

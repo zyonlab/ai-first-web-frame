@@ -87,7 +87,7 @@ function formatPrice(value: number): string {
  * control chip group (`1m/5m/15m/1h/4h/1d`), and a static OHLC summary of the
  * latest candle. The summary's O/H/L/C close cell carries a `data-direction`
  * attribute and a `chart-panel__close--{up,down}` class so the scoped CSS colors
- * it with `--mvp-color-up` / `--mvp-color-down`. No-JS first paint stays
+ * it with `--trade-up` / `--trade-down`. No-JS first paint stays
  * readable: the summary + placeholder describe the chart without any script.
  */
 export function renderChartPanelHtml(

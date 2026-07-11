@@ -1,12 +1,13 @@
 import type { RequestContext } from "@mvp/contracts";
-import type {
-  Candle,
-  DataCacheEntry,
-  FundingFrame,
-  TickerFrame,
-} from "@mvp/data";
+import type { DataCacheEntry } from "@mvp/data";
 import type { RequestTrace } from "@mvp/observability";
-import { createTradeDataClient, type MarketRow } from "@mvp/trade-data";
+import {
+  type Candle,
+  createTradeDataClient,
+  type FundingFrame,
+  type MarketRow,
+  type TickerFrame,
+} from "@mvp/trade-data";
 
 /**
  * One enriched markets-table row. The base fields (`symbol`, `last`,

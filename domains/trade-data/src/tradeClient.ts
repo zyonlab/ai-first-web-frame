@@ -25,7 +25,6 @@ import {
   type DataCacheEntry,
   type DataSource,
   type DataSubscriptionEvent,
-  type MockScheduler,
   type SubscribeDataOptions,
 } from "@mvp/data";
 import { sourceIds } from "./sourceIds";
@@ -46,6 +45,7 @@ import {
   tickerSource,
   tradesSource,
 } from "./tradeSources";
+import type { MockScheduler } from "./transport";
 
 /** Which symbols (and candle intervals) to pre-register sources for. */
 export type TradeDataClientOptions = {

@@ -25,24 +25,14 @@
  *   transport after its request-time seed (spine §5 flow B).
  *
  * Everything the loaders emit is derived from the frozen generators/fixtures in
- * `@mvp/data`'s transport layer; this module never invents literals.
+ * this package's `./transport` layer; this module never invents literals.
  */
 
 import type { DataDependency } from "@mvp/contracts";
 import {
-  type Candle,
-  createMockSubscriptionTransport,
   type DataSource,
   defineDataSource,
-  FIXTURE_SEED,
-  type FixtureSymbol,
-  type FundingFrame,
-  getFixture,
-  type MockScheduler,
-  type OrderbookL2Frame,
   type SubscriptionTransport,
-  type TickerFrame,
-  type TradePrintFrame,
 } from "@mvp/data";
 import {
   normalizeInterval,
@@ -51,6 +41,18 @@ import {
   parseSourceId,
   sourceIds,
 } from "./sourceIds";
+import {
+  type Candle,
+  createMockSubscriptionTransport,
+  FIXTURE_SEED,
+  type FixtureSymbol,
+  type FundingFrame,
+  getFixture,
+  type MockScheduler,
+  type OrderbookL2Frame,
+  type TickerFrame,
+  type TradePrintFrame,
+} from "./transport";
 
 // ---------------------------------------------------------------------------
 // Loader params + payload shapes
@@ -808,7 +810,7 @@ const TRANSPORT_FEED_BY_KIND: Partial<
  * the poll loop.
  *
  * The `(seed, symbol)` pair makes the stream reproducible; the same id + seed
- * yields a byte-identical frame sequence (see `../transport`).
+ * yields a byte-identical frame sequence (see `./transport`).
  */
 export function mockTransportFor(
   id: string,

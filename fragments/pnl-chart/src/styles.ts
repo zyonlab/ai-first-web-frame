@@ -12,7 +12,7 @@ export const pnlChartCss = `/**
  * pnl-chart scoped styles.
  *
  * Pure SSR inline SVG, no island: semantic up/down PnL colors come from design
- * tokens (\`--mvp-color-up\` / \`--mvp-color-down\`); no hard-coded hexes beyond
+ * tokens (\`--trade-up\` / \`--trade-down\`); no hard-coded hexes beyond
  * token fallbacks. All selectors are scoped under \`[data-fragment="pnl-chart"]\`.
  */
 
@@ -74,11 +74,11 @@ export const pnlChartCss = `/**
 }
 
 [data-fragment="pnl-chart"] .pnl-chart__stats--up {
-  color: var(--mvp-color-up, #12a150);
+  color: var(--trade-up, #12a150);
 }
 
 [data-fragment="pnl-chart"] .pnl-chart__stats--down {
-  color: var(--mvp-color-down, #d1363f);
+  color: var(--trade-down, #d1363f);
 }
 
 [data-fragment="pnl-chart"] .pnl-chart__stats--flat {
@@ -109,11 +109,11 @@ export const pnlChartCss = `/**
 }
 
 [data-fragment="pnl-chart"][data-direction="up"] .pnl-chart__line {
-  stroke: var(--mvp-color-up, #12a150);
+  stroke: var(--trade-up, #12a150);
 }
 
 [data-fragment="pnl-chart"][data-direction="down"] .pnl-chart__line {
-  stroke: var(--mvp-color-down, #d1363f);
+  stroke: var(--trade-down, #d1363f);
 }
 
 [data-fragment="pnl-chart"][data-direction="flat"] .pnl-chart__line {
@@ -126,11 +126,11 @@ export const pnlChartCss = `/**
 }
 
 [data-fragment="pnl-chart"][data-direction="up"] .pnl-chart__area {
-  fill: var(--mvp-color-up, #12a150);
+  fill: var(--trade-up, #12a150);
 }
 
 [data-fragment="pnl-chart"][data-direction="down"] .pnl-chart__area {
-  fill: var(--mvp-color-down, #d1363f);
+  fill: var(--trade-down, #d1363f);
 }
 
 [data-fragment="pnl-chart"][data-direction="flat"] .pnl-chart__area {

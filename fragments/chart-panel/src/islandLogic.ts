@@ -1,10 +1,10 @@
-import type { CandleFrame, Candle as DataCandle } from "@mvp/data";
 import type { Candle as ChartCandle } from "@mvp/trade-chart";
 import {
   type ChartInterval,
   type ChartIntervalPayload,
   isChartInterval,
 } from "@mvp/trade-contracts";
+import type { CandleFrame, Candle as DataCandle } from "@mvp/trade-data";
 
 /**
  * Pure island logic for the chart-panel (contract C2/C3/C4/C5 realized).

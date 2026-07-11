@@ -9,12 +9,18 @@ import { tokens as baseTokens } from "@mvp/design-tokens";
  *
  * - theme-invariant scales (spacing, radius, font, breakpoint, shadow, zIndex,
  *   trade grid track widths) that never change between light and dark, and
- * - theme-variant semantic colors (surfaces, text, border, buy/sell, up/down)
+ * - theme-variant semantic colors (surfaces, text, border, accent, signal)
  *   whose *names* are stable but whose *values* differ per theme (contract C9).
+ *
+ * Domain-specific semantic colors (the trade demo's buy/sell/up/down) are NOT
+ * here — they are owned by `domains/trade-theme` (goal B3: `packages/**` must
+ * contain zero domain code), which emits its own theme-scoped `--trade-*`
+ * variables using the `emitDeclarations` helper this package exports from
+ * `./themes`.
  *
  * Variable naming is inherited from `@mvp/design-tokens.createCssVariables`:
  * `--<prefix>-<group>-<key>` with the default prefix `mvp`, e.g.
- * `--mvp-color-buy`, `--mvp-spacing-md`, `--mvp-grid-book`.
+ * `--mvp-color-accent`, `--mvp-spacing-md`, `--mvp-grid-book`.
  */
 
 export const TOKEN_PREFIX = "mvp" as const;
@@ -60,9 +66,9 @@ export const baseScales = {
 
 /**
  * Theme-variant semantic colors. Same keys in both themes (contract C9); only
- * the values differ. `buy`/`sell` are the D6 trading semantic colors; up/down
- * mirror them for non-order contexts (24h change, PnL). `accent`/`signal`/
- * `muted` carry the base palette forward but are theme-aware here.
+ * the values differ. `accent`/`signal`/`muted` carry the base palette forward
+ * but are theme-aware here. Domain-specific colors (buy/sell/up/down) live in
+ * `domains/trade-theme` instead — see the module doc above.
  */
 export type SemanticColors = {
   /** Page/background base surface (deepest layer). */
@@ -83,14 +89,6 @@ export type SemanticColors = {
   signal: string;
   /** Legacy muted color (kept for base-token parity). */
   muted: string;
-  /** D6 buy / bid / long semantic color. */
-  buy: string;
-  /** D6 sell / ask / short semantic color. */
-  sell: string;
-  /** Positive change / uptick (mirrors buy). */
-  up: string;
-  /** Negative change / downtick (mirrors sell). */
-  down: string;
 };
 
 /** Light theme semantic color values. */
@@ -104,10 +102,6 @@ export const lightColors: SemanticColors = {
   accent: "#0f766e",
   signal: "#d97706",
   muted: "#69707a",
-  buy: "#0f9d58",
-  sell: "#d32f2f",
-  up: "#0f9d58",
-  down: "#d32f2f",
 };
 
 /** Dark theme semantic color values. */
@@ -121,10 +115,6 @@ export const darkColors: SemanticColors = {
   accent: "#2dd4bf",
   signal: "#f59e0b",
   muted: "#9aa2ad",
-  buy: "#22c55e",
-  sell: "#ef4444",
-  up: "#22c55e",
-  down: "#ef4444",
 };
 
 export type ThemeName = "light" | "dark";
@@ -137,8 +127,9 @@ export const themeColors: Record<ThemeName, SemanticColors> = {
 
 /**
  * The full token surface exported to consumers: theme-invariant scales plus the
- * default (light) color set, so `tokens.color.buy` resolves to a concrete value
- * while `themeColors` / `createThemeVariables` provide the per-theme override.
+ * default (light) color set, so `tokens.color.accent` resolves to a concrete
+ * value while `themeColors` / `createThemeVariables` provide the per-theme
+ * override.
  */
 export const tokens = {
   color: lightColors,

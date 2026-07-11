@@ -16,13 +16,13 @@ registry, `createTradeDataClient`) live outside this package (in
 into `createDataClient`. Use it inside a page/fragment's server-side data
 resolution to back `dataDependencies` declared on fragment slots.
 
-Note: `src/index.ts` also re-exports `./transport` (deterministic PRNG, pure
-frame generators, `createMockSubscriptionTransport`, `tradeFixtures`). That
-module is explicitly scoped as "mock realtime data transport for the trade
-demo" (its own file header) — it is demo/domain-specific mock infrastructure,
-not part of the generic client contract, and is intentionally out of scope for
-this document; treat any use of it as an implementation detail of the trade
-demo rather than a framework surface to build on.
+Note: the mock realtime data transport (deterministic PRNG, pure frame
+generators, `createMockSubscriptionTransport`, `tradeFixtures`) is NOT part of
+this package. It is demo/domain-specific mock infrastructure scoped to the
+trade demo and lives in `domains/trade-data/src/transport` (re-exported from
+`@mvp/trade-data`), not `@mvp/data` — this package only ships the generic
+`SubscriptionTransport` interface and `createMemorySubscriptionTransport`
+(push-on-demand, for contract tests).
 
 ## Entry points
 

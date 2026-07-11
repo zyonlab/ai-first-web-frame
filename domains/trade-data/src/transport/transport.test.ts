@@ -379,7 +379,7 @@ describe("createMockSubscriptionTransport — integration with subscribeData", (
   afterEach(() => vi.useRealTimers());
 
   it("drives subscribeData end to end (connect -> deliver -> close)", async () => {
-    const { createDataClient, defineDataSource } = await import("../index");
+    const { createDataClient, defineDataSource } = await import("@mvp/data");
     const source = defineDataSource({
       id: "orderbook.l2",
       dependency: realtimeDep,

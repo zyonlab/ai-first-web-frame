@@ -1,7 +1,7 @@
 import type { RequestContext } from "@mvp/contracts";
-import type { TradePrintFrame } from "@mvp/data";
 import type { RequestTrace } from "@mvp/observability";
 import { createRequestContext } from "@mvp/request-context";
+import type { TradePrintFrame } from "@mvp/trade-data";
 import { loadRecentTrades } from "./data";
 import { tradesFeedManifest } from "./manifest";
 import {

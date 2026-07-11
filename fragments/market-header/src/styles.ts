@@ -11,7 +11,7 @@
 export const marketHeaderCss = `/*
  * Scoped market-header styles (served as /assets/market-header.css).
  * Directional 24h change uses the design-system semantic color variables
- * (\`--mvp-color-up\` / \`--mvp-color-down\`); no hard-coded hexes. Numeric cells
+ * (\`--trade-up\` / \`--trade-down\`); no hard-coded hexes. Numeric cells
  * use the shared mono font token for tabular alignment. Small footprint to hold
  * the fragment CSS budget (<= 10KB).
  */
@@ -65,11 +65,11 @@ export const marketHeaderCss = `/*
 }
 
 .market-header__change--up > b {
-  color: var(--mvp-color-up, #12a150);
+  color: var(--trade-up, #12a150);
 }
 
 .market-header__change--down > b {
-  color: var(--mvp-color-down, #d1363f);
+  color: var(--trade-down, #d1363f);
 }
 
 .market-header__change--flat > b {

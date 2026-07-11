@@ -12,7 +12,7 @@ export const fundingBarCss = `/**
  * funding-bar scoped styles.
  *
  * Pure SSR, no island: semantic up/down funding colors come from design tokens
- * (\`--mvp-color-up\` / \`--mvp-color-down\`); no hard-coded hexes beyond token
+ * (\`--trade-up\` / \`--trade-down\`); no hard-coded hexes beyond token
  * fallbacks. A CSS-only pulse hints that the countdown is live even before the
  * optional vanilla tick runs. All selectors are scoped under
  * \`[data-fragment="funding-bar"]\`.
@@ -56,11 +56,11 @@ export const fundingBarCss = `/**
 }
 
 [data-fragment="funding-bar"] .funding-bar__rate--up .funding-bar__value {
-  color: var(--mvp-color-up, #12a150);
+  color: var(--trade-up, #12a150);
 }
 
 [data-fragment="funding-bar"] .funding-bar__rate--down .funding-bar__value {
-  color: var(--mvp-color-down, #d1363f);
+  color: var(--trade-down, #d1363f);
 }
 
 [data-fragment="funding-bar"] .funding-bar__rate--flat .funding-bar__value {
@@ -80,7 +80,7 @@ export const fundingBarCss = `/**
   height: 5px;
   margin-top: -2px;
   border-radius: 50%;
-  background: var(--mvp-color-up, #12a150);
+  background: var(--trade-up, #12a150);
   animation: funding-bar-pulse 2s ease-in-out infinite;
 }
 

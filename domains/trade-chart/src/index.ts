@@ -54,9 +54,10 @@ const DEFAULT_COLORS: ChartColors = {
 /**
  * Resolves chart colors from a CSS-variable source (typically
  * `getComputedStyle(canvas)`), so the chart follows the active theme's
- * `--mvp-color-buy` / `--mvp-color-sell` / grid / text tokens. Any token that
- * is absent or blank falls back to a sensible default, so the renderer works
- * even before the design-system tokens are wired.
+ * `--trade-buy` / `--trade-sell` (the trade-owned, theme-scoped tokens from
+ * `@mvp/trade-theme` — see goal B3) / grid / text tokens. Any token that is
+ * absent or blank falls back to a sensible default, so the renderer works
+ * even before the trade-theme bridge is wired.
  */
 export function resolveChartColors(
   source: StyleSource | undefined,
@@ -67,8 +68,8 @@ export function resolveChartColors(
     return value?.trim() ? value.trim() : fallback;
   };
   return {
-    buy: read("--mvp-color-buy", DEFAULT_COLORS.buy),
-    sell: read("--mvp-color-sell", DEFAULT_COLORS.sell),
+    buy: read("--trade-buy", DEFAULT_COLORS.buy),
+    sell: read("--trade-sell", DEFAULT_COLORS.sell),
     grid: read("--mvp-color-grid", DEFAULT_COLORS.grid),
     text: read("--mvp-color-text", DEFAULT_COLORS.text),
   };

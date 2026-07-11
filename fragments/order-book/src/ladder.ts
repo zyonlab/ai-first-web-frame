@@ -1,4 +1,4 @@
-import type { BookLevel, OrderbookL2Frame } from "@mvp/data";
+import type { BookLevel, OrderbookL2Frame } from "@mvp/trade-data";
 
 /**
  * Pure ladder math shared by the SSR renderer and the vanilla patch client.

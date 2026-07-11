@@ -1,7 +1,12 @@
 import type { RequestContext } from "@mvp/contracts";
-import type { DataCacheEntry, FundingFrame, TickerFrame } from "@mvp/data";
+import type { DataCacheEntry } from "@mvp/data";
 import type { RequestTrace } from "@mvp/observability";
-import { createTradeDataClient, sourceIds } from "@mvp/trade-data";
+import {
+  createTradeDataClient,
+  type FundingFrame,
+  sourceIds,
+  type TickerFrame,
+} from "@mvp/trade-data";
 
 /**
  * The SSR-safe pair of frames the header renders from. Both come through the

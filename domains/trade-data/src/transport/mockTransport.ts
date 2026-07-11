@@ -2,12 +2,12 @@
  * Deterministic, self-driving mock `SubscriptionTransport`.
  *
  * This implements the *existing* `SubscriptionTransport` interface from
- * `../index` (connect / onMessage / close), so `subscribeData` drives it with
+ * `@mvp/data` (connect / onMessage / close), so `subscribeData` drives it with
  * zero changes: passing `options.transport` disables polling and wires
  * `onMessage -> deliver`. Production swaps in a real WebSocket/SSE transport
  * implementing the same three methods.
  *
- * Relationship to `createMemorySubscriptionTransport` (in `../index`):
+ * Relationship to `createMemorySubscriptionTransport` (in `@mvp/data`):
  * - `createMemorySubscriptionTransport` is *push-on-demand* — a test calls
  *   `.publish(frame)` to deliver an exact payload. Use it for contract tests
  *   that assert on precise delivery semantics.
@@ -21,7 +21,7 @@
  * frame stream. No `Date.now`/`Math.random` anywhere in the emitted frames.
  */
 
-import type { SubscriptionTransport } from "../index";
+import type { SubscriptionTransport } from "@mvp/data";
 import {
   type BookGenState,
   type CandleGenState,

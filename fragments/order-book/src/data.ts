@@ -1,6 +1,6 @@
 import type { RequestContext } from "@mvp/contracts";
-import type { DataCacheEntry, OrderbookL2Frame } from "@mvp/data";
-import { createTradeDataClient } from "@mvp/trade-data";
+import type { DataCacheEntry } from "@mvp/data";
+import { createTradeDataClient, type OrderbookL2Frame } from "@mvp/trade-data";
 
 /**
  * Reads the initial L2 order-book snapshot for a symbol through the frozen data
