@@ -13,9 +13,6 @@ import {
 } from "@mvp/runtime";
 import { fragmentSlots as generatedMarketsSlots } from "./fragmentSlots.gen";
 
-/** Slot keys composed on the markets page (single main fragment). */
-export type MarketsSlotKey = "marketsTable";
-
 export type MarketsSlotDiagnostic = Pick<
   FragmentSlotResult,
   "source" | "strategy"
@@ -25,9 +22,13 @@ export type MarketsSlotDiagnostic = Pick<
 };
 
 export type MarketsFragmentHtml = {
-  /** Rendered (or null) HTML per slot; null → render the panel fallback. */
-  slots: Record<MarketsSlotKey, string | null>;
-  diagnostics: Record<MarketsSlotKey, MarketsSlotDiagnostic>;
+  // Per-slot resolved HTML, keyed by slot name (whatever names
+  // `fragmentSlots.gen.ts` currently enumerates — see
+  // `buildMarketsSlotDefinitions`). Generic on purpose (A1 gate, refactor
+  // plan §3): adding/removing a slot in the manifest changes the keys this
+  // map has at runtime without any type or code edit here.
+  html: Record<string, string | null>;
+  diagnostics: Record<string, MarketsSlotDiagnostic>;
   scheduler: {
     health: PageHealth;
     hints: SchedulerHint[];
@@ -48,7 +49,7 @@ export type MarketsFragmentHtml = {
  * `app/markets/page.tsx` can feed it to its own `<Suspense>` boundary.
  */
 export type MarketsFragmentAggregate = {
-  diagnostics: Record<MarketsSlotKey, MarketsSlotDiagnostic>;
+  diagnostics: Record<string, MarketsSlotDiagnostic>;
   scheduler: {
     health: PageHealth;
     hints: SchedulerHint[];
@@ -56,13 +57,23 @@ export type MarketsFragmentAggregate = {
   traceLog: string;
 };
 
-export type MarketsFragmentSlotPromises = Record<
-  MarketsSlotKey,
-  Promise<FragmentRenderResponse>
->;
-
+/**
+ * The fragment-slot promises `streamMarketsFragmentSlots` exposes, one per
+ * `<FragmentSlotStream>` boundary in `app/markets/page.tsx` (refactor plan
+ * §4.4). Deliberately generic (`Record<string, ...>`, not a hand-written
+ * interface with one field per slot name): `@mvp/runtime`'s
+ * `streamFragmentSlots` already returns exactly this shape (see
+ * `FragmentSlotStreamHandle.slots` in `packages/runtime/src/index.ts`), keyed
+ * by whatever `buildMarketsSlotDefinitions()` (sourced from the generated
+ * `fragmentSlots.gen.ts`) enumerates — there is no named-slot coupling left
+ * to hand-maintain here. `app/markets/page.tsx` still looks up the individual
+ * key (`stream.slots.marketsTable`) because CHOOSING which slots get their
+ * own `<Suspense>` boundary and what fallback markup they render is genuine
+ * human-judgment JSX placement (A1's explicit carve-out) — not something
+ * codegen can or should decide.
+ */
 export type MarketsFragmentStream = {
-  slots: MarketsFragmentSlotPromises;
+  slots: Record<string, Promise<FragmentRenderResponse>>;
   /** Raw scheduler aggregate (`@mvp/runtime` shape); settles last. */
   execution: Promise<FragmentSlotsExecution>;
   /** Page-shaped diagnostics/scheduler/traceLog, derived from `execution`. */
@@ -76,8 +87,6 @@ type FetchMarketsFragmentSlotsOptions = {
   /** Override the fragment registry (tests inject one with markets-table). */
   registry?: FragmentRegistry;
 };
-
-const MARKETS_SLOT_KEYS: MarketsSlotKey[] = ["marketsTable"];
 
 /**
  * The page-markets runtime slots array. The static shape (fragment, channel,
@@ -133,10 +142,19 @@ export function streamMarketsFragmentSlots({
 
   const aggregate = stream.result.then(
     (execution): MarketsFragmentAggregate => {
-      const diagnostics = {} as Record<MarketsSlotKey, MarketsSlotDiagnostic>;
-      for (const key of MARKETS_SLOT_KEYS) {
-        diagnostics[key] = toDiagnostic(execution.slots[key]);
-      }
+      // Generic per-slot diagnostics: every slot's result carries everything
+      // `toDiagnostic` needs (source/strategy/status/required), and the map
+      // key IS the slot's name, so there is no genuine reason to hand-list
+      // slot names here — iterate `execution.slots` (already `Record<string,
+      // FragmentSlotResult>`, see `packages/runtime/src/index.ts`) instead of
+      // repeating the (currently single) slot name.
+      const diagnostics: Record<string, MarketsSlotDiagnostic> =
+        Object.fromEntries(
+          Object.entries(execution.slots).map(([name, result]) => [
+            name,
+            toDiagnostic(result),
+          ]),
+        );
       return {
         diagnostics,
         scheduler: {
@@ -149,7 +167,10 @@ export function streamMarketsFragmentSlots({
   );
 
   return {
-    slots: { marketsTable: stream.slots.marketsTable },
+    // `stream.slots` (`@mvp/runtime`'s `FragmentSlotStreamHandle.slots`) is
+    // already `Record<string, Promise<FragmentRenderResponse>>` — passed
+    // through as-is instead of re-listing each slot name into a new object.
+    slots: stream.slots,
     execution: stream.result,
     aggregate,
   };
@@ -173,14 +194,22 @@ export async function fetchMarketsFragmentSlots(
   options: FetchMarketsFragmentSlotsOptions = {},
 ): Promise<MarketsFragmentHtml> {
   const stream = streamMarketsFragmentSlots(options);
-  const [marketsTable, aggregate, execution] = await Promise.all([
-    stream.slots.marketsTable,
+  // Resolve every slot's promise generically (whatever names `stream.slots`
+  // currently has) instead of destructuring a single named field — the
+  // "final returned HTML-string map" the A1 refactor targets.
+  const [htmlEntries, aggregate, execution] = await Promise.all([
+    Promise.all(
+      Object.entries(stream.slots).map(async ([name, slotPromise]) => {
+        const response = await slotPromise;
+        return [name, response.html] as const;
+      }),
+    ),
     stream.aggregate,
     stream.execution,
   ]);
 
   return {
-    slots: { marketsTable: marketsTable.html },
+    html: Object.fromEntries(htmlEntries),
     diagnostics: aggregate.diagnostics,
     scheduler: aggregate.scheduler,
     traceLog: aggregate.traceLog,
