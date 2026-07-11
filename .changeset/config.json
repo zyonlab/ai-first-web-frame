@@ -17,6 +17,8 @@
     "@mvp/css-budget-check",
     "@mvp/dependency-audit",
     "@mvp/optimization-audit",
-    "@mvp/server-client-boundary-check"
+    "@mvp/server-client-boundary-check",
+    "@mvp/assets",
+    "@mvp/workers"
   ]
 }
