@@ -1,6 +1,8 @@
+import { PageManifestSchema } from "@mvp/contracts";
 import { describe, expect, it } from "vitest";
 import { GET as healthGet } from "../app/health/route";
 import { vaultsPageBudget } from "../src/budget";
+import { vaultsPageManifest } from "../src/manifest";
 import { metadata, vaultsSeoCopy } from "../src/metadata";
 import { renderVaultsHtml, vaultCards } from "../src/render";
 
@@ -51,5 +53,12 @@ describe("page-vaults", () => {
       status: "ok",
       service: "page-vaults",
     });
+  });
+
+  it("page manifest passes PageManifestSchema (slotless unit-graph entry)", () => {
+    const parsed = PageManifestSchema.parse(vaultsPageManifest);
+    expect(parsed.route).toBe("/vaults");
+    expect(parsed.slots).toEqual([]);
+    expect(vaultsPageManifest.revalidateSeconds).toBe(3600);
   });
 });
