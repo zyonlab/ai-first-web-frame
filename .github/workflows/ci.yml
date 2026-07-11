@@ -142,7 +142,22 @@ jobs:
         run: pnpm exec tsx scripts/docker-smoke.mts --timeout 180
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
+      - name: Runtime gate (composed pages)
+        # The browser-level defect classes pnpm verify can't see (hydration
+        # errors, React #418, asset 4xx, layout voids, dead cross-island
+        # wiring) — one run per composed shell route. Previously this gate
+        # only existed behind the manual `deploy-affected --runtime` flag.
+        run: |
+          set -euo pipefail
+          for route in / /product/123 /markets /portfolio /trade/BTC; do
+            pnpm exec tsx scripts/verify-runtime.mts --url "http://localhost:4100${route}"
+          done
       - name: Run e2e tests
+        # Strict tier: the full compose stack is genuinely up in this job, so
+        # fragment fallbacks are failures here, not acceptable degradation
+        # (the loose default tier let a fully-degraded stack pass green).
+        env:
+          E2E_STRICT: "1"
         run: pnpm e2e
       - name: Collect compose logs on failure
         if: failure()
