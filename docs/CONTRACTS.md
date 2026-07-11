@@ -57,7 +57,8 @@ boundary rejects bad data against them today.
 | `FragmentRenderRequestSchema` | Strict `/render` body: full `ctx` (`RequestContextSchema`) + `props` | Inside `parseFragmentRenderRequest` (strict pass). |
 | `FragmentRenderRequestEnvelopeSchema` | Lenient envelope: every part optional but type-checked, so fragments own graceful degradation | Inside `parseFragmentRenderRequest` (lenient pass). |
 | `parseFragmentRenderRequest()` | The edge parse: strict → lenient → structured `ZodIssue[]` failure naming the strict schema | Every fragment service's `POST /render` handler — all of `fragments/*/src/server.ts` (e.g. `fragments/order-form/src/server.ts:127`). |
-| `FragmentRenderResponseSchema` | `/render` response (`html`, `assets`, `cache`, `metadata` incl. `metadata.fallback` for degraded renders) | Type-level only on the consuming side — `fetchFragment` (`packages/runtime/src/index.ts`) casts `response.json()` rather than parsing; a malformed response degrades via the fallback path, not a schema error. |
+| `FragmentRenderResponseSchema` | `/render` response (`html`, `assets`, `cache`, `metadata` incl. `metadata.fallback` for degraded renders) | Enforced at the consuming edge: `fetchFragment` (`packages/runtime/src/index.ts`) runs every `/render` body through `parseFragmentRenderResponse`; a schema-invalid response degrades that slot to its fallback with the violation `console.warn`ed and recorded as the trace span's `error` attribute — never a silent cast. |
+| `parseFragmentRenderResponse()` | The consuming-edge parse: strict validation → structured `ZodIssue[]` failure naming the schema (no lenient tier — a fragment that can't produce a valid response is treated as failed) | `fetchFragment` in `packages/runtime/src/index.ts`. |
 
 ### Request context
 

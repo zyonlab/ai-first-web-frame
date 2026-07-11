@@ -23,6 +23,7 @@ import {
   fetchFragmentSlots,
   isFallbackResponse,
   mergeAssets,
+  type RuntimeTrace,
   resolveFragment,
   resolveRoute,
   type SchedulerHint,
@@ -413,6 +414,89 @@ describe("@mvp/runtime", () => {
       },
     );
     expect(response.html).toContain("fallback");
+  });
+
+  it("degrades schema-invalid and non-JSON /render responses to fallback, loudly", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      // Valid JSON, invalid contract: html must be a string.
+      const invalid = await fetchFragment(
+        { serviceUrl: "http://fragment", version: "0.1.0" },
+        { ctx, props: {} },
+        {
+          fetchImpl: vi.fn(
+            async () =>
+              new Response(
+                JSON.stringify({
+                  html: 42,
+                  assets: { js: [], css: [] },
+                  cache: { ttl: 60, tags: [] },
+                  metadata: { name: "promotion-banner", version: "0.1.0" },
+                }),
+              ),
+          ) as unknown as typeof fetch,
+        },
+      );
+      expect(isFallbackResponse(invalid)).toBe(true);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("FragmentRenderResponseSchema"),
+      );
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("html"));
+
+      // Non-JSON body: degrades the same way (json() rejection), no warn —
+      // that's a transport failure, not a contract violation.
+      warn.mockClear();
+      const nonJson = await fetchFragment(
+        { serviceUrl: "http://fragment", version: "0.1.0" },
+        { ctx, props: {} },
+        {
+          fetchImpl: vi.fn(
+            async () => new Response("<html>gateway error</html>"),
+          ) as unknown as typeof fetch,
+        },
+      );
+      expect(isFallbackResponse(nonJson)).toBe(true);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("records the degrade reason on the trace span when a response fails the schema", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const ended: Array<{
+      status?: string;
+      attributes?: Record<string, unknown>;
+    }> = [];
+    const trace = {
+      startSpan: () => "span-1",
+      endSpan: (
+        _id: string,
+        end?: { status?: string; attributes?: Record<string, unknown> },
+      ) => {
+        ended.push(end ?? {});
+      },
+      addDependency: () => {},
+    } as unknown as RuntimeTrace;
+    try {
+      await fetchFragment(
+        { serviceUrl: "http://fragment", version: "0.1.0" },
+        { ctx, props: {} },
+        {
+          trace,
+          fetchImpl: vi.fn(
+            async () => new Response("{}"),
+          ) as unknown as typeof fetch,
+        },
+      );
+      expect(ended).toHaveLength(1);
+      expect(ended[0]?.status).toBe("fallback");
+      expect(String(ended[0]?.attributes?.error)).toContain(
+        "FragmentRenderResponseSchema",
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("composes page with SEO and fragment fallback isolation", () => {

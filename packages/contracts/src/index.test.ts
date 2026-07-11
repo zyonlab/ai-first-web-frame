@@ -24,6 +24,7 @@ import {
   PageManifestSchema,
   PerformanceBudgetSchema,
   parseFragmentRenderRequest,
+  parseFragmentRenderResponse,
   ReleaseManifestSchema,
   RenderStrategySchema,
   RequestContextJsonSchema,
@@ -376,6 +377,33 @@ describe("@mvp/contracts", () => {
       const parsed = parseFragmentRenderRequest(body);
       expect(parsed.ok).toBe(false);
       if (!parsed.ok) expect(parsed.issues.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("validates /render response bodies at the consuming edge", () => {
+    const response = {
+      html: "<section>ok</section>",
+      assets: { js: [], css: [] },
+      cache: { ttl: 0, tags: [] },
+      metadata: { name: "promotion-banner", version: "0.1.0" },
+    };
+    const parsed = parseFragmentRenderResponse(response);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.response.html).toBe(response.html);
+
+    // No lenient tier: a structurally malformed response is rejected with
+    // issues naming the contract, so the runtime can degrade it loudly.
+    for (const body of [
+      null,
+      "html",
+      { html: 42 },
+      { ...response, assets: { js: "not-a-list", css: [] } },
+      { ...response, cache: { ttl: -1, tags: [] } },
+      { ...response, metadata: { name: "x" } },
+    ]) {
+      const bad = parseFragmentRenderResponse(body);
+      expect(bad.ok).toBe(false);
+      if (!bad.ok) expect(bad.issues.length).toBeGreaterThan(0);
     }
   });
 
