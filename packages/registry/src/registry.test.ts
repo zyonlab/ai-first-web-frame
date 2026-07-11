@@ -67,6 +67,23 @@ describe("fragment registry", () => {
     ).toBe("http://localhost:4202");
   });
 
+  it("throws a schema-named error for a garbage env override instead of splicing it in", () => {
+    expect(() =>
+      buildFragmentRegistry(registryData, {
+        PROMOTION_BANNER_URL: "not-a-url",
+      }),
+    ).toThrow(/FragmentRegistryEntrySchema.*PROMOTION_BANNER_URL="not-a-url"/);
+  });
+
+  it("treats an empty env override as no override", () => {
+    const registry = buildFragmentRegistry(registryData, {
+      PROMOTION_BANNER_URL: "",
+    });
+    expect(
+      resolveFragment("promotion-banner", "stable", registry)?.serviceUrl,
+    ).toBe("http://localhost:4201");
+  });
+
   it("resolves pinned versions from the versions record", () => {
     const registry = buildFragmentRegistry({
       fragments: {

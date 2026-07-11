@@ -1,7 +1,8 @@
-import type {
-  DataDependency,
-  DataFreshness,
-  RequestContext,
+import {
+  type DataDependency,
+  DataDependencySchema,
+  type DataFreshness,
+  type RequestContext,
 } from "@mvp/contracts";
 import type { RequestTrace } from "@mvp/observability";
 
@@ -180,9 +181,26 @@ const DEFAULT_SUBSCRIPTION_INTERVAL_MS: Partial<Record<DataFreshness, number>> =
     "near-realtime": 5_000,
   };
 
+/**
+ * Declares a data source. M2: the dependency is validated against
+ * `DataDependencySchema` at definition time, so its `superRefine` invariants
+ * (user-private data can't be static, realtime can't TTL-cache, subscription
+ * sources must be realtime) actually execute instead of living type-level
+ * only — a contradictory declaration throws here, at module load, not as a
+ * subtle caching/subscription bug at request time.
+ */
 export function defineDataSource<TData, TParams = Record<string, unknown>>(
   source: DataSource<TData, TParams>,
 ) {
+  const result = DataDependencySchema.safeParse(source.dependency);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    throw new DataDependencyError(
+      `data source "${source.id}" violates DataDependencySchema${
+        issue ? ` — ${issue.path.join(".") || "(root)"}: ${issue.message}` : ""
+      }`,
+    );
+  }
   return source;
 }
 

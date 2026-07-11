@@ -11,11 +11,30 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadUnitGraph } from "./load-graph";
+import { loadFragmentManifest, loadUnitGraph } from "./load-graph";
 import { affectedClosure } from "./unit-graph";
 
 function writeJson(path: string, data: unknown): void {
   writeFileSync(path, JSON.stringify(data, null, 2));
+}
+
+/**
+ * A minimal manifest that satisfies `FragmentManifestSchema` (H1: the loader
+ * now hard-validates instead of duck-typing "any object with a string name").
+ * Includes a convention field (`layoutHint`) to prove `.passthrough()` keeps
+ * out-of-contract fields flowing into the graph.
+ */
+function validManifestSource(name: string): string {
+  return `export const manifest = ${JSON.stringify({
+    name,
+    version: "0.1.0",
+    owner: "test",
+    renderMode: "ssr",
+    fallback: `<section>${name}</section>`,
+    assets: { js: [], css: [] },
+    budget: { scope: "fragment", name },
+    layoutHint: { shape: "panel", minHeight: 120, fills: false },
+  })};\n`;
 }
 
 // Fixture repos are created *inside* this package (not `os.tmpdir()`): the
@@ -50,7 +69,7 @@ describe("loadUnitGraph — domains/", () => {
     });
     writeFileSync(
       join(root, "fragments", "order-form", "src", "manifest.ts"),
-      'export const orderFormManifest = { name: "order-form" };\n',
+      validManifestSource("order-form"),
     );
     writeJson(join(root, "fragments", "order-form", "package.json"), {
       name: "@mvp/fragment-order-form",
@@ -100,5 +119,52 @@ describe("loadUnitGraph — domains/", () => {
 
     const graph = await loadUnitGraph(root);
     expect(graph.units.some((u) => u.name === "not-a-package")).toBe(false);
+  });
+});
+
+describe("loadFragmentManifest — FragmentManifestSchema enforcement (H1)", () => {
+  let root: string | undefined;
+
+  afterEach(() => {
+    if (root) rmSync(root, { recursive: true, force: true });
+    root = undefined;
+  });
+
+  it("keeps out-of-contract convention fields via passthrough", async () => {
+    root = mkdtempSync(join(FIXTURE_PARENT, ".load-graph-manifest-fixture-"));
+    mkdirSync(join(root, "fragments", "price-panel", "src"), {
+      recursive: true,
+    });
+    writeFileSync(
+      join(root, "fragments", "price-panel", "src", "manifest.ts"),
+      validManifestSource("price-panel"),
+    );
+
+    const manifest = await loadFragmentManifest(root, "price-panel");
+    expect(manifest?.name).toBe("price-panel");
+    expect(manifest?.layoutHint).toEqual({
+      shape: "panel",
+      minHeight: 120,
+      fills: false,
+    });
+  });
+
+  it("throws a schema-named error for a malformed manifest instead of feeding it to the graph", async () => {
+    root = mkdtempSync(join(FIXTURE_PARENT, ".load-graph-malformed-fixture-"));
+    mkdirSync(join(root, "fragments", "broken-panel", "src"), {
+      recursive: true,
+    });
+    // Duck-typing would have accepted this (string `name`), but it is missing
+    // version/owner/renderMode/fallback/assets/budget.
+    writeFileSync(
+      join(root, "fragments", "broken-panel", "src", "manifest.ts"),
+      'export const brokenPanelManifest = { name: "broken-panel", renderMode: "csr" };\n',
+    );
+
+    await expect(loadFragmentManifest(root, "broken-panel")).rejects.toThrow(
+      /FragmentManifestSchema.*"broken-panel"/,
+    );
+    // ...and graph construction dies loudly with the same error.
+    await expect(loadUnitGraph(root)).rejects.toThrow(/FragmentManifestSchema/);
   });
 });

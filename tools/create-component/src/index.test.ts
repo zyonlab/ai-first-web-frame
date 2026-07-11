@@ -69,6 +69,30 @@ describe("@mvp/create-component", () => {
     expect(manifest).toContain("Adjust shape/minHeight/fills");
   });
 
+  it("scaffolds a fragment manifest that satisfies FragmentManifest at compile time", () => {
+    const root = tempRoot();
+    const result = runCreateComponent({
+      root,
+      positional: ["TypedPanel"],
+      type: "fragment",
+      ci: false,
+      warnOnly: false,
+      force: false,
+    });
+    expect(result.status).toBe("created");
+    const manifest = readFileSync(
+      join(root, "fragments/typed-panel/src/manifest.ts"),
+      "utf8",
+    );
+    // H1: new fragments get compile-time checking against the contract type,
+    // so a drifted scaffold fails `tsc`, not just the runtime loader parse.
+    expect(manifest).toContain(
+      'import { type FragmentManifest, loadDefaultBudget } from "@mvp/contracts";',
+    );
+    expect(manifest).toContain("} satisfies FragmentManifest");
+    expect(manifest).toContain('renderStrategy: "dynamic-ssr"');
+  });
+
   it("does not overwrite existing components unless forced and rejects illegal names", () => {
     const root = tempRoot();
     expect(

@@ -396,4 +396,36 @@ describe("registry persistence with optimistic concurrency", () => {
     );
     expect(loadReleases(path).data.releases).toHaveLength(1);
   });
+
+  it("loadReleases rejects a malformed top-level shape with a schema-named error", () => {
+    const dir = mkdtempSync(join(tmpdir(), "mvp-releases-malformed-"));
+    const path = join(dir, "releases.json");
+    // Top level is an object but `releases` is not an array — the old
+    // `as ReleasesFile` cast let this through and blew up later as a
+    // "parsed.releases is not iterable" TypeError.
+    writeFileSync(path, JSON.stringify({ releases: {} }));
+    expect(() => loadReleases(path)).toThrow(/ReleasesFileSchema.*releases/);
+
+    // A schema-invalid element still fails, now also naming the schema.
+    writeFileSync(
+      path,
+      JSON.stringify({ releases: [{ unit: "fragment", name: "" }] }),
+    );
+    expect(() => loadReleases(path)).toThrow(/ReleasesFileSchema/);
+  });
+
+  it("loadReleases keeps bookkeeping keys like releasedAt intact", () => {
+    const dir = mkdtempSync(join(tmpdir(), "mvp-releases-passthrough-"));
+    const path = join(dir, "releases.json");
+    const release = {
+      unit: "fragment",
+      name: "promotion-banner",
+      version: "0.2.0",
+      channel: "stable",
+      smokeTests: [],
+      releasedAt: "2026-07-11T00:00:00.000Z",
+    };
+    writeFileSync(path, JSON.stringify({ releases: [release] }));
+    expect(loadReleases(path).data.releases[0]).toEqual(release);
+  });
 });

@@ -27,7 +27,7 @@ boundary rejects bad data against them today.
 
 | Export | Validates | Enforced at |
 | --- | --- | --- |
-| `FragmentManifestSchema` | A fragment's `src/manifest.ts` (name, version, owner, renderMode `ssr\|edge-ssr`, renderStrategy, fallback, assets, fragment-scoped budget) | Type-level only (asserted in `packages/contracts/src/index.test.ts`); fragment manifests are TS objects typed as `FragmentManifest`. |
+| `FragmentManifestSchema` | A fragment's `src/manifest.ts` (name, version, owner, renderMode `ssr\|edge-ssr`, renderStrategy, fallback, assets, fragment-scoped budget) | `tools/release-tools/src/load-graph.ts` (`loadFragmentManifest`/`loadFragments` run a `.passthrough()` `safeParse` on every manifest they load; a malformed manifest throws a schema-named error and kills graph construction for the affected engine, `mount-slot`, and `mcp-devx` instead of feeding the graph garbage). Convention fields outside the schema (`layoutHint`, `consumes`, `produces`, ...) pass through unvalidated. `create-component` scaffolds also emit `satisfies FragmentManifest` for compile-time checking. Each fragment's `/manifest` HTTP route still serves the object verbatim — the loader is the enforcement point. |
 | `ComponentManifestSchema` / `ComponentMetadataSchema` | UI-component manifest (metadata + component-scoped budget + assets) | Type-level only. |
 | `AssetResourceSchema` / `ScriptAssetSchema` / `FontManifestSchema` / `AssetManifestSchema` | CSS/JS/font asset declarations (href, scope, priority, script strategy incl. `island`) | Type-level only. |
 | `ThemeManifestSchema` / `I18nManifestSchema` | Theme token version + supported themes; locale namespaces/fallback | Type-level only. |
@@ -40,15 +40,15 @@ boundary rejects bad data against them today.
 | `RenderStrategySchema` | Slot strategy enum `static\|ttl-cache\|cached-ssr\|dynamic-ssr` (the deprecated `isr` alias and its `normalizeRenderStrategy()` shim were retired after the deprecation window; a manifest declaring `isr` now fails slot validation) | Via the slot-element parsing above; compared and cache-keyed directly in `packages/runtime/src/index.ts` (`fetchFragmentSlot`, `createFragmentCacheKey`). |
 | `CachePolicySchema` | `{ttl, tags, vary}` cache policy (slot- or data-level) | Via slot-element parsing above. |
 | `ReleaseChannelSchema` | `stable\|canary\|preview` | `packages/registry/src/mutations.ts:55` (`safeParse` rejects bad `--channel` in `register-fragment`). |
-| `RouteManifestSchema` | Route registry shape (id, path, page, serviceUrl, channel) | Type-level only; `@mvp/routes` (`packages/routes/src/registry.ts`) ships a typed literal, and `resolveRoute` (`packages/runtime/src/index.ts`) consumes the type. |
+| `RouteManifestSchema` | Route registry shape (id, path, page, serviceUrl, channel) | Whole-manifest: type-level only; `@mvp/routes` (`packages/routes/src/registry.ts`) ships a typed literal, and `resolveRoute` (`packages/runtime/src/index.ts`) consumes the type. The `serviceUrl` element schema (`z.string().url()`) is enforced hard against `PAGE_<NAME>_URL` env overrides in `buildRouteRegistry` — a garbage override throws at module load naming the env var and value. |
 
 ### Fragment registry and releases
 
 | Export | Validates | Enforced at |
 | --- | --- | --- |
 | `FragmentRegistrySchema` | `registry/registry.data.json` (per-fragment channel entries + `versions` history; refinement: at least one channel or version) | `packages/registry/src/registry.ts:35` (`buildFragmentRegistry` parses on every load) and `packages/registry/src/mutations.ts` (re-parsed after every register/promote/rollback mutation before write). |
-| `FragmentRegistryEntrySchema` | One channel entry: `version`, `serviceUrl`, `manifestUrl`, optional `assetsUrl` (C3 import-map spike) | Nested inside `FragmentRegistrySchema` at the same call sites. |
-| `ReleaseManifestSchema` | One `registry/releases.json` entry (unit, name, version, channel, `rollbackTo`) | `packages/registry/src/mutations.ts` — built via `.parse` on promote/rollback (lines 130, 191) and every existing entry re-validated on load (line 258). |
+| `FragmentRegistryEntrySchema` | One channel entry: `version`, `serviceUrl`, `manifestUrl`, optional `assetsUrl` (C3 import-map spike) | Nested inside `FragmentRegistrySchema` at the same call sites. Its `serviceUrl` element schema (`z.string().url()`) is additionally enforced against `<NAME>_URL` env overrides in `buildFragmentRegistry` (`packages/registry/src/registry.ts`) — a garbage override throws at build/boot time naming the env var and value, instead of being spliced silently into every serviceUrl/manifestUrl. |
+| `ReleaseManifestSchema` | One `registry/releases.json` entry (unit, name, version, channel, `rollbackTo`) | `packages/registry/src/mutations.ts` — built via `.parse` on promote/rollback, and `loadReleases` validates the whole file against `ReleasesFileSchema` (`{ releases: ReleaseManifestSchema.passthrough()[] }`) on load, so a malformed top level (e.g. `{"releases": {}}`) fails with a schema-named error instead of a downstream TypeError. |
 
 ### Render request / response (`POST /render`)
 
@@ -70,7 +70,7 @@ boundary rejects bad data against them today.
 
 | Export | Validates | Enforced at |
 | --- | --- | --- |
-| `DataDependencySchema` (+ `DataFreshnessSchema`, `DataPrivacySchema`) | A data-source declaration (owner, source, freshness, privacy; refinements: user-private data can't be static, realtime can't TTL-cache, subscriptions must be realtime) | Type-level only in production paths today. |
+| `DataDependencySchema` (+ `DataFreshnessSchema`, `DataPrivacySchema`) | A data-source declaration (owner, source, freshness, privacy; refinements: user-private data can't be static, realtime can't TTL-cache, subscriptions must be realtime) | `packages/data/src/index.ts` — `defineDataSource` runs `safeParse` on every dependency at definition time, so the `superRefine` invariants actually execute; a contradictory declaration throws a `DataDependencyError` naming the schema at module load. |
 | `ApiEndpointPolicySchema` / `RequestPolicySchema` | Allowed endpoints/methods/timeouts/retries for `@mvp/request` | Type-level only. |
 | `StoragePolicySchema` | Storage adapter policy (refinement: user-private must partition by user) | `packages/storage/src/index.ts:50` (`safeParse` on policy registration). |
 | `CookiePolicySchema` | Cookie attributes | `packages/storage/src/index.ts:124` (`.parse` when building a cookie policy). |

@@ -1,4 +1,8 @@
-import { FragmentRegistrySchema, type ReleaseChannel } from "@mvp/contracts";
+import {
+  FragmentRegistryEntrySchema,
+  FragmentRegistrySchema,
+  type ReleaseChannel,
+} from "@mvp/contracts";
 import registryData from "../../../registry/registry.data.json";
 
 // Re-exported so registry consumers keep a single channel type source.
@@ -35,7 +39,8 @@ export function buildFragmentRegistry(
   const parsed = FragmentRegistrySchema.parse(data);
   const fragments: FragmentRegistry["fragments"] = {};
   for (const [name, channels] of Object.entries(parsed.fragments)) {
-    const override = env[fragmentEnvVarName(name)];
+    const envVar = fragmentEnvVarName(name);
+    const override = validateEnvOverride(envVar, env[envVar]);
     const entry: FragmentChannels = {};
     for (const channel of RELEASE_CHANNELS) {
       const version = channels[channel];
@@ -52,6 +57,29 @@ export function buildFragmentRegistry(
     fragments[name] = entry;
   }
   return { fragments };
+}
+
+/**
+ * H3: a `<NAME>_URL` env override is spliced into serviceUrl/manifestUrl for
+ * every resolved version, so garbage here used to propagate silently into
+ * each fragment fetch. Validate it at build time (module load / boot) with
+ * the same URL schema the registry entry itself uses
+ * (`FragmentRegistryEntrySchema.serviceUrl`, i.e. `z.string().url()`).
+ * An unset or empty value keeps the pre-existing "no override" behavior.
+ */
+function validateEnvOverride(
+  envVar: string,
+  value: string | undefined,
+): string | undefined {
+  if (!value) return value;
+  const result = FragmentRegistryEntrySchema.shape.serviceUrl.safeParse(value);
+  if (!result.success)
+    throw new Error(
+      `FragmentRegistryEntrySchema: env override ${envVar}="${value}" is not a valid serviceUrl (z.string().url()): ${
+        result.error.issues[0]?.message ?? "invalid url"
+      }`,
+    );
+  return value;
 }
 
 function withOverride(

@@ -6,6 +6,7 @@ import {
   type ReleaseManifest,
   ReleaseManifestSchema,
 } from "@mvp/contracts";
+import { z } from "zod";
 import { loadFileWithHash, writeFileAtomic } from "./atomic-file";
 
 export type FragmentRegistryData = FragmentRegistry;
@@ -250,13 +251,37 @@ export function saveRegistryData(
   });
 }
 
+/**
+ * L2: the top-level shape of `registry/releases.json`. Elements reuse
+ * `ReleaseManifestSchema` with `.passthrough()` so bookkeeping keys the
+ * mutations append (`releasedAt`) — and any future ones — ride along
+ * untouched. Before this, only the elements were validated and the top level
+ * was a bare `as ReleasesFile` cast: `{"releases": {}}` or a JSON array blew
+ * up later as an unrelated TypeError instead of a schema-named error.
+ */
+const ReleasesFileSchema = z.object({
+  releases: z.array(ReleaseManifestSchema.passthrough()),
+});
+
 export function loadReleases(path: string): LoadedReleases {
   const loaded = loadFileWithHash(path);
   if (loaded.content === null)
     return { data: { releases: [] }, hash: loaded.hash };
-  const parsed = JSON.parse(loaded.content) as ReleasesFile;
-  for (const release of parsed.releases) ReleaseManifestSchema.parse(release);
-  return { data: parsed, hash: loaded.hash };
+  const parsed = JSON.parse(loaded.content) as unknown;
+  const result = ReleasesFileSchema.safeParse(parsed);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    throw new Error(
+      `ReleasesFileSchema: ${path} does not match { releases: ReleaseManifestSchema[] } — ${
+        issue
+          ? `${issue.path.join(".") || "(root)"}: ${issue.message}`
+          : "invalid"
+      }`,
+    );
+  }
+  // Return the raw parsed object (validated above) so defaults are not
+  // injected and a load→save round trip stays byte-identical.
+  return { data: parsed as ReleasesFile, hash: loaded.hash };
 }
 
 export function saveReleases(
