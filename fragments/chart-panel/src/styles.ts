@@ -11,7 +11,7 @@
 export const chartPanelCss = `/*
  * Scoped chart-panel styles (served as /assets/chart-panel.css).
  * Directional latest-candle close uses the design-system semantic color
- * variables (\`--mvp-color-up\` / \`--mvp-color-down\`); no hard-coded hexes.
+ * variables (\`--trade-up\` / \`--trade-down\`); no hard-coded hexes.
  * Numeric cells use the shared mono font token for tabular alignment. Small
  * footprint to hold the fragment CSS budget (<= 10KB).
  */
@@ -120,11 +120,11 @@ export const chartPanelCss = `/*
 }
 
 .chart-panel__close--up > b {
-  color: var(--mvp-color-up, #12a150);
+  color: var(--trade-up, #12a150);
 }
 
 .chart-panel__close--down > b {
-  color: var(--mvp-color-down, #d1363f);
+  color: var(--trade-down, #d1363f);
 }
 
 .chart-panel__close--flat > b {

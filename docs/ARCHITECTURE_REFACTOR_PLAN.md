@@ -155,6 +155,26 @@ match the generic per-package narrowing every other `packages/*` change gets).
 now depend on `@mvp/registry` (and `shell-gateway` also on `@mvp/routes`) as
 normal workspace packages instead of relative-importing across `platform/`.
 
+**Status: B3 closed.** The two leaks the P1-prep task deliberately left
+flagged-not-scheduled (see REMEDIATION_PLAN.md "Deliberately NOT in this
+plan") are now moved, closing goal B3 for real: `packages/data/src/transport/**`
+(the mock realtime market-data transport — seeded PRNG, frame generators,
+fixtures, `createMockSubscriptionTransport`; entirely trade-market-data-specific,
+not a framework primitive) moved to `domains/trade-data/src/transport/**` and is
+no longer re-exported from `@mvp/data`'s public surface; and `packages/design-system`'s
+`buy`/`sell`/`up`/`down` semantic colors moved to `domains/trade-theme`, which now
+owns both their values and their theme-scoped CSS emission (`--trade-buy`/
+`--trade-sell`/`--trade-up`/`--trade-down`, defined once per
+`:where([data-theme="..."])` block) using `emitDeclarations`, newly exported as
+a public `@mvp/design-system` API so a domain package can define its own
+theme-aware tokens without reinventing CSS-string emission. Both moves are
+behavior-preserving (byte-identical hex values; the mock transport's frame
+shapes/determinism are untouched) — only ownership moved, per the layering rule
+in §2.1. The dependency-audit's `auditPackageLayering` check is import-edge-only
+and never caught either leak (they were inlined values/logic, not cross-layer
+imports), so there is no `KNOWN_LEAKS` entry to remove; `pnpm audit:deps`
+simply continues to pass clean.
+
 **Gate:** `pnpm verify` green; affected-graph tests updated; the new layering
 audit passes; zero `trade` tokens under `packages/`.
 

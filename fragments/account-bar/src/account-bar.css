@@ -66,14 +66,14 @@
   height: 100%;
   /* --usage is a 0..1 ratio set inline by SSR and patched by the island. */
   width: calc(var(--usage, 0) * 100%);
-  background: var(--mvp-color-accent, var(--mvp-color-up, #12a150));
+  background: var(--mvp-color-accent, var(--trade-up, #12a150));
   transition: width 120ms ease-out;
 }
 
 /* High usage tips the meter into the "down"/warning color. */
 .account-bar__meter[style*="--usage:0.9"] .account-bar__meter-fill,
 .account-bar__meter[style*="--usage:1"] .account-bar__meter-fill {
-  background: var(--mvp-color-down, #d1363f);
+  background: var(--trade-down, #d1363f);
 }
 
 @media (max-width: 768px) {

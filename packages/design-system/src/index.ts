@@ -21,6 +21,7 @@ export {
   createAllThemeVariables,
   createBaseVariables,
   createThemeVariables,
+  emitDeclarations,
 } from "./themes";
 export {
   baseScales,

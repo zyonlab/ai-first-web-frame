@@ -6,11 +6,26 @@ import {
   createThemeVariables,
   cssVariableNames,
   darkColors,
+  emitDeclarations,
   lightColors,
   tailwindPreset,
   themeColors,
   tokens,
 } from "./index";
+
+describe("emitDeclarations (public API for external domain packages, B3)", () => {
+  it("emits --<prefix>-<group>-<key>: <value>; lines", () => {
+    const lines = emitDeclarations("mvp", "color", { ink: "#111" });
+    expect(lines).toEqual(["--mvp-color-ink: #111;"]);
+  });
+
+  it("emits a flat --<prefix>-<key>: <value>; name when group is empty", () => {
+    // This is what domains/trade-theme relies on to define --trade-buy (not
+    // --trade-color-buy) using this same framework-owned emission mechanism.
+    const lines = emitDeclarations("trade", "", { buy: "#0f9d58" });
+    expect(lines).toEqual(["--trade-buy: #0f9d58;"]);
+  });
+});
 
 describe("tokens (D6 additions)", () => {
   it("exposes trade grid track widths", () => {
@@ -33,18 +48,20 @@ describe("tokens (D6 additions)", () => {
     expect(tokens.zIndex.overlay).toBeLessThan(tokens.zIndex.modal);
   });
 
-  it("defines buy/sell semantic colors (default = light)", () => {
-    expect(tokens.color.buy).toBeTruthy();
-    expect(tokens.color.sell).toBeTruthy();
-    expect(tokens.color.buy).not.toBe(tokens.color.sell);
-    expect(tokens.color.buy).toBe(lightColors.buy);
+  it("does NOT define buy/sell/up/down (B3: domain colors moved to domains/trade-theme)", () => {
+    expect(tokens.color).not.toHaveProperty("buy");
+    expect(tokens.color).not.toHaveProperty("sell");
+    expect(tokens.color).not.toHaveProperty("up");
+    expect(tokens.color).not.toHaveProperty("down");
   });
 });
 
 describe("C1 frozen CSS variable names", () => {
-  it("includes the D6 trade tokens and semantic colors", () => {
-    expect(cssVariableNames).toContain("--mvp-color-buy");
-    expect(cssVariableNames).toContain("--mvp-color-sell");
+  it("includes the D6 trade tokens and generic semantic colors", () => {
+    expect(cssVariableNames).not.toContain("--mvp-color-buy");
+    expect(cssVariableNames).not.toContain("--mvp-color-sell");
+    expect(cssVariableNames).not.toContain("--mvp-color-up");
+    expect(cssVariableNames).not.toContain("--mvp-color-down");
     expect(cssVariableNames).toContain("--mvp-color-surface-0");
     expect(cssVariableNames).toContain("--mvp-color-border");
     expect(cssVariableNames).toContain("--mvp-color-text-muted");
@@ -102,17 +119,17 @@ describe("C9 light/dark theme variables", () => {
     expect(themeColors.light["surface-0"]).not.toBe(
       themeColors.dark["surface-0"],
     );
-    expect(themeColors.light.buy).not.toBe(themeColors.dark.buy);
+    expect(themeColors.light.accent).not.toBe(themeColors.dark.accent);
     expect(themeColors.light.ink).not.toBe(themeColors.dark.ink);
   });
 
-  it("defines buy/sell (and up/down) in both themes", () => {
+  it("does NOT define buy/sell/up/down (B3: moved to domains/trade-theme)", () => {
     for (const theme of ["light", "dark"] as const) {
       const block = createThemeVariables(theme);
-      expect(block).toContain("--mvp-color-buy:");
-      expect(block).toContain("--mvp-color-sell:");
-      expect(block).toContain("--mvp-color-up:");
-      expect(block).toContain("--mvp-color-down:");
+      expect(block).not.toContain("--mvp-color-buy:");
+      expect(block).not.toContain("--mvp-color-sell:");
+      expect(block).not.toContain("--mvp-color-up:");
+      expect(block).not.toContain("--mvp-color-down:");
       expect(block).toContain("--mvp-color-border:");
       expect(block).toContain("--mvp-color-surface-0:");
     }
@@ -126,7 +143,7 @@ describe("C9 light/dark theme variables", () => {
     expect(base).toContain("--mvp-zIndex-sticky:");
     expect(base).toContain("--mvp-grid-book:");
     // Colors are theme-variant, so they do NOT live in the base block.
-    expect(base).not.toContain("--mvp-color-buy:");
+    expect(base).not.toContain("--mvp-color-accent:");
   });
 
   it("createAllThemeVariables bundles base + light default + both themes", () => {
@@ -134,7 +151,7 @@ describe("C9 light/dark theme variables", () => {
     expect(all).toContain(":where(:root)");
     expect(all).toContain(':where([data-theme="light"])');
     expect(all).toContain(':where([data-theme="dark"])');
-    expect(all).toContain("--mvp-color-buy:");
+    expect(all).not.toContain("--mvp-color-buy:");
   });
 });
 
@@ -162,8 +179,8 @@ describe("Tailwind preset", () => {
 
   it("maps colors/spacing/fontFamily to var(--mvp-*)", () => {
     const { colors, spacing, fontFamily } = tailwindPreset.theme.extend;
-    expect(colors.buy).toBe("var(--mvp-color-buy)");
-    expect(colors.sell).toBe("var(--mvp-color-sell)");
+    expect(colors).not.toHaveProperty("buy");
+    expect(colors).not.toHaveProperty("sell");
     expect(colors["surface-0"]).toBe("var(--mvp-color-surface-0)");
     expect(spacing.md).toBe("var(--mvp-spacing-md)");
     expect(spacing.book).toBe("var(--mvp-grid-book)");

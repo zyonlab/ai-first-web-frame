@@ -74,12 +74,12 @@ describe("resolveChartColors", () => {
     expect(colors.grid).toBeTruthy();
   });
 
-  it("reads --mvp-color-buy / --mvp-color-sell from a style source", () => {
+  it("reads --trade-buy / --trade-sell from a style source", () => {
     const source = {
       getPropertyValue: (name: string) =>
-        name === "--mvp-color-buy"
+        name === "--trade-buy"
           ? "#00ff00"
-          : name === "--mvp-color-sell"
+          : name === "--trade-sell"
             ? "#ff0000"
             : "",
     };

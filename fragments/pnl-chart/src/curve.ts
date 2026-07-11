@@ -58,7 +58,7 @@ export type BuildCurveOptions = {
   size?: number;
 };
 
-/** A candle close feeding the curve (structurally a subset of `@mvp/data` `Candle`). */
+/** A candle close feeding the curve (structurally a subset of `@mvp/trade-data` `Candle`). */
 export type CurveCandle = { openTime: number; close: number };
 
 /**

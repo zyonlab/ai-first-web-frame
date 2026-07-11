@@ -21,14 +21,26 @@ import {
  * Tailwind utilities always override, matching `@mvp/design-tokens`.
  */
 
-function emitDeclarations(
+/**
+ * Emits `--<prefix>-<group>-<key>: <value>;` declaration lines for a record of
+ * token values — the generic primitive `createBaseVariables` /
+ * `createThemeVariables` build on internally. Exported (public API) so a
+ * domain package outside this framework package can define its OWN
+ * theme-scoped CSS custom properties using the exact same emission mechanism
+ * design-system uses for its semantic colors, without reinventing CSS-string
+ * building. Pass `group: ""` for a flat `--<prefix>-<key>` name (no middle
+ * segment) — e.g. `emitDeclarations("trade", "", { buy: "#0f9d58" })` emits
+ * `--trade-buy: #0f9d58;`.
+ */
+export function emitDeclarations(
   prefix: string,
   group: string,
   values: Readonly<Record<string, string | number>>,
 ): string[] {
+  const infix = group ? `-${group}` : "";
   const lines: string[] = [];
   for (const [key, value] of Object.entries(values)) {
-    lines.push(`--${prefix}-${group}-${key}: ${value};`);
+    lines.push(`--${prefix}${infix}-${key}: ${value};`);
   }
   return lines;
 }

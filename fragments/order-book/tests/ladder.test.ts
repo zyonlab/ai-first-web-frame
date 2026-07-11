@@ -1,4 +1,4 @@
-import type { OrderbookL2Frame } from "@mvp/data";
+import type { OrderbookL2Frame } from "@mvp/trade-data";
 import { describe, expect, it } from "vitest";
 import {
   buildLadder,

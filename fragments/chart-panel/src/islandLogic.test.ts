@@ -1,5 +1,5 @@
-import type { CandleFrame, Candle as DataCandle } from "@mvp/data";
 import type { Candle as ChartCandle } from "@mvp/trade-chart";
+import type { CandleFrame, Candle as DataCandle } from "@mvp/trade-data";
 import { describe, expect, it } from "vitest";
 import {
   applyLiveCandle,

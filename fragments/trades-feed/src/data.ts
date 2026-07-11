@@ -1,6 +1,10 @@
 import type { RequestContext } from "@mvp/contracts";
-import type { DataCacheEntry, TradePrintFrame } from "@mvp/data";
-import { createTradeDataClient, normalizeSymbol } from "@mvp/trade-data";
+import type { DataCacheEntry } from "@mvp/data";
+import {
+  createTradeDataClient,
+  normalizeSymbol,
+  type TradePrintFrame,
+} from "@mvp/trade-data";
 
 /**
  * Reads the recent trades tape for a symbol through the frozen trade data
@@ -32,4 +36,4 @@ export async function loadRecentTrades(
   return result.data;
 }
 
-export type { TradePrintFrame } from "@mvp/data";
+export type { TradePrintFrame } from "@mvp/trade-data";

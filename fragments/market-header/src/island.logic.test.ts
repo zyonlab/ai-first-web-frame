@@ -1,4 +1,4 @@
-import type { FundingFrame, TickerFrame } from "@mvp/data";
+import type { FundingFrame, TickerFrame } from "@mvp/trade-data";
 import { describe, expect, it } from "vitest";
 import {
   computeCountdown,

@@ -466,7 +466,3 @@ function stableStringify(value: unknown): string {
   }
   return JSON.stringify(value);
 }
-
-// Mock realtime transport, seeded frame generators, and deterministic fixtures
-// (A0-mock slot). See `./transport` for the full surface; this only re-exports.
-export * from "./transport";

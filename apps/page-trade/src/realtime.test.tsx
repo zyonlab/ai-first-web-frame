@@ -1,4 +1,3 @@
-import type { MockScheduler } from "@mvp/data";
 import { createSliceStore, type SliceStore } from "@mvp/store";
 import {
   initialTradeSlices,
@@ -7,6 +6,7 @@ import {
   type TradeSlices,
   tradeStoreContracts,
 } from "@mvp/trade-contracts";
+import type { MockScheduler } from "@mvp/trade-data";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { startTradeRealtime } from "./realtime";
 
