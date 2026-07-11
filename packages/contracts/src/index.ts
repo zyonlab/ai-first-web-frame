@@ -375,6 +375,13 @@ export const PageManifestSchema = z.object({
   renderStrategy: RenderStrategySchema.or(z.literal("hybrid")).optional(),
   revalidateSeconds: z.number().int().nonnegative().optional(),
   seo: z.object({ title: z.string().min(1), description: z.string().min(1) }),
+  // Demo capability index (refactor plan §6): the short list of named
+  // capabilities this page's composition actually proves (e.g.
+  // "streaming:suspense-per-slot", "dag-scheduling"). Optional and
+  // additive — every manifest that predates this field keeps parsing
+  // unchanged. `docs/DEMOS.md` is the human/agent-facing index built from
+  // these values; keep both in sync when a page's composition changes.
+  demonstrates: z.array(z.string()).optional(),
   budget: PerformanceBudgetSchema.refine(
     (value) => value.scope === "page",
     "page budget required",

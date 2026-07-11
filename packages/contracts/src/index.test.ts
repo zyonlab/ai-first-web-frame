@@ -114,6 +114,35 @@ describe("@mvp/contracts", () => {
     }
   });
 
+  it("PageManifest.demonstrates is optional, additive, and validated when present", () => {
+    const manifest = {
+      name: "home",
+      route: "/",
+      renderMode: "ssr",
+      seo: { title: "Home", description: "Home page" },
+      budget: loadDefaultBudget("page", "home"),
+      slots: [{ name: "hero", fragment: "promotion-banner", required: false }],
+    };
+    // Omitted entirely: still parses (backward compatible with every
+    // pre-existing manifest that predates the field).
+    expect(PageManifestSchema.parse(manifest).demonstrates).toBeUndefined();
+
+    // Present: parses through and preserves the capability list.
+    const withDemonstrates = {
+      ...manifest,
+      demonstrates: ["fallback-isolation", "trace-panel"],
+    };
+    expect(PageManifestSchema.parse(withDemonstrates).demonstrates).toEqual([
+      "fallback-isolation",
+      "trace-panel",
+    ]);
+
+    // Present but wrong element type: rejected like every other typed array.
+    expect(() =>
+      PageManifestSchema.parse({ ...manifest, demonstrates: [42] }),
+    ).toThrow();
+  });
+
   it("supports four performance budget scopes and reporting", () => {
     for (const scope of ["component", "fragment", "page", "shell"] as const) {
       expect(
