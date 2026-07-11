@@ -1,6 +1,6 @@
 # Architecture Refactor Plan — Goals-First, Production-Ready, npm-Distributable
 
-> Last updated: 2026-07-09. Status: plan of record for the refactor cycle.
+> Last updated: 2026-07-11. Status: plan of record for the refactor cycle.
 >
 > Relationship to other docs: [AI_NATIVE_PRODUCTION_READY_FRAMEWORK_PLAN.md](AI_NATIVE_PRODUCTION_READY_FRAMEWORK_PLAN.md)
 > defines the capability domains; [AI_NATIVE_DEVX.md](AI_NATIVE_DEVX.md) defines the
@@ -422,8 +422,9 @@ regex-heuristic check (`island-bus-without-escape-hatch`) fails any
 `fragments/*/src/island.tsx` that calls `createInteractionBus` without also
 declaring a `bus?`/`props.bus` escape hatch, preventing recurrence.
 
-**Status: item 3 (C3) — spike, validated on one fragment
-(`spike/p3-c3-island-import-map`, not merged to main).** A risk-controlled
+**Status: item 3 (C3) — spike, validated on one fragment, merged to main
+as PR #1 (`spike/p3-c3-island-import-map`); the go/no-go decision on a full
+rollout is still open.** A risk-controlled
 spike, scoped to exactly one React island (`order-form`), proved the
 mechanism works end to end in a real browser without touching the other
 three islands' production (build-time static import) path. Findings, in the
@@ -581,9 +582,17 @@ order a go/no-go call needs them:
 **Gate:** composed home page streams (shell HTML first byte before slowest slot
 resolves) with e2e-verified fallback semantics unchanged.
 
-**Status: items 2–3 implemented, piloted on page-home only (item 1 — the
-`isr` → `ttl-cache` rename — is out of scope for this phase, already tracked
-as a separate low-value cosmetic follow-up).**
+**Status: items 2–3 implemented. Item 2 was piloted on page-home, then
+rolled out to page-product, page-markets, and page-portfolio (PR #14) — 4 of
+the 5 composed pages now stream. page-trade deliberately stays on the barrier
+`executeFragmentSlots` API: streaming was actually prototyped there and
+reverted, because `react-dom/server` cannot execute async Server Components
+outside Next's real RSC runtime and `trade-nav.test.tsx` would need bespoke
+test infra (documented in docs/DEMOS.md). Item 1 — the `isr` → `ttl-cache`
+rename — shipped for live slot manifests via CLI codemod (PR #9); the schema
+keeps `"isr"` as a deprecated alias during the deprecation window, and the
+separate fragment-manifest `renderMode: "isr"` enum value (a different
+concept) is untouched.**
 
 - Item 2: `packages/runtime/src/index.ts` gained `streamFragmentSlots`, which
   runs the same DAG-aware scheduling `executeFragmentSlots` always has, but
