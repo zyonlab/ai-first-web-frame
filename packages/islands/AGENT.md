@@ -23,7 +23,13 @@ final static state — logs via `console.warn`, and invokes an optional
 `@mvp/observability` directly (a browser-side package has no business
 depending on that request-scoped, server-side API surface). A snapshot with
 no `version` at all (an old/non-participating fragment) is treated as a
-match, not a mismatch, for backward compatibility. Use this package inside a
+match, not a mismatch, for backward compatibility. The same skip-hydration
+path also covers **snapshot validation (goal A2, "never silent fallback")**:
+before any version comparison, `mountIsland` parses the raw inline snapshot
+JSON and validates it against `IslandSnapshotSchema` from `@mvp/contracts` —
+a snapshot that is unparseable JSON, not an object, or has a field of the
+wrong type skips hydration entirely (`reason: "invalid-snapshot"`) instead of
+hydrating the component with empty/garbage props. Use this package inside a
 page's client entry to register every island component the page ships and
 hydrate the SSR markup on load.
 
@@ -46,12 +52,15 @@ hydrate the SSR markup on load.
 - `mountIsland<TProps = Record<string, unknown>>(el: HTMLElement, opts?: MountIslandOptions<TProps>): IslandHandle`
   — hydrates one `[data-island]` node. Reads the `data-island` name (throws a
   plain `Error` if absent), resolves the registered component (throws if
-  unregistered), reads the inline JSON snapshot (`readIslandSnapshot`), runs
-  the C2 handshake check, and — on a match — merges `opts.props`/`opts.slice`
-  over the snapshot's `props`/`slice` and mounts via `createRoot(el).render(...)`.
-  On a **mismatch**, returns a no-op `IslandHandle` (`unmount()` does
-  nothing) without ever calling `createRoot`. Returns
-  `{ unmount(): void }`.
+  unregistered), then parses + validates the raw inline JSON snapshot against
+  `IslandSnapshotSchema` (`@mvp/contracts`) — an unparseable/invalid snapshot
+  skips hydration via the same degradation path as a C2 mismatch, with
+  `reason: "invalid-snapshot"` and the parse/Zod problems in `issues`. On a
+  valid snapshot it runs the C2 handshake check, and — on a match — merges
+  `opts.props`/`opts.slice` over the snapshot's `props`/`slice` and mounts via
+  `createRoot(el).render(...)`. On a **mismatch or invalid snapshot**, returns
+  a no-op `IslandHandle` (`unmount()` does nothing) without ever calling
+  `createRoot`. Returns `{ unmount(): void }`.
 - `hydrateIslands(root?: ParentNode): IslandHandle[]` — scans `root`
   (defaults to `document`) for every `[data-island]` node and calls
   `mountIsland` on each one that has a registered component; unregistered
@@ -61,7 +70,10 @@ hydrate the SSR markup on load.
 - `readIslandSnapshot<TProps = Record<string, unknown>>(el: Element): IslandSnapshot<TProps>`
   — parses the adjacent `<script type="application/json">` snapshot; missing
   or malformed JSON degrades to `{ props: {} }` rather than throwing, so a
-  broken snapshot never crashes hydration.
+  broken snapshot never crashes a best-effort read. Note `mountIsland` does
+  NOT rely on this lenient fallback for hydration decisions: it validates the
+  raw snapshot text itself first (A2) and skips hydration outright when the
+  snapshot is present but invalid.
 - `getIsland(name: string): IslandComponent<never> | undefined` — direct
   registry lookup, without mounting.
 - `clearIslandRegistry(): void` — test/HMR helper: empties the registry, its
@@ -73,8 +85,17 @@ hydrate the SSR markup on load.
 - `IslandVersionExpectation = { expectedVersion?: string, expectedContractHash?: string }`
   — what a page-bundled island component declares itself built against, via
   `registerIsland`'s third argument.
-- `SnapshotMismatchInfo = { island: string, expected: { version?, contractHash? }, actual: { fragment?, version?, contractHash? }, reason: "version-mismatch" | "contract-hash-mismatch" }`
+- `SnapshotMismatchInfo = { island: string, expected: { version?, contractHash? }, actual: { fragment?, version?, contractHash? }, reason: "version-mismatch" | "contract-hash-mismatch" | "invalid-snapshot", issues?: string[] }`
   — passed to the `console.warn` call and the `onSnapshotMismatch` hook.
+  `reason` says which check failed: `"version-mismatch"` (declared
+  `expectedVersion` differs from the snapshot's `version`),
+  `"contract-hash-mismatch"` (versions match but a declared
+  `expectedContractHash` differs from a present snapshot `contractHash`), or
+  `"invalid-snapshot"` (the A2 case: the inline snapshot JSON was unparseable
+  or failed `IslandSnapshotSchema` validation — not a version disagreement,
+  just a corrupted/malformed payload, so `expected`/`actual` are empty).
+  `issues` is present only when `reason` is `"invalid-snapshot"`: the
+  JSON-parse error or Zod validation issues, for telemetry/debugging.
 - `SnapshotMismatchHandler = (info: SnapshotMismatchInfo) => void` — the
   `configureIslandRuntime` callback type.
 - `IslandComponent<TProps> = ComponentType<TProps & { slice?: string }>` /
@@ -85,7 +106,8 @@ hydrate the SSR markup on load.
 
 `mountIsland` throws plain `Error` (no dedicated error class) only for
 **authoring bugs** in the frozen markup contract — never for a version-skew
-condition, which is handled by explicit degradation instead of throwing:
+or malformed-snapshot condition, both of which are handled by explicit
+degradation instead of throwing:
 
 - `Error("mountIsland: element is missing a data-island name attribute")` —
   the element passed to `mountIsland` directly has no `data-island`
@@ -107,36 +129,93 @@ hydration, `console.warn`s, and calls the configured
 `IslandHandle`, it does not throw and does not reject. A snapshot with no
 `version` field at all is always treated as a match (opt-in handshake).
 
+**A2 invalid snapshot is not an exception either.** Before any version
+comparison, `mountIsland` parses the raw inline snapshot JSON (when a
+`<script type="application/json">` child is present) and validates it against
+`IslandSnapshotSchema` from `@mvp/contracts`. Unparseable JSON, a non-object
+top level (e.g. an array), or a field with the wrong type (e.g. `version` as
+a number) skips hydration through the exact same path: `console.warn` (always)
+plus the `onSnapshotMismatch` hook, with `reason: "invalid-snapshot"` and the
+parse/Zod problems listed in `issues`, then a no-op handle — no `createRoot`
+call ever happens and the SSR HTML stays as the final static state. A snapshot
+merely missing optional fields (no `version`/`slice`/`fragment`/`contractHash`
+— an old, non-participating fragment) is VALID and hydrates exactly as before;
+a mount node with no snapshot script at all also hydrates (with `{ props: {} }`).
+
 ## Example
 
-```ts no-run
+```ts
+import { createElement } from "react";
 import {
-  registerIsland,
-  hydrateIslands,
+  clearIslandRegistry,
   configureIslandRuntime,
+  hydrateIslands,
+  registerIsland,
   type SnapshotMismatchInfo,
 } from "@mvp/islands";
-import { MarketHeader, manifest as marketHeaderManifest } from "@mvp/fragment-market-header/island";
 
-// C2 handshake: declare what this page-bundled island expects.
-registerIsland("market-header", MarketHeader, {
-  expectedVersion: marketHeaderManifest.version,
-});
+// The frozen mount markup a fragment emits for each hydratable sub-part:
+// <div data-island="<name>">
+//   <script type="application/json" data-island-props="<name>">{...}</script>
+// </div>
+function buildMountNode(name: string, snapshotJson: string): HTMLDivElement {
+  const el = document.createElement("div");
+  el.setAttribute("data-island", name);
+  const script = document.createElement("script");
+  script.setAttribute("type", "application/json");
+  script.setAttribute("data-island-props", name);
+  script.textContent = snapshotJson;
+  el.appendChild(script);
+  return el;
+}
 
+// 1. Route mismatch/invalid-snapshot reports to real telemetry. Called once
+//    per page, alongside its register* bootstrap; `mountIsland` always also
+//    console.warn's, so a skipped hydration is never silent.
+const reports: SnapshotMismatchInfo[] = [];
 configureIslandRuntime({
-  onSnapshotMismatch: (info: SnapshotMismatchInfo) => {
-    // Route to real telemetry instead of relying on console.warn alone.
-    reportToObservability("island_snapshot_mismatch", info);
-  },
+  onSnapshotMismatch: (info) => reports.push(info),
 });
 
-// Client entry: hydrate every [data-island] node found in the document.
-// A version-mismatched island is skipped; its SSR HTML stays as the final
-// paint instead of a broken/mis-hydrated mount.
-const handles = hydrateIslands();
+// 2. C2 handshake: register the page-bundled component under its data-island
+//    name and declare the fragment version it was built against (in a real
+//    page, sourced from the fragment's own manifest version).
+const MarketHeader = (props: { symbol?: string }) =>
+  createElement("span", null, props.symbol);
+registerIsland("market-header", MarketHeader, { expectedVersion: "2.0.0" });
 
-// Later, e.g. on page teardown:
+// 3a. The live SSR snapshot carries version 1.0.0 (the fragment service was
+//     rolled back independently of this page bundle) -> version-mismatch.
+document.body.appendChild(
+  buildMountNode(
+    "market-header",
+    JSON.stringify({
+      props: { symbol: "BTC-USD" },
+      fragment: "market-header",
+      version: "1.0.0",
+    }),
+  ),
+);
+
+// 3b. A corrupted inline snapshot -> invalid-snapshot (A2 validation).
+document.body.appendChild(buildMountNode("market-header", "{not json"));
+
+// 4. Client entry: hydrate every [data-island] node in the document. Both
+//    nodes above are skipped — createRoot is never called, their SSR HTML
+//    stays as the final paint — but each still yields a safe no-op handle.
+//    (A snapshot whose version matches, or that omits `version` entirely,
+//    would hydrate normally here instead.)
+const handles = hydrateIslands();
+console.log(handles.length); // 2
+
+console.log(reports.map((r) => r.reason)); // ["version-mismatch", "invalid-snapshot"]
+console.log(reports[0]?.expected.version); // "2.0.0"
+console.log(reports[0]?.actual.version); // "1.0.0"
+console.log(reports[1]?.issues?.length); // 1 (the JSON parse error)
+
+// Later, e.g. on page teardown (safe even for skipped islands):
 for (const handle of handles) handle.unmount();
+clearIslandRegistry(); // test/HMR helper: also clears expectations + the hook
 ```
 
 ## Accept
@@ -148,5 +227,8 @@ Expected: Vitest exits 0. `packages/islands/src/index.test.ts` covers
 registry/expectation bookkeeping, `readIslandSnapshot`'s malformed-JSON
 fallback, the C2 handshake's match/mismatch/backward-compatible-no-version
 paths (including that a mismatch skips `createRoot` and returns a no-op
-handle while still invoking `console.warn` and the configured hook), and
+handle while still invoking `console.warn` and the configured hook), the A2
+invalid-snapshot paths (malformed JSON, non-object top level, wrong-typed
+field — each skips hydration and reports `reason: "invalid-snapshot"`, while
+a snapshot merely missing optional fields still hydrates), and
 `hydrateIslands`'s silent-skip behavior for unregistered islands.
