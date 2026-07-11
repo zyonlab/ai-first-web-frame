@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { expectFragmentContent } from "./support/expect-fragment-content";
 
 // Composed home page served by shell-gateway (port 4100).
 // Assertions target stable SSR contracts: shell marker, fragment slots
 // (real content or fallback), and the request trace section.
+// Set E2E_STRICT=1 to require live fragment content only (see
+// e2e/support/expect-fragment-content.ts and e2e/README.md).
 test.describe("shell-gateway composed home page", () => {
   test("responds 200 and transparently proxies the home page", async ({
     page,
@@ -38,11 +41,12 @@ test.describe("shell-gateway composed home page", () => {
   }) => {
     await page.goto("/");
     const promotion = page.locator('[data-fragment="promotion-banner"]');
-    await expect(promotion.first()).toBeVisible();
-    // Either live fragment copy or the SSR fallback copy must be readable.
-    await expect(promotion.first()).toContainText(
-      /Limited time offer|限时优惠|Featured offers are loading|Promotion unavailable/,
-    );
+    // Live fragment copy by default; E2E_STRICT=1 rejects the SSR fallback
+    // copy ("Featured offers are loading." / "Promotion unavailable: ...").
+    await expectFragmentContent(promotion.first(), {
+      live: /Limited time offer|限时优惠/,
+      fallback: /Featured offers are loading|Promotion unavailable/,
+    });
   });
 
   test("renders recommendation widget fragment content or its fallback", async ({
@@ -52,7 +56,12 @@ test.describe("shell-gateway composed home page", () => {
     const recommendations = page.locator(
       '[data-fragment="recommendation-widget"]',
     );
-    await expect(recommendations.first()).toBeVisible();
+    // Live fragment copy by default; E2E_STRICT=1 rejects the SSR fallback
+    // copy ("Recommendations are loading." / "Recommendations unavailable: ...").
+    await expectFragmentContent(recommendations.first(), {
+      live: /Recommended for you/,
+      fallback: /Recommendations are loading|Recommendations unavailable/,
+    });
   });
 
   test("renders the request trace section", async ({ page }) => {

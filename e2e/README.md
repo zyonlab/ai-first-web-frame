@@ -46,6 +46,28 @@ to prove the pages are fully server-rendered; API-only contract specs
 
 Reports are written to `reports/playwright`.
 
+### Strict content mode (`E2E_STRICT`)
+
+Fallback isolation is intentional framework behavior: when a fragment
+service is unreachable, the composing page still returns 200 with degraded
+markup (`data-fallback="true"` on the fragment's root element) instead of
+failing. `e2e/shell-home.spec.ts` and `e2e/shell-product.spec.ts` therefore
+accept either live fragment content or its SSR fallback by default — a
+fully-degraded page (every fragment down) is documented, passing behavior.
+
+Set `E2E_STRICT=1` to switch those same assertions to a strict tier that
+requires live content only; a fallback then fails the test. Use this when
+you want e2e to prove the full fragment stack is actually healthy, e.g.:
+
+```sh
+E2E_STRICT=1 pnpm e2e --project=chromium
+```
+
+The toggle is implemented once, in
+`e2e/support/expect-fragment-content.ts`'s `expectFragmentContent(locator,
+{ live, fallback })` helper, and consumed by both specs above — it is not
+forked per spec.
+
 ## Conventions
 
 - Playwright specs are `e2e/*.spec.ts`. Vitest unit tests may live under
