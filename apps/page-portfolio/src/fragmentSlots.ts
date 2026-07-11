@@ -3,12 +3,13 @@ import { createRequestTrace } from "@mvp/observability";
 import { fragmentRegistry } from "@mvp/registry";
 import { createRequestContext } from "@mvp/request-context";
 import {
-  executeFragmentSlots,
+  type FragmentRenderResponse,
   type FragmentSlotDefinition,
   type FragmentSlotResult,
   type FragmentSlotsExecution,
   type PageHealth,
   type SchedulerHint,
+  streamFragmentSlots,
 } from "@mvp/runtime";
 import { fragmentSlots as generatedPortfolioSlots } from "./fragmentSlots.gen";
 
@@ -37,6 +38,36 @@ export type PortfolioFragmentHtml = {
   // hand-writes a per-slot `dangerouslySetInnerHTML` block (refactor plan
   // §3.3).
   execution: FragmentSlotsExecution;
+};
+
+/**
+ * The diagnostics/scheduler-health/trace-log slice of the page — everything
+ * that inherently needs the FULL aggregate result, and therefore can only
+ * resolve once the slowest of the two slots does (refactor plan §4.4, same
+ * split as page-home). Kept as its own type so `app/portfolio/page.tsx` can
+ * feed it to its own `<Suspense>` boundary independent of the two fragment
+ * slots.
+ */
+export type PortfolioFragmentAggregate = {
+  diagnostics: Record<PortfolioSlotKey, PortfolioSlotDiagnostic>;
+  scheduler: {
+    health: PageHealth;
+    hints: SchedulerHint[];
+  };
+  traceLog: string;
+};
+
+export type PortfolioFragmentSlotPromises = Record<
+  PortfolioSlotKey,
+  Promise<FragmentRenderResponse>
+>;
+
+export type PortfolioFragmentStream = {
+  slots: PortfolioFragmentSlotPromises;
+  /** Raw scheduler aggregate (`@mvp/runtime` shape); settles last. */
+  execution: Promise<FragmentSlotsExecution>;
+  /** Page-shaped diagnostics/scheduler/traceLog, derived from `execution`. */
+  aggregate: Promise<PortfolioFragmentAggregate>;
 };
 
 type FetchPortfolioFragmentSlotsOptions = {
@@ -91,20 +122,29 @@ export function buildPortfolioSlotDefinitions(
  * degrades to a readable fallback instead of breaking the page. Tests inject a
  * throwaway `registry` (including an empty `{ fragments: {} }` to force the
  * not-registered path) so the real `registry.data.json` is never touched.
+ *
+ * Streaming entry point (refactor plan §4.4, W3-A): kicks off the same
+ * scheduling `fetchPortfolioFragmentSlots` always ran, but returns
+ * IMMEDIATELY — before either slot has resolved — exposing one promise per
+ * fragment slot plus one aggregate promise for the diagnostics/
+ * scheduler-health/trace-log section. `app/portfolio/page.tsx` awaits each of
+ * `slots.*` inside its own `<Suspense>`+`<FragmentSlotStream>` boundary so
+ * the static shell and any already-settled slot can flush ahead of slower
+ * siblings, instead of the whole page blocking on one `await`.
  */
-export async function fetchPortfolioFragmentSlots({
+export function streamPortfolioFragmentSlots({
   headers,
   fetchImpl,
   timeoutMs = 200,
   registry = fragmentRegistry,
-}: FetchPortfolioFragmentSlotsOptions = {}): Promise<PortfolioFragmentHtml> {
+}: FetchPortfolioFragmentSlotsOptions = {}): PortfolioFragmentStream {
   const ctx = createRequestContext({ headers });
   const trace = createRequestTrace({
     traceId: ctx.traceId,
     requestId: ctx.requestId,
   });
 
-  const execution = await executeFragmentSlots({
+  const stream = streamFragmentSlots({
     registry,
     ctx,
     fetchImpl,
@@ -114,22 +154,63 @@ export async function fetchPortfolioFragmentSlots({
     slots: buildPortfolioSlotDefinitions(timeoutMs),
   });
 
-  const slots = {} as Record<PortfolioSlotKey, string | null>;
-  const diagnostics = {} as Record<PortfolioSlotKey, PortfolioSlotDiagnostic>;
-  for (const key of PORTFOLIO_SLOT_KEYS) {
-    const result = execution.slots[key];
-    slots[key] = result.response.html;
-    diagnostics[key] = toDiagnostic(result);
-  }
+  const aggregate = stream.result.then(
+    (execution): PortfolioFragmentAggregate => {
+      const diagnostics = {} as Record<
+        PortfolioSlotKey,
+        PortfolioSlotDiagnostic
+      >;
+      for (const key of PORTFOLIO_SLOT_KEYS) {
+        diagnostics[key] = toDiagnostic(execution.slots[key]);
+      }
+      return {
+        diagnostics,
+        scheduler: {
+          health: execution.health,
+          hints: execution.hints,
+        },
+        traceLog: trace.toDependencyGraphLog(),
+      };
+    },
+  );
 
   return {
-    slots,
-    diagnostics,
-    scheduler: {
-      health: execution.health,
-      hints: execution.hints,
+    slots: {
+      portfolioSummary: stream.slots.portfolioSummary,
+      pnlChart: stream.slots.pnlChart,
     },
-    traceLog: trace.toDependencyGraphLog(),
+    execution: stream.result,
+    aggregate,
+  };
+}
+
+/**
+ * Barrier-style entry point, kept for every caller that still wants one
+ * blocking `await` (tests, and any future non-streaming consumer). Built ON
+ * TOP OF `streamPortfolioFragmentSlots` — it just awaits every promise the
+ * stream exposes and assembles the same `PortfolioFragmentHtml` shape this
+ * function has always returned — so the two stay behaviorally identical by
+ * construction.
+ */
+export async function fetchPortfolioFragmentSlots(
+  options: FetchPortfolioFragmentSlotsOptions = {},
+): Promise<PortfolioFragmentHtml> {
+  const stream = streamPortfolioFragmentSlots(options);
+  const [portfolioSummary, pnlChart, aggregate, execution] = await Promise.all([
+    stream.slots.portfolioSummary,
+    stream.slots.pnlChart,
+    stream.aggregate,
+    stream.execution,
+  ]);
+
+  return {
+    slots: {
+      portfolioSummary: portfolioSummary.html,
+      pnlChart: pnlChart.html,
+    },
+    diagnostics: aggregate.diagnostics,
+    scheduler: aggregate.scheduler,
+    traceLog: aggregate.traceLog,
     execution,
   };
 }

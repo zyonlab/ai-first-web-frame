@@ -3,12 +3,13 @@ import { fragmentRegistry } from "@mvp/registry";
 import { createRequestContext } from "@mvp/request-context";
 import {
   type DataResolutionResult,
-  executeFragmentSlots,
+  type FragmentRenderResponse,
   type FragmentSlotDefinition,
   type FragmentSlotResult,
   type FragmentSlotsExecution,
   type PageHealth,
   type SchedulerHint,
+  streamFragmentSlots,
 } from "@mvp/runtime";
 import {
   enqueueProductStatsJob,
@@ -54,6 +55,57 @@ export type ProductFragmentHtml = {
   execution: FragmentSlotsExecution;
 };
 
+/**
+ * The diagnostics/dataDiagnostics/dag/recentlyViewed/backgroundJobs/
+ * trace-log slice of the page — everything that inherently needs the FULL
+ * aggregate result (every slot's status, every data dependency) or is
+ * independent per-request work that isn't itself a fragment slot (the
+ * recently-viewed cookie, the background stats job), and therefore can only
+ * resolve once the slowest slot AND that other work settles (refactor plan
+ * §4.4, same split as page-home). Kept as its own type so
+ * `app/product/[id]/page.tsx` can feed it to a single `<Suspense>` boundary
+ * independent of the three fragment slots.
+ */
+export type ProductFragmentAggregate = {
+  diagnostics: Record<string, Pick<FragmentSlotResult, "source" | "strategy">>;
+  dataDiagnostics: {
+    productSummary: {
+      firstRead: string;
+      secondRead: string;
+      label: string;
+    };
+  };
+  /** DAG data-dependency diagnostics from executeFragmentSlots. */
+  dag: {
+    health: PageHealth;
+    hints: SchedulerHint[];
+    /** Number of times each data node's resolver was invoked (dedupe proof). */
+    resolveCounts: Record<string, number>;
+    data: Record<string, DataResolutionResult["status"]>;
+  };
+  recentlyViewed: RecentlyViewedResult;
+  backgroundJobs: {
+    taskId: string;
+    status: string;
+    stats: { queued: number; running: number; deadLetters: number };
+  };
+  traceLog: string;
+};
+
+export type ProductFragmentSlotPromises = {
+  staticProof: Promise<FragmentRenderResponse>;
+  promotion: Promise<FragmentRenderResponse>;
+  recommendations: Promise<FragmentRenderResponse>;
+};
+
+export type ProductFragmentStream = {
+  slots: ProductFragmentSlotPromises;
+  /** Raw scheduler aggregate (`@mvp/runtime` shape); settles last. */
+  execution: Promise<FragmentSlotsExecution>;
+  /** Page-shaped diagnostics/dag/recentlyViewed/backgroundJobs, derived from `execution` plus the independent per-request work. */
+  aggregate: Promise<ProductFragmentAggregate>;
+};
+
 type FetchProductFragmentSlotsOptions = {
   headers?: Headers;
   fetchImpl?: typeof fetch;
@@ -90,7 +142,23 @@ export function buildProductSlotDefinitions(
   );
 }
 
-export async function fetchProductFragmentSlots({
+/**
+ * Streaming entry point (refactor plan §4.4, W3-A): kicks off the same
+ * DAG-aware scheduling `fetchProductFragmentSlots` always ran, but returns
+ * IMMEDIATELY — before any slot has resolved — exposing one promise per
+ * fragment slot plus one aggregate promise for the diagnostics/dag/
+ * recentlyViewed/backgroundJobs/trace-log section. `app/product/[id]/page.tsx`
+ * awaits each of `slots.*` inside its own `<Suspense>`+`<FragmentSlotStream>`
+ * boundary so the static shell and any already-settled slot can flush to the
+ * client ahead of slower siblings, instead of the whole page blocking on one
+ * `await`.
+ *
+ * The recently-viewed cookie lookup and the background-stats-job enqueue are
+ * independent per-request work — neither is a fragment slot — so they are
+ * kicked off alongside the scheduler (not serialized after it) and folded
+ * into the same `aggregate` promise.
+ */
+export function streamProductFragmentSlots({
   headers,
   fetchImpl,
   timeoutMs = 200,
@@ -98,7 +166,7 @@ export async function fetchProductFragmentSlots({
   productId = "123",
   awaitBackgroundJob = false,
   now,
-}: FetchProductFragmentSlotsOptions = {}): Promise<ProductFragmentHtml> {
+}: FetchProductFragmentSlotsOptions = {}): ProductFragmentStream {
   const ctx = createRequestContext({ headers });
   const trace = createRequestTrace({
     traceId: ctx.traceId,
@@ -124,7 +192,7 @@ export async function fetchProductFragmentSlots({
     return undefined;
   };
 
-  const execution = await executeFragmentSlots({
+  const stream = streamFragmentSlots({
     registry: fragmentRegistry,
     ctx,
     fetchImpl,
@@ -139,10 +207,8 @@ export async function fetchProductFragmentSlots({
     slots: buildProductSlotDefinitions(timeoutMs),
   });
 
-  const slots = execution.slots;
-
   // --- Signed cookie storage (recently viewed) ------------------------------
-  const recentlyViewed = await trackRecentlyViewed({
+  const recentlyViewedPromise = trackRecentlyViewed({
     ctx,
     productId,
     cookieHeader,
@@ -157,60 +223,113 @@ export async function fetchProductFragmentSlots({
     requestId: ctx.requestId,
     now,
   });
-  let jobStatus = "queued";
-  if (awaitBackgroundJob) {
-    const result = await job.completion;
-    jobStatus = result.status;
-  }
-
-  const summaryData = execution.data["product-summary"];
-  const summaryValue = (summaryData?.value ?? {}) as { label?: string };
-
-  return {
-    staticProof: slots.staticProof.response.html,
-    promotion: slots.promotion.response.html,
-    recommendations: slots.recommendations.response.html,
-    diagnostics: {
-      staticProof: {
-        source: slots.staticProof.source,
-        strategy: slots.staticProof.strategy,
-      },
-      promotion: {
-        source: slots.promotion.source,
-        strategy: slots.promotion.strategy,
-      },
-      recommendations: {
-        source: slots.recommendations.source,
-        strategy: slots.recommendations.strategy,
-      },
-    },
-    dataDiagnostics: {
-      productSummary: {
-        // The DAG resolves product-summary exactly once even though two slots
-        // depend on data derived from it.
-        firstRead: summaryData?.status ?? "error",
-        secondRead: `resolved x${resolveCounts["product-summary"]}`,
-        label: summaryValue.label ?? summaryLabel,
-      },
-    },
-    dag: {
-      health: execution.health,
-      hints: execution.hints,
-      resolveCounts,
-      data: Object.fromEntries(
-        Object.entries(execution.data).map(([id, result]) => [
-          id,
-          result.status,
-        ]),
-      ),
-    },
-    recentlyViewed,
-    backgroundJobs: {
+  const backgroundJobsPromise = (async () => {
+    let jobStatus = "queued";
+    if (awaitBackgroundJob) {
+      const result = await job.completion;
+      jobStatus = result.status;
+    }
+    return {
       taskId: job.taskId,
       status: jobStatus,
       stats: worker.stats(),
+    };
+  })();
+
+  const aggregate = Promise.all([
+    stream.result,
+    recentlyViewedPromise,
+    backgroundJobsPromise,
+  ]).then(
+    ([execution, recentlyViewed, backgroundJobs]): ProductFragmentAggregate => {
+      const slots = execution.slots;
+      const summaryData = execution.data["product-summary"];
+      const summaryValue = (summaryData?.value ?? {}) as { label?: string };
+
+      return {
+        diagnostics: {
+          staticProof: {
+            source: slots.staticProof.source,
+            strategy: slots.staticProof.strategy,
+          },
+          promotion: {
+            source: slots.promotion.source,
+            strategy: slots.promotion.strategy,
+          },
+          recommendations: {
+            source: slots.recommendations.source,
+            strategy: slots.recommendations.strategy,
+          },
+        },
+        dataDiagnostics: {
+          productSummary: {
+            // The DAG resolves product-summary exactly once even though two
+            // slots depend on data derived from it.
+            firstRead: summaryData?.status ?? "error",
+            secondRead: `resolved x${resolveCounts["product-summary"]}`,
+            label: summaryValue.label ?? summaryLabel,
+          },
+        },
+        dag: {
+          health: execution.health,
+          hints: execution.hints,
+          resolveCounts,
+          data: Object.fromEntries(
+            Object.entries(execution.data).map(([id, result]) => [
+              id,
+              result.status,
+            ]),
+          ),
+        },
+        recentlyViewed,
+        backgroundJobs,
+        traceLog: trace.toDependencyGraphLog(),
+      };
     },
-    traceLog: trace.toDependencyGraphLog(),
+  );
+
+  return {
+    slots: {
+      staticProof: stream.slots.staticProof,
+      promotion: stream.slots.promotion,
+      recommendations: stream.slots.recommendations,
+    },
+    execution: stream.result,
+    aggregate,
+  };
+}
+
+/**
+ * Barrier-style entry point, kept for every caller that still wants one
+ * blocking `await` (tests, and any future non-streaming consumer). Built ON
+ * TOP OF `streamProductFragmentSlots` — it just awaits every promise the
+ * stream exposes and assembles the same `ProductFragmentHtml` shape this
+ * function has always returned — so the two stay behaviorally identical by
+ * construction.
+ */
+export async function fetchProductFragmentSlots(
+  options: FetchProductFragmentSlotsOptions = {},
+): Promise<ProductFragmentHtml> {
+  const stream = streamProductFragmentSlots(options);
+  const [staticProof, promotion, recommendations, aggregate, execution] =
+    await Promise.all([
+      stream.slots.staticProof,
+      stream.slots.promotion,
+      stream.slots.recommendations,
+      stream.aggregate,
+      stream.execution,
+    ]);
+
+  return {
+    staticProof: staticProof.html,
+    promotion: promotion.html,
+    recommendations: recommendations.html,
+    diagnostics: aggregate.diagnostics,
+    dataDiagnostics: aggregate.dataDiagnostics,
+    dag: aggregate.dag,
+    recentlyViewed: aggregate.recentlyViewed,
+    backgroundJobs: aggregate.backgroundJobs,
+    traceLog: aggregate.traceLog,
     execution,
   };
 }

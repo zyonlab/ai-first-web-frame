@@ -1,12 +1,36 @@
-import { FragmentSlot } from "@mvp/runtime/react";
+import { FragmentSlotStream } from "@mvp/runtime/react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Image from "next/image";
+import { Suspense } from "react";
 import { getProduct } from "../../../src/catalog";
-import { fetchProductFragmentSlots } from "../../../src/fragmentSlots";
+import {
+  type ProductFragmentAggregate,
+  streamProductFragmentSlots,
+} from "../../../src/fragmentSlots";
 import { createProductJsonLd } from "../../../src/render";
 
 export const dynamic = "force-dynamic";
+
+// Fallback markup, defined once per slot and reused for both the Suspense
+// loading placeholder and `<FragmentSlotStream>`'s own "resolved but empty"
+// fallback — the same single fallback contract every existing test/e2e spec
+// already anchors on (refactor plan §4.4: fallback semantics unchanged).
+const STATIC_PROOF_FALLBACK = (
+  <section data-fragment="static-product-proof" data-fallback="true">
+    Static product proof is unavailable.
+  </section>
+);
+const PROMOTION_FALLBACK = (
+  <section data-fragment="promotion-banner" data-fallback="true">
+    Product promotion is loading.
+  </section>
+);
+const RECOMMENDATIONS_FALLBACK = (
+  <section data-fragment="recommendation-widget" data-fallback="true">
+    Related products are loading.
+  </section>
+);
 
 export async function generateMetadata({
   params,
@@ -21,6 +45,93 @@ export async function generateMetadata({
   };
 }
 
+/**
+ * Render-strategy samples / recently-viewed / background-jobs / DAG /
+ * request-trace sections (refactor plan §4.4). This inherently needs the
+ * FULL aggregate result — every slot's status, the data-dependency DAG, the
+ * recently-viewed cookie lookup, and the background job — so it can only
+ * resolve once the slowest of that work settles, same as before this
+ * refactor. It gets its own async Server Component + `<Suspense>` boundary
+ * purely so it never blocks the static shell or the three fragment slots
+ * from streaming ahead of it; it still always settles last, which is
+ * correct, not a regression.
+ */
+async function ProductDiagnostics({
+  aggregate,
+}: {
+  aggregate: Promise<ProductFragmentAggregate>;
+}) {
+  const diag = await aggregate;
+  return (
+    <>
+      <section data-render-strategies="product">
+        <h2>Render strategy samples</h2>
+        <ul>
+          <li>static: {diag.diagnostics.staticProof.source}</li>
+          <li>isr: {diag.diagnostics.promotion.source}</li>
+          <li>dynamic-ssr: {diag.diagnostics.recommendations.source}</li>
+          <li>
+            data dedupe: {diag.dataDiagnostics.productSummary.firstRead} /{" "}
+            {diag.dataDiagnostics.productSummary.secondRead}
+          </li>
+        </ul>
+      </section>
+      <section data-recently-viewed="product">
+        <h2>Recently viewed</h2>
+        <p>
+          signed cookie:{" "}
+          {diag.recentlyViewed.verified ? "verified" : "new visitor"}
+        </p>
+        <ul>
+          {diag.recentlyViewed.entries.map((entry) => (
+            <li key={entry.id} data-recent-id={entry.id}>
+              {entry.title} — {entry.price}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section data-background-jobs="product">
+        <h2>Background jobs</h2>
+        <ul>
+          <li>task: {diag.backgroundJobs.taskId}</li>
+          <li>status: {diag.backgroundJobs.status}</li>
+          <li>
+            completed:{" "}
+            {diag.backgroundJobs.stats.running === 0 ? "settled" : "running"}
+          </li>
+          <li>queued: {diag.backgroundJobs.stats.queued}</li>
+          <li>running: {diag.backgroundJobs.stats.running}</li>
+          <li>dead-letters: {diag.backgroundJobs.stats.deadLetters}</li>
+        </ul>
+      </section>
+      <section data-dag="product">
+        <h2>DAG data dependencies</h2>
+        <p>health: {diag.dag.health}</p>
+        <ul>
+          {Object.entries(diag.dag.resolveCounts).map(([node, count]) => (
+            <li key={node} data-dag-node={node}>
+              {node}: resolved {count}x ({diag.dag.data[node] ?? "n/a"})
+            </li>
+          ))}
+        </ul>
+        {diag.dag.hints.length > 0 ? (
+          <ul data-dag-hints="product">
+            {diag.dag.hints.map((hint) => (
+              <li key={hint.kind}>{hint.message}</li>
+            ))}
+          </ul>
+        ) : (
+          <p data-dag-hints="none">No scheduler hints.</p>
+        )}
+      </section>
+      <section data-request-trace="product">
+        <h2>Request trace</h2>
+        <pre>{diag.traceLog}</pre>
+      </section>
+    </>
+  );
+}
+
 export default async function ProductPage({
   params,
 }: {
@@ -30,7 +141,12 @@ export default async function ProductPage({
   const product = getProduct(id);
   const jsonLd = JSON.stringify(createProductJsonLd(id));
   const requestHeaders = await headers();
-  const fragmentHtml = await fetchProductFragmentSlots({
+  // No further await before this point: the static shell below (title,
+  // price, image, description, JSON-LD) needs nothing async and is the very
+  // first thing flushed. `streamProductFragmentSlots` itself is synchronous
+  // — it returns a handle of promises immediately, it does not block
+  // (refactor plan §4.4).
+  const stream = streamProductFragmentSlots({
     headers: requestHeaders,
     productId: id,
   });
@@ -57,104 +173,27 @@ export default async function ProductPage({
       <aside data-fragment="price-panel" data-reserved="true">
         {product.price}
       </aside>
-      <section data-render-strategies="product">
-        <h2>Render strategy samples</h2>
-        <ul>
-          <li>static: {fragmentHtml.diagnostics.staticProof.source}</li>
-          <li>isr: {fragmentHtml.diagnostics.promotion.source}</li>
-          <li>
-            dynamic-ssr: {fragmentHtml.diagnostics.recommendations.source}
-          </li>
-          <li>
-            data dedupe: {fragmentHtml.dataDiagnostics.productSummary.firstRead}{" "}
-            / {fragmentHtml.dataDiagnostics.productSummary.secondRead}
-          </li>
-        </ul>
-      </section>
-      <section data-recently-viewed="product">
-        <h2>Recently viewed</h2>
-        <p>
-          signed cookie:{" "}
-          {fragmentHtml.recentlyViewed.verified ? "verified" : "new visitor"}
-        </p>
-        <ul>
-          {fragmentHtml.recentlyViewed.entries.map((entry) => (
-            <li key={entry.id} data-recent-id={entry.id}>
-              {entry.title} — {entry.price}
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section data-background-jobs="product">
-        <h2>Background jobs</h2>
-        <ul>
-          <li>task: {fragmentHtml.backgroundJobs.taskId}</li>
-          <li>status: {fragmentHtml.backgroundJobs.status}</li>
-          <li>
-            completed:{" "}
-            {fragmentHtml.backgroundJobs.stats.running === 0
-              ? "settled"
-              : "running"}
-          </li>
-          <li>queued: {fragmentHtml.backgroundJobs.stats.queued}</li>
-          <li>running: {fragmentHtml.backgroundJobs.stats.running}</li>
-          <li>dead-letters: {fragmentHtml.backgroundJobs.stats.deadLetters}</li>
-        </ul>
-      </section>
-      <section data-dag="product">
-        <h2>DAG data dependencies</h2>
-        <p>health: {fragmentHtml.dag.health}</p>
-        <ul>
-          {Object.entries(fragmentHtml.dag.resolveCounts).map(
-            ([node, count]) => (
-              <li key={node} data-dag-node={node}>
-                {node}: resolved {count}x (
-                {fragmentHtml.dag.data[node] ?? "n/a"})
-              </li>
-            ),
-          )}
-        </ul>
-        {fragmentHtml.dag.hints.length > 0 ? (
-          <ul data-dag-hints="product">
-            {fragmentHtml.dag.hints.map((hint) => (
-              <li key={hint.kind}>{hint.message}</li>
-            ))}
-          </ul>
-        ) : (
-          <p data-dag-hints="none">No scheduler hints.</p>
-        )}
-      </section>
-      <section data-request-trace="product">
-        <h2>Request trace</h2>
-        <pre>{fragmentHtml.traceLog}</pre>
-      </section>
-      <FragmentSlot
-        name="staticProof"
-        execution={fragmentHtml.execution}
-        fallback={
-          <section data-fragment="static-product-proof" data-fallback="true">
-            Static product proof is unavailable.
-          </section>
-        }
-      />
-      <FragmentSlot
-        name="promotion"
-        execution={fragmentHtml.execution}
-        fallback={
-          <section data-fragment="promotion-banner" data-fallback="true">
-            Product promotion is loading.
-          </section>
-        }
-      />
-      <FragmentSlot
-        name="recommendations"
-        execution={fragmentHtml.execution}
-        fallback={
-          <section data-fragment="recommendation-widget" data-fallback="true">
-            Related products are loading.
-          </section>
-        }
-      />
+      <Suspense fallback={null}>
+        <ProductDiagnostics aggregate={stream.aggregate} />
+      </Suspense>
+      <Suspense fallback={STATIC_PROOF_FALLBACK}>
+        <FragmentSlotStream
+          slotPromise={stream.slots.staticProof}
+          fallback={STATIC_PROOF_FALLBACK}
+        />
+      </Suspense>
+      <Suspense fallback={PROMOTION_FALLBACK}>
+        <FragmentSlotStream
+          slotPromise={stream.slots.promotion}
+          fallback={PROMOTION_FALLBACK}
+        />
+      </Suspense>
+      <Suspense fallback={RECOMMENDATIONS_FALLBACK}>
+        <FragmentSlotStream
+          slotPromise={stream.slots.recommendations}
+          fallback={RECOMMENDATIONS_FALLBACK}
+        />
+      </Suspense>
     </main>
   );
 }
