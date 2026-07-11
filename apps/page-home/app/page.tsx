@@ -117,6 +117,21 @@ export default async function HomePage() {
       <Suspense fallback={null}>
         <SchedulerDiagnostics aggregate={stream.aggregate} />
       </Suspense>
+      {/*
+        `stream.slots` is now `Record<string, Promise<FragmentRenderResponse>>`
+        (@mvp/runtime's own generic shape — see fragmentSlots.ts). Dot access
+        below still type-checks (this repo's tsconfig does not set
+        `noPropertyAccessFromIndexSignature`) and is what biome's
+        `useLiteralKeys` lint rule expects, so it is kept — the generic type
+        already removes the hand-maintained per-slot TypeScript interface;
+        switching to bracket notation here would be cosmetic, not functional.
+        WHICH slots get their own <Suspense> boundary and what fallback
+        markup they show remains genuine human judgment (A1's explicit
+        carve-out), not something codegen can decide: mounting a new slot
+        never requires touching fragmentSlots.ts, but wiring it into this
+        JSX (a new <Suspense><FragmentSlotStream/></Suspense> block) is the
+        one deliberate hand-edit A1 carves out.
+      */}
       <Suspense fallback={STATIC_EDITORIAL_FALLBACK}>
         <FragmentSlotStream
           slotPromise={stream.slots.staticEditorial}

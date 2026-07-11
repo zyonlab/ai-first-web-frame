@@ -52,9 +52,12 @@ export type HomeFragmentAggregate = {
 };
 
 export type HomeFragmentHtml = {
-  staticEditorial: string | null;
-  promotion: string | null;
-  recommendations: string | null;
+  // Per-slot resolved HTML, keyed by slot name (whatever names
+  // `fragmentSlots.gen.ts` currently enumerates — see `buildHomeSlotDefinitions`).
+  // Generic on purpose (A1 gate, refactor plan §3): adding/removing a slot in
+  // the manifest changes the keys this map has at runtime without any type or
+  // code edit here.
+  html: Record<string, string | null>;
   diagnostics: Record<string, HomeSlotDiagnostic>;
   dataDiagnostics: HomeFragmentAggregate["dataDiagnostics"];
   scheduler: HomeFragmentAggregate["scheduler"];
@@ -67,21 +70,23 @@ export type HomeFragmentHtml = {
 };
 
 /**
- * The three named fragment-slot promises `streamHomeFragmentSlots` exposes,
- * one per `<FragmentSlotStream>` boundary in `app/page.tsx` (refactor plan
- * §4.4). Each resolves independently, as soon as that slot's own DAG level
- * finishes — `staticEditorial` and `recommendations` have no dependencies
- * (level 0), `promotion` depends on the shared featured-content data node
- * (level 1), so in practice the first two settle strictly before the third.
+ * The fragment-slot promises `streamHomeFragmentSlots` exposes, one per
+ * `<FragmentSlotStream>` boundary in `app/page.tsx` (refactor plan §4.4).
+ * Each resolves independently, as soon as that slot's own DAG level
+ * finishes. Deliberately generic (`Record<string, ...>`, not a hand-written
+ * interface with one field per slot name): `@mvp/runtime`'s
+ * `streamFragmentSlots` already returns exactly this shape (see
+ * `FragmentSlotStreamHandle.slots` in `packages/runtime/src/index.ts`), keyed
+ * by whatever `buildHomeSlotDefinitions()` (sourced from the generated
+ * `fragmentSlots.gen.ts`) enumerates — there is no named-slot coupling left
+ * to hand-maintain here. `app/page.tsx` still looks up individual keys
+ * (`stream.slots["promotion"]`) because CHOOSING which slots get their own
+ * `<Suspense>` boundary and what fallback markup they render is genuine
+ * human-judgment JSX placement (A1's explicit carve-out) — not something
+ * codegen can or should decide.
  */
-export type HomeFragmentSlotPromises = {
-  staticEditorial: Promise<FragmentRenderResponse>;
-  promotion: Promise<FragmentRenderResponse>;
-  recommendations: Promise<FragmentRenderResponse>;
-};
-
 export type HomeFragmentStream = {
-  slots: HomeFragmentSlotPromises;
+  slots: Record<string, Promise<FragmentRenderResponse>>;
   /** Raw scheduler aggregate (`@mvp/runtime` shape); settles last. */
   execution: Promise<FragmentSlotsExecution>;
   /** Page-shaped diagnostics/dataDiagnostics/scheduler/traceLog, derived from `execution`. */
@@ -197,16 +202,23 @@ export function streamHomeFragmentSlots({
   });
 
   const aggregate = stream.result.then((execution): HomeFragmentAggregate => {
-    const slots = execution.slots;
     const featuredTitle =
       featuredReads.first?.data.title ??
       (ctx.locale.startsWith("zh") ? "精选内容" : "Featured content");
+    // Generic per-slot diagnostics: every slot's result carries everything
+    // `toDiagnostic` needs (source/strategy/status/required), and the map
+    // key IS the slot's name, so there is no genuine reason to hand-list slot
+    // names here — iterate `execution.slots` (already `Record<string,
+    // FragmentSlotResult>`, see `packages/runtime/src/index.ts`) instead of
+    // repeating the 3 current names.
+    const diagnostics: Record<string, HomeSlotDiagnostic> = Object.fromEntries(
+      Object.entries(execution.slots).map(([name, result]) => [
+        name,
+        toDiagnostic(result),
+      ]),
+    );
     return {
-      diagnostics: {
-        staticEditorial: toDiagnostic(slots.staticEditorial),
-        promotion: toDiagnostic(slots.promotion),
-        recommendations: toDiagnostic(slots.recommendations),
-      },
+      diagnostics,
       dataDiagnostics: {
         featuredContent: {
           firstRead: featuredReads.first?.source ?? "loader",
@@ -223,11 +235,10 @@ export function streamHomeFragmentSlots({
   });
 
   return {
-    slots: {
-      staticEditorial: stream.slots.staticEditorial,
-      promotion: stream.slots.promotion,
-      recommendations: stream.slots.recommendations,
-    },
+    // `stream.slots` (`@mvp/runtime`'s `FragmentSlotStreamHandle.slots`) is
+    // already `Record<string, Promise<FragmentRenderResponse>>` — passed
+    // through as-is instead of re-listing each slot name into a new object.
+    slots: stream.slots,
     execution: stream.result,
     aggregate,
   };
@@ -244,19 +255,22 @@ export async function fetchHomeFragmentSlots(
   options: FetchFragmentSlotsOptions = {},
 ): Promise<HomeFragmentHtml> {
   const stream = streamHomeFragmentSlots(options);
-  const [staticEditorial, promotion, recommendations, aggregate, execution] =
-    await Promise.all([
-      stream.slots.staticEditorial,
-      stream.slots.promotion,
-      stream.slots.recommendations,
-      stream.aggregate,
-      stream.execution,
-    ]);
+  // Resolve every slot's promise generically (whatever names `stream.slots`
+  // currently has) instead of destructuring three named fields — the
+  // "final returned HTML-string map" the A1 refactor targets.
+  const [htmlEntries, aggregate, execution] = await Promise.all([
+    Promise.all(
+      Object.entries(stream.slots).map(async ([name, slotPromise]) => {
+        const response = await slotPromise;
+        return [name, response.html] as const;
+      }),
+    ),
+    stream.aggregate,
+    stream.execution,
+  ]);
 
   return {
-    staticEditorial: staticEditorial.html,
-    promotion: promotion.html,
-    recommendations: recommendations.html,
+    html: Object.fromEntries(htmlEntries),
     diagnostics: aggregate.diagnostics,
     dataDiagnostics: aggregate.dataDiagnostics,
     scheduler: aggregate.scheduler,
