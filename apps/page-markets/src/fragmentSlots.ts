@@ -3,12 +3,13 @@ import { createRequestTrace } from "@mvp/observability";
 import { fragmentRegistry } from "@mvp/registry";
 import { createRequestContext } from "@mvp/request-context";
 import {
-  executeFragmentSlots,
+  type FragmentRenderResponse,
   type FragmentSlotDefinition,
   type FragmentSlotResult,
   type FragmentSlotsExecution,
   type PageHealth,
   type SchedulerHint,
+  streamFragmentSlots,
 } from "@mvp/runtime";
 import { fragmentSlots as generatedMarketsSlots } from "./fragmentSlots.gen";
 
@@ -37,6 +38,35 @@ export type MarketsFragmentHtml = {
   // hand-writes a per-slot `dangerouslySetInnerHTML` block (refactor plan
   // §3.3).
   execution: FragmentSlotsExecution;
+};
+
+/**
+ * The diagnostics/scheduler-health/trace-log slice of the page — everything
+ * that inherently needs the FULL aggregate result, and therefore can only
+ * resolve once the single `marketsTable` slot's node finishes (refactor plan
+ * §4.4, same split as page-home). Kept as its own type so
+ * `app/markets/page.tsx` can feed it to its own `<Suspense>` boundary.
+ */
+export type MarketsFragmentAggregate = {
+  diagnostics: Record<MarketsSlotKey, MarketsSlotDiagnostic>;
+  scheduler: {
+    health: PageHealth;
+    hints: SchedulerHint[];
+  };
+  traceLog: string;
+};
+
+export type MarketsFragmentSlotPromises = Record<
+  MarketsSlotKey,
+  Promise<FragmentRenderResponse>
+>;
+
+export type MarketsFragmentStream = {
+  slots: MarketsFragmentSlotPromises;
+  /** Raw scheduler aggregate (`@mvp/runtime` shape); settles last. */
+  execution: Promise<FragmentSlotsExecution>;
+  /** Page-shaped diagnostics/scheduler/traceLog, derived from `execution`. */
+  aggregate: Promise<MarketsFragmentAggregate>;
 };
 
 type FetchMarketsFragmentSlotsOptions = {
@@ -70,25 +100,28 @@ export function buildMarketsSlotDefinitions(
 }
 
 /**
- * Compose the markets page's single fragment slot through the runtime
- * scheduler. `markets-table` is a `cached-ssr` fragment (near-realtime table;
- * doc 01 §5), rendered once and served no-JS-readable. When the fragment is not
- * yet registered (or its service is down) the slot degrades to a readable
- * fallback instead of breaking the page.
+ * Streaming entry point (refactor plan §4.4, W3-A): kicks off the same
+ * scheduling `fetchMarketsFragmentSlots` always ran, but returns IMMEDIATELY
+ * — before the `marketsTable` slot has resolved — exposing its promise plus
+ * one aggregate promise for the diagnostics/scheduler-health/trace-log
+ * section. `app/markets/page.tsx` awaits `slots.marketsTable` inside its own
+ * `<Suspense>`+`<FragmentSlotStream>` boundary so the static shell can flush
+ * ahead of the fragment fetch, instead of the whole page blocking on one
+ * `await`.
  */
-export async function fetchMarketsFragmentSlots({
+export function streamMarketsFragmentSlots({
   headers,
   fetchImpl,
   timeoutMs = 200,
   registry = fragmentRegistry,
-}: FetchMarketsFragmentSlotsOptions = {}): Promise<MarketsFragmentHtml> {
+}: FetchMarketsFragmentSlotsOptions = {}): MarketsFragmentStream {
   const ctx = createRequestContext({ headers });
   const trace = createRequestTrace({
     traceId: ctx.traceId,
     requestId: ctx.requestId,
   });
 
-  const execution = await executeFragmentSlots({
+  const stream = streamFragmentSlots({
     registry,
     ctx,
     fetchImpl,
@@ -98,22 +131,59 @@ export async function fetchMarketsFragmentSlots({
     slots: buildMarketsSlotDefinitions(timeoutMs),
   });
 
-  const slots = {} as Record<MarketsSlotKey, string | null>;
-  const diagnostics = {} as Record<MarketsSlotKey, MarketsSlotDiagnostic>;
-  for (const key of MARKETS_SLOT_KEYS) {
-    const result = execution.slots[key];
-    slots[key] = result.response.html;
-    diagnostics[key] = toDiagnostic(result);
-  }
+  const aggregate = stream.result.then(
+    (execution): MarketsFragmentAggregate => {
+      const diagnostics = {} as Record<MarketsSlotKey, MarketsSlotDiagnostic>;
+      for (const key of MARKETS_SLOT_KEYS) {
+        diagnostics[key] = toDiagnostic(execution.slots[key]);
+      }
+      return {
+        diagnostics,
+        scheduler: {
+          health: execution.health,
+          hints: execution.hints,
+        },
+        traceLog: trace.toDependencyGraphLog(),
+      };
+    },
+  );
 
   return {
-    slots,
-    diagnostics,
-    scheduler: {
-      health: execution.health,
-      hints: execution.hints,
-    },
-    traceLog: trace.toDependencyGraphLog(),
+    slots: { marketsTable: stream.slots.marketsTable },
+    execution: stream.result,
+    aggregate,
+  };
+}
+
+/**
+ * Compose the markets page's single fragment slot through the runtime
+ * scheduler. `markets-table` is a `cached-ssr` fragment (near-realtime table;
+ * doc 01 §5), rendered once and served no-JS-readable. When the fragment is not
+ * yet registered (or its service is down) the slot degrades to a readable
+ * fallback instead of breaking the page.
+ *
+ * Barrier-style entry point, kept for every caller that still wants one
+ * blocking `await` (tests, and any future non-streaming consumer). Built ON
+ * TOP OF `streamMarketsFragmentSlots` — it just awaits every promise the
+ * stream exposes and assembles the same `MarketsFragmentHtml` shape this
+ * function has always returned — so the two stay behaviorally identical by
+ * construction.
+ */
+export async function fetchMarketsFragmentSlots(
+  options: FetchMarketsFragmentSlotsOptions = {},
+): Promise<MarketsFragmentHtml> {
+  const stream = streamMarketsFragmentSlots(options);
+  const [marketsTable, aggregate, execution] = await Promise.all([
+    stream.slots.marketsTable,
+    stream.aggregate,
+    stream.execution,
+  ]);
+
+  return {
+    slots: { marketsTable: marketsTable.html },
+    diagnostics: aggregate.diagnostics,
+    scheduler: aggregate.scheduler,
+    traceLog: aggregate.traceLog,
     execution,
   };
 }
