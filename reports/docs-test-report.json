@@ -1,0 +1,133 @@
+{
+  "tool": "docs-test",
+  "generatedAt": "2026-07-11T11:20:17.707Z",
+  "status": "pass",
+  "packages": [
+    {
+      "agentMd": "packages/contracts/AGENT.md",
+      "package": "@mvp/contracts",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/data/AGENT.md",
+      "package": "@mvp/data",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/design-system/AGENT.md",
+      "package": "@mvp/design-system",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/design-tokens/AGENT.md",
+      "package": "@mvp/design-tokens",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/interaction/AGENT.md",
+      "package": "@mvp/interaction",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/islands/AGENT.md",
+      "package": "@mvp/islands",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/mcp/AGENT.md",
+      "package": "@mvp/mcp",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/observability/AGENT.md",
+      "package": "@mvp/observability",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/optimizer/AGENT.md",
+      "package": "@mvp/optimizer",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/registry/AGENT.md",
+      "package": "@mvp/registry",
+      "status": "skipped",
+      "executableBlocks": 0,
+      "noRunBlocks": 1
+    },
+    {
+      "agentMd": "packages/request-context/AGENT.md",
+      "package": "@mvp/request-context",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/request/AGENT.md",
+      "package": "@mvp/request",
+      "status": "skipped",
+      "executableBlocks": 0,
+      "noRunBlocks": 1
+    },
+    {
+      "agentMd": "packages/routes/AGENT.md",
+      "package": "@mvp/routes",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/runtime/AGENT.md",
+      "package": "@mvp/runtime",
+      "status": "pass",
+      "executableBlocks": 2,
+      "noRunBlocks": 2
+    },
+    {
+      "agentMd": "packages/storage/AGENT.md",
+      "package": "@mvp/storage",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/store/AGENT.md",
+      "package": "@mvp/store",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "packages/ui/AGENT.md",
+      "package": "@mvp/ui",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 0
+    },
+    {
+      "agentMd": "tools/create-component/AGENT.md",
+      "package": "@mvp/create-component",
+      "status": "skipped",
+      "executableBlocks": 0,
+      "noRunBlocks": 2
+    }
+  ]
+}
