@@ -149,7 +149,7 @@ describe("page-portfolio", () => {
     const chart = portfolioPageManifest.slots[1];
     expect(chart.name).toBe("pnlChart");
     expect(chart.fragment).toBe("pnl-chart");
-    expect(chart.strategy).toBe("isr");
+    expect(chart.strategy).toBe("ttl-cache");
     expect(chart.required).toBe(false);
   });
 
@@ -195,7 +195,7 @@ describe("page-portfolio", () => {
     });
     expect(result.diagnostics.pnlChart).toMatchObject({
       status: "ok",
-      strategy: "isr",
+      strategy: "ttl-cache",
       required: false,
     });
     expect(result.scheduler.health).toBe("ok");

@@ -67,7 +67,7 @@ describe("page-product", () => {
     expect(html).toContain("data-fallback");
   });
 
-  it("fetches ISR promotion and dynamic recommendation fragments", async () => {
+  it("fetches TTL-cache promotion and dynamic recommendation fragments", async () => {
     const calls: string[] = [];
     const slots = await fetchProductFragmentSlots({
       fetchImpl: (async (url: string | URL | Request) => {
@@ -96,7 +96,7 @@ describe("page-product", () => {
       "recommendation-widget for product",
     );
     expect(slots.diagnostics.staticProof.source).toBe("static");
-    expect(slots.diagnostics.promotion.strategy).toBe("isr");
+    expect(slots.diagnostics.promotion.strategy).toBe("ttl-cache");
     expect(slots.diagnostics.recommendations.strategy).toBe("dynamic-ssr");
     expect(slots.dataDiagnostics.productSummary).toMatchObject({
       firstRead: "ok",
@@ -108,7 +108,7 @@ describe("page-product", () => {
     expect(slots.traceLog).toContain("slot:promotion");
   });
 
-  it("caches ISR promotion while dynamic recommendations refetch", async () => {
+  it("caches TTL-cache promotion while dynamic recommendations refetch", async () => {
     const calls: string[] = [];
     const fetchImpl = (async (url: string | URL | Request) => {
       calls.push(String(url));
@@ -151,7 +151,7 @@ describe("page-product", () => {
       productPageManifest.slots
         .map((slot) => ("strategy" in slot ? slot.strategy : undefined))
         .filter(Boolean),
-    ).toContain("isr");
+    ).toContain("ttl-cache");
   });
 
   describe("signed cookie storage (recently viewed)", () => {
