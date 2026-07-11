@@ -171,12 +171,17 @@ export const SCRIPT_TOOLS: ScriptTool[] = [
   {
     name: "affected",
     description:
-      "List deployable units affected by a git diff. Input: { base?, head? }.",
+      "Compute the affected plan for a git diff via the graph engine " +
+      "(scripts/affected-graph.mts): seed units, whether the diff is GLOBAL, " +
+      "the full affected-unit closure, deployable images to rebuild, and " +
+      "pages to runtime-verify. Input: { base?, head? }. To go the other " +
+      "direction — starting from already-known unit ids instead of a git " +
+      "diff — use `affected_units`.",
     inputSchema: {
       type: "object",
       properties: { base: { type: "string" }, head: { type: "string" } },
     },
-    command: ["exec", "tsx", "scripts/affected.mts", "--list"],
+    command: ["exec", "tsx", "scripts/affected-graph.mts", "--json"],
     args: (i) => [...flag("--base", i.base), ...flag("--head", i.head)],
   },
 ];
@@ -239,7 +244,7 @@ const queryRegistryTool: ToolDef = {
 const affectedUnitsTool: ToolDef = {
   name: "affected_units",
   description:
-    "Given directly-changed unit ids, return the full closure that must be re-verified/redeployed by walking reverse graph edges (component→pages, slice/source→consumers). Input: { changed: string[] }.",
+    "Given directly-changed unit ids, return the full closure that must be re-verified/redeployed by walking reverse graph edges (component→pages, slice/source→consumers). Input: { changed: string[] }. Starting from a git diff instead of known unit ids? Use `affected`, which also runs on the graph engine and derives the seed units for you.",
   inputSchema: {
     type: "object",
     required: ["changed"],

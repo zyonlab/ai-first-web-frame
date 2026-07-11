@@ -335,22 +335,23 @@ already shipped in P0 and is unaffected by this phase.
 Special-case `registry.data.json` / `releases.json` diffs in `seedsFromPaths`:
 parse changed fragment names, seed only those units (dependent pages come from
 the existing closure). Code changes under `packages/registry` src stay GLOBAL.
-(In progress as a spun-off task.) Converge the legacy `affected.mts` onto the
-graph implementation — one affected engine.
+Converge the legacy `affected.mts` onto the graph implementation — one
+affected engine. (Done — see Status below.)
 
-**Status: implemented.** `tools/release-tools/src/affected-graph.ts` now diffs
-`platform/fragment-registry/src/registry.data.json` and
-`platform/fragment-registry/releases.json` content (base ref vs. head/working
-tree, via a `getRegistryFileContent` reader the CLI wires to `git show`) and
-seeds only the fragment(s) that actually changed — added, removed, or with a
-channel/version/serviceUrl edit — falling back to GLOBAL on any malformed or
-unreadable content. Every other `platform/**` path (registry/mutation code,
-route-registry) is unchanged and still GLOBAL. The legacy `scripts/affected.mts`
-engine was inspected but left alone: it already scopes `platform/fragment-registry/`
-per-unit via `extraPathPrefixes` rather than one blunt global flag and has no
-page→fragment mount model, so mirroring this fix there is a structurally
-different job than converging the two engines — left as the still-open
-follow-up noted above.
+**Status: implemented, engines fully converged.** `tools/release-tools/src/affected-graph.ts`
+now diffs `registry/registry.data.json` and `registry/releases.json` content
+(base ref vs. head/working tree, via a `getRegistryFileContent` reader the CLI
+wires to `git show`) and seeds only the fragment(s) that actually changed —
+added, removed, or with a channel/version/serviceUrl edit — falling back to
+GLOBAL on any malformed or unreadable content. Every other `packages/registry/**`
+/ `packages/routes/**` path (mutation code, route-registry) is unchanged and
+still GLOBAL. The legacy heuristic engine (`scripts/affected.mts` +
+`tools/release-tools/src/affected.ts`) has been deleted: `.github/workflows/ci.yml`
+and `scripts/deploy-affected.mts` already used the graph engine, and the one
+remaining consumer — `packages/mcp/src/tools.ts`'s `affected` MCP tool — now
+shells to `scripts/affected-graph.mts --json` instead of the old
+`scripts/affected.mts --list`. One affected engine, one answer per diff, no
+follow-up remaining.
 
 ### 4.2 Concurrency-safe lifecycle writes
 All registry/manifest mutations go through one writer utility: temp file +
@@ -635,7 +636,7 @@ publisher ACL, hard gates, HTTP failure isolation, lifecycle CLI).
 | Module Federation | runtime shared-dependency negotiation | **Skip** — build-time single-version policy (pnpm + dependency-audit) is simpler and already enforced | — |
 | Next.js | Suspense streaming / PPR / ISR | **Adopt** | §4.4 |
 | Astro server islands | defer-and-swap placeholder pattern | **Adapt** inside the Suspense refactor | §4.4 |
-| Nx | affected task graph | **Already adapted**; converge the two implementations | §4.1 |
+| Nx | affected task graph | **Already adapted**; converged onto one engine | §4.1 |
 | Changesets | independent semver + automated npm publish | **Adopt** | §2.3 |
 | OpenTelemetry | trace export | **Already aligned** (OTLP JSON) | — |
 | qiankun / single-spa | JS sandboxing | **Skip** — HTTP isolation makes it unnecessary | — |
