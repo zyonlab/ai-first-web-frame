@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { expectFragmentContent } from "./support/expect-fragment-content";
 
 // Product route composed through shell-gateway plus the standalone
 // page-product service redirect chain (port 4102).
+// Set E2E_STRICT=1 to require live fragment content only (see
+// e2e/support/expect-fragment-content.ts and e2e/README.md).
 test.describe("product route via shell-gateway", () => {
   test("responds 200 and transparently proxies the product page", async ({
     page,
@@ -25,17 +28,32 @@ test.describe("product route via shell-gateway", () => {
     await page.goto("/product/123");
 
     // Static proof block (real fragment or fallback both carry the marker).
-    await expect(
+    // The static strategy renders inline HTML, so it should never actually
+    // fall back, but the fallback copy exists and is asserted against in
+    // strict mode for consistency with the other slots.
+    await expectFragmentContent(
       page.locator('[data-fragment="static-product-proof"]').first(),
-    ).toBeVisible();
+      {
+        live: /Static product proof/,
+        fallback: /Static product proof is unavailable/,
+      },
+    );
 
     // Promotion (ISR strategy on product page) and dynamic recommendations.
-    await expect(
+    await expectFragmentContent(
       page.locator('[data-fragment="promotion-banner"]').first(),
-    ).toBeVisible();
-    await expect(
+      {
+        live: /Limited time offer|限时优惠/,
+        fallback: /Product promotion is loading|Promotion unavailable/,
+      },
+    );
+    await expectFragmentContent(
       page.locator('[data-fragment="recommendation-widget"]').first(),
-    ).toBeVisible();
+      {
+        live: /Recommended for you/,
+        fallback: /Related products are loading|Recommendations unavailable/,
+      },
+    );
 
     // Render strategy diagnostics advertise the expected strategies.
     const strategies = page.locator('[data-render-strategies="product"]');
