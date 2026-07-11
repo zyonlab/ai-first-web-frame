@@ -1,5 +1,6 @@
 {
   "name": "@mvp/workers",
+  "private": true,
   "version": "0.1.0",
   "type": "module",
   "sideEffects": false,
