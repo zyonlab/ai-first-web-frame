@@ -83,11 +83,14 @@ optionally adds a docker-compose service for it.
 ```
 pnpm exec tsx scripts/register-fragment.mts \
   --name <kebab-name> --version <semver> --service-url <url> \
-  [--manifest-url <url>] [--channel stable|canary|preview] \
+  [--manifest-url <url>] [--assets-url <url>] [--channel stable|canary|preview] \
   [--port <n>] [--with-compose]
 ```
 - `--name`, `--version`, `--service-url` — required.
 - `--manifest-url` — optional; registry entry stores it verbatim if given.
+- `--assets-url` — optional; the fragment's browser-loadable island module URL
+  (C3 import-map spike) stored verbatim on the registry entry, separate from
+  `serviceUrl`/`manifestUrl`.
 - `--channel` — optional, default `canary`.
 - `--port` — optional; only meaningful with `--with-compose`. Without it, the
   port is taken from `--service-url`'s URL, or the compose file is scanned
@@ -125,61 +128,99 @@ named fragment's entry) or `rollback-fragment` (step 7).
 
 ## 4. Mount
 
-Adds (or removes) a slot entry in a page's `apps/<page>/src/manifest.slots.json`.
-Does not touch the registry — only warns if the fragment is unregistered.
-Does not wire the runtime fetch call; that is still a hand-edit of the page's
-`src/fragmentSlots.ts` and tests after this step.
+Adds (or removes) a slot entry in a page's `apps/<page>/src/manifest.slots.json`,
+then regenerates that page's `apps/<page>/src/fragmentSlots.gen.ts` — a
+`FragmentSlotDefinition[]` derived straight from the manifest — so the runtime
+fetch list is never a hand-edit. Only warns (does not block) if the target
+fragment is unregistered, unless the gate below applies. A separate `--check`
+mode verifies the generated file is still in sync with the manifest, without
+mounting/unmounting anything and without writing any file.
 
 **Command**
 ```
 pnpm exec tsx scripts/mount-slot.mts \
-  --page <page-home|page-product> --slot <name> --fragment <fragment> \
-  [--strategy static|ssg|isr|cached-ssr|dynamic-ssr] \
+  --page <page> --slot <name> --fragment <fragment> \
+  [--strategy static|ttl-cache|cached-ssr|dynamic-ssr] \
   [--channel stable|canary|preview] [--timeout-ms <n>] \
-  [--props <json>] [--required]
+  [--props <json>] [--static-html <string>] [--cache-policy <json>] \
+  [--data-dependencies <json-array>] [--required] [--allow-unregistered]
 ```
 Unmount form:
 ```
 pnpm exec tsx scripts/mount-slot.mts --page <page> --slot <name> --remove
 ```
-- `--page`, `--slot` — required in both forms.
-- `--fragment` — required unless `--remove`.
+Check form (verifies `fragmentSlots.gen.ts` is in sync with
+`manifest.slots.json`; writes nothing):
+```
+pnpm exec tsx scripts/mount-slot.mts --page <page> --check
+```
+- `--page`, `--slot` — required, except `--slot` is not needed in `--check`
+  mode. `<page>` is any `apps/<page>` directory with a `src/manifest.slots.json`
+  (currently `page-home`, `page-product`, `page-markets`, `page-portfolio`,
+  `page-trade`).
+- `--fragment` — required unless `--remove` or `--check`.
 - `--channel` — optional, default `stable` when mounting.
-- `--strategy`, `--timeout-ms`, `--props` (JSON string, parsed), `--required`
+- `--strategy`, `--timeout-ms`, `--props` (JSON string, parsed), `--static-html`,
+  `--cache-policy` (JSON string, parsed), `--data-dependencies` (JSON array
+  string, parsed), `--required` (boolean flag), `--allow-unregistered`
   (boolean flag) — all optional.
+- **Mount gate**: mounting a fragment that is not present in the fragment
+  registry fails with `"status": "failed"` and no write, unless
+  `--allow-unregistered` is passed — in that case the mount proceeds and a
+  warning is added instead. `--remove`/`--check` are unaffected by this gate.
 
 **Result envelope** (`MountResult`, from `scripts/mount-slot.mts`)
 ```ts
 {
-  status: "mounted" | "removed" | "unchanged" | "failed";
+  status:
+    | "mounted" | "removed" | "unchanged"  // mount/remove outcomes
+    | "fresh" | "stale"                     // --check outcomes
+    | "failed" | "conflict";
   page: string;
   slot: string;
   action?: "added" | "updated" | "unchanged" | "removed";
-  files: string[];       // apps/<page>/src/manifest.slots.json; [] if unchanged/failed
-  warnings: string[];    // e.g. fragment not yet registered
+  files: string[];       // manifest.slots.json and/or fragmentSlots.gen.ts touched; [] otherwise
+  warnings: string[];    // e.g. fragment not yet registered (--allow-unregistered), layout advisories
   error?: string;
+  retry?: boolean;       // present ("true") on "conflict": rerun the same command
 }
 ```
-Exit 0 on anything except `"failed"` (1).
+Exit 0 on `"mounted"`, `"removed"`, `"unchanged"`, and `"fresh"`; exit 1 on
+`"stale"`, `"failed"`, and `"conflict"`.
 
 **Accept**: `"status": "mounted"` and `warnings: []`. A nonempty `warnings`
 array is not a failure but must be resolved before the fragment is expected
-to actually render (usually: run step 3 first).
+to actually render (usually: run step 3 first). For `--check`, accept is
+`"status": "fresh"`.
 
 **Failure recovery**: `"status": "failed"` with `error` naming the missing
-slots file (page has no `manifest.slots.json`) or a malformed `--props` JSON
-string — no files changed. Wrong slot mounted: rerun with `--remove` instead
-of `--fragment ...` to undo, then remount correctly. After a successful
-mount, still hand-wire the slot into `apps/<page>/src/fragmentSlots.ts`'s
-fetch list and the page's tests — `mount-slot` only owns the manifest JSON.
+slots file (page has no `manifest.slots.json`), a malformed `--props`/
+`--cache-policy`/`--data-dependencies` JSON string, or an unregistered
+fragment (register it first via step 3, or pass `--allow-unregistered` to
+warn-and-proceed) — no files changed. `"status": "conflict"` means another
+process wrote the manifest or gen file between load and write; rerun the same
+command (`retry: true`). Wrong slot mounted: rerun with `--remove` instead of
+`--fragment ...` to undo, then remount correctly. `"status": "stale"` from
+`--check` means `fragmentSlots.gen.ts` has drifted from the manifest — fix by
+rerunning the mount/remove command that should have produced the current
+manifest state (any successful mount/remove regenerates the gen file as a
+byproduct); `pnpm verify:manifest-gen` runs this check for every page and is
+one of the gates inside `pnpm verify` (step 5), so drift fails verify the same
+way a lint error would. Each page's `src/fragmentSlots.ts` stays a thin
+hand-written wrapper around the generated array (only per-request glue such as
+`timeoutMs` overrides or `resolveData`) — `mount-slot` owns the manifest JSON
+and the generated file, not that wrapper.
 
 ---
 
 ## 5. Verify
 
-Runs the full repo gate: typecheck, lint, format check, all tests, build, and
-six audits (similarity, bundle, css, deps, optimizer, boundary). Writes a
-machine-readable report; this is the step CI and `pnpm verify` both run.
+Runs the full repo gate (11 steps): typecheck, lint, format check,
+`verify:manifest-gen` (fails if any page's `fragmentSlots.gen.ts` has drifted
+from its `manifest.slots.json` — see step 4's `--check` mode), all tests,
+build, and six audits (similarity, bundle, css, deps, optimizer, boundary).
+Writes a machine-readable report; this is the step CI and `pnpm verify` both
+run.
 
 **Command**
 ```
