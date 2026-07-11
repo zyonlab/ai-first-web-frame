@@ -1,8 +1,11 @@
 # Release Model
 
-This document describes the CI/CD release chain for the five deployable
-units (`shell-gateway`, `page-home`, `page-product`, `promotion-banner`,
-`recommendation-widget`) and marks each stage as implemented or planned.
+This document describes the CI/CD release chain for the deployable units —
+the shell gateway (`apps/shell-gateway`), every composed Next.js page
+(`apps/page-*`), and every SSR fragment service (`fragments/*`) — and marks
+each stage as implemented or planned. For the affected-computation rules
+themselves (what narrows, what goes GLOBAL), [DELIVERY.md](./DELIVERY.md) is
+the authoritative reference.
 
 ## Pipeline Overview
 
@@ -15,8 +18,9 @@ change on a branch
   |
   v
 [2] Affected detection (job: affected)                         IMPLEMENTED
-      scripts/affected.mts -> tools/release-tools/src/affected.ts
-      git diff paths + pnpm workspace dependency graph
+      scripts/affected-graph.mts -> tools/release-tools/src/affected-graph.ts
+      git diff paths seeded into the unit dependency graph
+      (workspace packages + registry data + page manifests)
   |
   v  (push to main only)
 [3] Docker build matrix (job: docker)                          IMPLEMENTED
@@ -29,10 +33,12 @@ change on a branch
       docker compose up -> scripts/docker-smoke.mts -> pnpm e2e
   |
   v
-[5] Registry promotion                                          PLANNED (separate workstream)
-      scripts/promote-fragment.mts moves a fragment/page version
-      between preview -> canary -> stable channels in
-      packages/registry (@mvp/registry) / packages/routes (@mvp/routes)
+[5] Registry promotion                                          IMPLEMENTED (agent-run CLI; not CI-automated)
+      scripts/promote-fragment.mts / rollback-fragment.mts move a
+      fragment version between canary -> stable channels in the
+      registry data (registry/registry.data.json, history in
+      registry/releases.json), loaded by @mvp/registry; see
+      docs/OPERATIONS.md steps 6-7
   |
   v
 [6] Canary deploy via Argo Rollouts                             SKELETON
@@ -48,20 +54,28 @@ change on a branch
 
 ## Affected Detection
 
-nx is configured in `nx.json` but not installed, so affected computation is
-implemented directly on top of git and the pnpm workspace graph:
+There is exactly ONE affected engine: the unit dependency graph. (A legacy
+path-heuristic engine — `scripts/affected.mts` + `tools/release-tools/src/affected.ts`
+— previously described here was deleted in PR #17 once CI, `deploy-affected`,
+and the `@mvp/mcp` `affected` tool all converged on the graph engine.)
 
-- `pnpm exec tsx scripts/affected.mts [--base <ref>] [--list] [--github-output <file>]`
-- Core logic (pure, unit tested): `tools/release-tools/src/affected.ts`.
-- Rules: files in a workspace package affect that package's transitive
-  dependents; `packages/routes` (`@mvp/routes`) affects only `shell-gateway`;
-  `packages/registry` (`@mvp/registry`) affects `shell-gateway`, `page-home`, and
-  `page-product`; repo-global files (lockfile, root `package.json`,
-  `tsconfig.base.json`, `.dockerignore`) affect all units; docs, infra
-  manifests, CI config, e2e specs, and markdown affect none; unknown paths
-  conservatively affect all units.
+- CLI: `pnpm exec tsx scripts/affected-graph.mts [--base <ref>] [--json] [--github-output <file>]`
+  (this is what `.github/workflows/ci.yml`'s `affected` job runs).
+- Core logic (pure, unit tested): `tools/release-tools/src/affected-graph.ts`,
+  over the unit graph built by `load-graph.ts` from the pnpm workspace,
+  `registry/registry.data.json`, and each page's `manifest.slots.json`.
+- Rules (summary — [DELIVERY.md](./DELIVERY.md) has the exhaustive
+  narrow-vs-GLOBAL tables): a change in a workspace package seeds that
+  package's transitive dependents; `registry/registry.data.json` /
+  `registry/releases.json` diffs are content-parsed and seed only the
+  changed fragment(s) plus their dependent pages (goal B1); `domains/*`
+  changes seed their real consumers; `packages/registry/**` /
+  `packages/routes/**` *code* changes, root config files, and unrecognized
+  paths conservatively go GLOBAL; docs, infra manifests, CI config, e2e
+  specs, and markdown affect nothing.
 - Acceptance property: a fragment-only change produces a build matrix with
-  only that fragment's image; a page-only change only that page's image.
+  only that fragment's image; a page-only change only that page's image; a
+  registry promote/rollback rebuilds only the promoted fragment's dependents.
 
 ## Image Tagging and Push Gating
 
