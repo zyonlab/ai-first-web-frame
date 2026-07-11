@@ -120,6 +120,76 @@ describe("applyRegisterFragment", () => {
       }),
     ).toThrow(/channel/);
   });
+
+  it("stays idempotent when an already-registered version is re-registered with identical values", () => {
+    const input = {
+      name: "promotion-banner",
+      version: "0.1.0",
+      serviceUrl: "http://localhost:4201",
+      manifestUrl: "http://localhost:4201/manifest",
+      channel: "stable" as const,
+    };
+    const first = applyRegisterFragment(baseRegistry, input);
+    expect(
+      first.registry.fragments["promotion-banner"].versions?.["0.1.0"],
+    ).toMatchObject({ serviceUrl: "http://localhost:4201" });
+    const second = applyRegisterFragment(first.registry, input);
+    expect(second.changed).toBe(false);
+    expect(second.action).toBe("unchanged");
+    expect(second.registry).toEqual(first.registry);
+  });
+
+  it("refuses to overwrite an existing version with different values", () => {
+    const registered = applyRegisterFragment(baseRegistry, {
+      name: "price-panel",
+      version: "0.1.0",
+      serviceUrl: "http://localhost:4203",
+      channel: "canary",
+    });
+    expect(() =>
+      applyRegisterFragment(registered.registry, {
+        name: "price-panel",
+        version: "0.1.0",
+        serviceUrl: "http://localhost:9999",
+        channel: "canary",
+      }),
+    ).toThrow(/already registered.*different|version.*conflict/i);
+  });
+
+  it("refuses a conflicting rewrite even when it targets a different channel than the recorded version", () => {
+    const registered = applyRegisterFragment(baseRegistry, {
+      name: "price-panel",
+      version: "0.1.0",
+      serviceUrl: "http://localhost:4203",
+      channel: "canary",
+    });
+    expect(() =>
+      applyRegisterFragment(registered.registry, {
+        name: "price-panel",
+        version: "0.1.0",
+        serviceUrl: "http://localhost:4203",
+        manifestUrl: "http://localhost:4203/some-other-manifest",
+        channel: "stable",
+      }),
+    ).toThrow(/already registered/i);
+  });
+
+  it("mentions bumping the version in the conflict error", () => {
+    const registered = applyRegisterFragment(baseRegistry, {
+      name: "price-panel",
+      version: "0.1.0",
+      serviceUrl: "http://localhost:4203",
+      channel: "canary",
+    });
+    expect(() =>
+      applyRegisterFragment(registered.registry, {
+        name: "price-panel",
+        version: "0.1.0",
+        serviceUrl: "http://localhost:9999",
+        channel: "canary",
+      }),
+    ).toThrow(/bump/i);
+  });
 });
 
 describe("applyPromoteFragment", () => {
@@ -281,6 +351,35 @@ describe("registry persistence with optimistic concurrency", () => {
     const after = loadRegistryData(path);
     expect(after.data.fragments["other-panel"]).toBeDefined();
     expect(after.data.fragments["price-panel"]).toBeUndefined();
+  });
+
+  it("does not write the file when a conflicting version re-registration is refused", () => {
+    const path = tempRegistryPath();
+    const loaded = loadRegistryData(path);
+    const registered = applyRegisterFragment(loaded.data, {
+      name: "price-panel",
+      version: "0.1.0",
+      serviceUrl: "http://localhost:4203",
+      channel: "canary",
+    });
+    saveRegistryData(path, registered.registry, loaded.hash);
+    const reloaded = loadRegistryData(path);
+
+    expect(() =>
+      applyRegisterFragment(reloaded.data, {
+        name: "price-panel",
+        version: "0.1.0",
+        serviceUrl: "http://localhost:9999",
+        channel: "canary",
+      }),
+    ).toThrow(/already registered/i);
+
+    // No save was attempted, so the file on disk must be unchanged.
+    const after = loadRegistryData(path);
+    expect(after.hash).toBe(reloaded.hash);
+    expect(
+      after.data.fragments["price-panel"]?.versions?.["0.1.0"],
+    ).toMatchObject({ serviceUrl: "http://localhost:4203" });
   });
 
   it("loadReleases tolerates a missing file and its hash lets the first save create it", () => {
