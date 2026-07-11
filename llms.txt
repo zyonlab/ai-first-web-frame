@@ -91,3 +91,17 @@
   island hydration runtime, including the C2 snapshot version handshake
   (`registerIsland`, `mountIsland`, `hydrateIslands`). Consult before
   registering or hydrating any React island.
+
+## Tooling AGENT.md (lifecycle scaffolder + MCP server)
+
+- [packages/mcp/AGENT.md](packages/mcp/AGENT.md): the dependency-free MCP
+  stdio server exposing this framework's discovery (`query_registry`,
+  `affected_units`) and lifecycle tools (scaffold/register/mount/promote/
+  rollback) as agent-callable tools, wrapping the same `scripts/*.mts` CLIs.
+  Consult before connecting an agent to this repo over MCP instead of
+  shelling out to the lifecycle CLIs directly.
+- [tools/create-component/AGENT.md](tools/create-component/AGENT.md): the
+  fragment/UI scaffolder (`docs/OPERATIONS.md` step 1) — exact file lists per
+  `--type`, the generated layoutHint skeleton, and collision/`--force`
+  behavior. Consult before hand-writing a fragment or UI component skeleton
+  instead of scaffolding it.
