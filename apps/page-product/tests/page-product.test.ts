@@ -90,9 +90,9 @@ describe("page-product", () => {
       "http://localhost:4201/render",
       "http://localhost:4202/render",
     ]);
-    expect(slots.staticProof).toContain("Static product proof");
-    expect(slots.promotion).toContain("promotion-banner for product");
-    expect(slots.recommendations).toContain(
+    expect(slots.html.staticProof).toContain("Static product proof");
+    expect(slots.html.promotion).toContain("promotion-banner for product");
+    expect(slots.html.recommendations).toContain(
       "recommendation-widget for product",
     );
     expect(slots.diagnostics.staticProof.source).toBe("static");

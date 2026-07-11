@@ -22,9 +22,12 @@ import {
 } from "./recentlyViewed";
 
 export type ProductFragmentHtml = {
-  staticProof: string | null;
-  promotion: string | null;
-  recommendations: string | null;
+  // Per-slot resolved HTML, keyed by slot name (whatever names
+  // `fragmentSlots.gen.ts` currently enumerates — see `buildProductSlotDefinitions`).
+  // Generic on purpose (A1 gate, refactor plan §3): adding/removing a slot in
+  // the manifest changes the keys this map has at runtime without any type or
+  // code edit here.
+  html: Record<string, string | null>;
   diagnostics: Record<string, Pick<FragmentSlotResult, "source" | "strategy">>;
   dataDiagnostics: {
     productSummary: {
@@ -92,14 +95,26 @@ export type ProductFragmentAggregate = {
   traceLog: string;
 };
 
-export type ProductFragmentSlotPromises = {
-  staticProof: Promise<FragmentRenderResponse>;
-  promotion: Promise<FragmentRenderResponse>;
-  recommendations: Promise<FragmentRenderResponse>;
-};
-
+/**
+ * The fragment-slot promises `streamProductFragmentSlots` exposes, one per
+ * `<FragmentSlotStream>` boundary in `app/product/[id]/page.tsx` (refactor
+ * plan §4.4). Each resolves independently, as soon as that slot's own DAG
+ * level finishes. Deliberately generic (`Record<string, ...>`, not a
+ * hand-written interface with one field per slot name): `@mvp/runtime`'s
+ * `streamFragmentSlots` already returns exactly this shape (see
+ * `FragmentSlotStreamHandle.slots` in `packages/runtime/src/index.ts`), keyed
+ * by whatever `buildProductSlotDefinitions()` (sourced from the generated
+ * `fragmentSlots.gen.ts`) enumerates — there is no named-slot coupling left
+ * to hand-maintain here. `app/product/[id]/page.tsx` still looks up
+ * individual keys (`stream.slots["promotion"]`) because CHOOSING which slots
+ * get their own `<Suspense>` boundary and what fallback markup they render is
+ * genuine human-judgment JSX placement (A1's explicit carve-out) — not
+ * something codegen can or should decide. Note `price-panel` never appears
+ * here: it is `reserved: true` in the manifest, so `fragmentSlots.gen.ts`
+ * (and therefore `stream.slots`) never enumerates it in the first place.
+ */
 export type ProductFragmentStream = {
-  slots: ProductFragmentSlotPromises;
+  slots: Record<string, Promise<FragmentRenderResponse>>;
   /** Raw scheduler aggregate (`@mvp/runtime` shape); settles last. */
   execution: Promise<FragmentSlotsExecution>;
   /** Page-shaped diagnostics/dag/recentlyViewed/backgroundJobs, derived from `execution` plus the independent per-request work. */
@@ -242,25 +257,26 @@ export function streamProductFragmentSlots({
     backgroundJobsPromise,
   ]).then(
     ([execution, recentlyViewed, backgroundJobs]): ProductFragmentAggregate => {
-      const slots = execution.slots;
       const summaryData = execution.data["product-summary"];
       const summaryValue = (summaryData?.value ?? {}) as { label?: string };
+      // Generic per-slot diagnostics: every slot's result carries everything
+      // `toDiagnostic` needs (source/strategy), and the map key IS the
+      // slot's name, so there is no genuine reason to hand-list slot names
+      // here — iterate `execution.slots` (already `Record<string,
+      // FragmentSlotResult>`, see `packages/runtime/src/index.ts`) instead of
+      // repeating the 3 current names.
+      const diagnostics: Record<
+        string,
+        Pick<FragmentSlotResult, "source" | "strategy">
+      > = Object.fromEntries(
+        Object.entries(execution.slots).map(([name, result]) => [
+          name,
+          toDiagnostic(result),
+        ]),
+      );
 
       return {
-        diagnostics: {
-          staticProof: {
-            source: slots.staticProof.source,
-            strategy: slots.staticProof.strategy,
-          },
-          promotion: {
-            source: slots.promotion.source,
-            strategy: slots.promotion.strategy,
-          },
-          recommendations: {
-            source: slots.recommendations.source,
-            strategy: slots.recommendations.strategy,
-          },
-        },
+        diagnostics,
         dataDiagnostics: {
           productSummary: {
             // The DAG resolves product-summary exactly once even though two
@@ -289,11 +305,10 @@ export function streamProductFragmentSlots({
   );
 
   return {
-    slots: {
-      staticProof: stream.slots.staticProof,
-      promotion: stream.slots.promotion,
-      recommendations: stream.slots.recommendations,
-    },
+    // `stream.slots` (`@mvp/runtime`'s `FragmentSlotStreamHandle.slots`) is
+    // already `Record<string, Promise<FragmentRenderResponse>>` — passed
+    // through as-is instead of re-listing each slot name into a new object.
+    slots: stream.slots,
     execution: stream.result,
     aggregate,
   };
@@ -311,19 +326,22 @@ export async function fetchProductFragmentSlots(
   options: FetchProductFragmentSlotsOptions = {},
 ): Promise<ProductFragmentHtml> {
   const stream = streamProductFragmentSlots(options);
-  const [staticProof, promotion, recommendations, aggregate, execution] =
-    await Promise.all([
-      stream.slots.staticProof,
-      stream.slots.promotion,
-      stream.slots.recommendations,
-      stream.aggregate,
-      stream.execution,
-    ]);
+  // Resolve every slot's promise generically (whatever names `stream.slots`
+  // currently has) instead of destructuring three named fields — the
+  // "final returned HTML-string map" the A1 refactor targets.
+  const [htmlEntries, aggregate, execution] = await Promise.all([
+    Promise.all(
+      Object.entries(stream.slots).map(async ([name, slotPromise]) => {
+        const response = await slotPromise;
+        return [name, response.html] as const;
+      }),
+    ),
+    stream.aggregate,
+    stream.execution,
+  ]);
 
   return {
-    staticProof: staticProof.html,
-    promotion: promotion.html,
-    recommendations: recommendations.html,
+    html: Object.fromEntries(htmlEntries),
     diagnostics: aggregate.diagnostics,
     dataDiagnostics: aggregate.dataDiagnostics,
     dag: aggregate.dag,
@@ -332,4 +350,10 @@ export async function fetchProductFragmentSlots(
     traceLog: aggregate.traceLog,
     execution,
   };
+}
+
+function toDiagnostic(
+  result: FragmentSlotResult,
+): Pick<FragmentSlotResult, "source" | "strategy"> {
+  return { source: result.source, strategy: result.strategy };
 }
