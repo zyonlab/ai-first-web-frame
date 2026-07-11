@@ -19,14 +19,18 @@ export const portfolioPageManifest = {
   //    render fresh per request, per the comment on
   //    fetchPortfolioFragmentSlots). Required: true, so its own failure
   //    reports the page degraded rather than silently empty.
-  //  - ttl-cache-freshness — "pnlChart" uses the "isr" strategy (alias of
-  //    "ttl-cache") with cachePolicy.ttl = 60s.
+  //  - ttl-cache-freshness — "pnlChart" uses the "ttl-cache" strategy with
+  //    cachePolicy.ttl = 60s.
   //  - fallback-isolation — executeFragmentSlots runs with
   //    `onRequiredFailure: "fallback"`.
+  //  - streaming:suspense-per-slot — streamPortfolioFragmentSlots +
+  //    per-slot <Suspense><FragmentSlotStream/> boundaries in
+  //    app/portfolio/page.tsx.
   demonstrates: [
     "private-data-dynamic-ssr",
     "ttl-cache-freshness",
     "fallback-isolation",
+    "streaming:suspense-per-slot",
   ],
   slots: portfolioPageSlots,
   budget: portfolioPageBudget,
