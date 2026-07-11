@@ -4,28 +4,17 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const ReleaseChannelSchema = z.enum(["stable", "canary", "preview"]);
 export type ReleaseChannel = z.infer<typeof ReleaseChannelSchema>;
 
+// Note: "isr" was a deprecated alias for "ttl-cache" (it collided with
+// Next.js ISR semantics, goal A4); the alias and its normalizeRenderStrategy
+// shim were retired after the deprecation period — live manifests were
+// codemodded in PR #9, and "isr" is now rejected by this enum.
 export const RenderStrategySchema = z.enum([
   "static",
-  // "isr" is a deprecated alias for "ttl-cache" (it collides with Next.js ISR
-  // semantics); use normalizeRenderStrategy() before comparing strategies.
-  "isr",
   "ttl-cache",
   "cached-ssr",
   "dynamic-ssr",
 ]);
 export type RenderStrategy = z.infer<typeof RenderStrategySchema>;
-
-/**
- * Maps the deprecated "isr" slot strategy to its canonical name "ttl-cache".
- * Accepts arbitrary strings so trace attributes can be normalized too.
- */
-export function normalizeRenderStrategy(
-  strategy: RenderStrategy,
-): RenderStrategy;
-export function normalizeRenderStrategy(strategy: string): string;
-export function normalizeRenderStrategy(strategy: string): string {
-  return strategy === "isr" ? "ttl-cache" : strategy;
-}
 
 export const CachePolicySchema = z.object({
   ttl: z.number().int().nonnegative(),

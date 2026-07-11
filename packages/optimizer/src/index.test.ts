@@ -372,8 +372,8 @@ describe("@mvp/optimizer", () => {
     expect(cacheFinding?.location?.fragmentName).toBe("promotion-banner");
   });
 
-  it("treats deprecated isr and canonical ttl-cache strategies as cacheable", () => {
-    for (const strategy of ["isr", "ttl-cache"] as const) {
+  it("treats ttl-cache strategies as cacheable", () => {
+    for (const strategy of ["ttl-cache"] as const) {
       const missSlot = (traceId: string) =>
         traceWith(traceId, [
           slotSpan("chart", "chart-panel", {
