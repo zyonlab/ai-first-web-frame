@@ -27,6 +27,12 @@
 - [docs/RELEASE_MODEL.md](docs/RELEASE_MODEL.md): the CI/CD release chain per
   deployable unit, with each pipeline stage marked implemented or planned.
   Consult before assuming a deployment stage exists.
+- [docs/DEMOS.md](docs/DEMOS.md): the demo capability index — which of the 5
+  composed pages (`apps/page-*`) proves which named capability, sourced from
+  each page's `PageManifest.demonstrates` field
+  (`packages/contracts/src/index.ts`). Consult to find the page that
+  demonstrates a specific composition/streaming/island capability instead of
+  re-deriving it from source.
 
 ## Package AGENT.md (stable packages; API not part of the current refactor)
 
