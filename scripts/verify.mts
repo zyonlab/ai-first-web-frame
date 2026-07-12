@@ -12,8 +12,12 @@ const commands = [
   // for real (not just typechecked), so a doc example that drifted from the
   // real exports fails the gate the same way a broken test would.
   { cmd: "pnpm", args: ["docs:test"], timeoutMs: 60_000 },
-  { cmd: "pnpm", args: ["test"], timeoutMs: 60_000 },
-  { cmd: "pnpm", args: ["build"], timeoutMs: 120_000 },
+  // 180s: the full vitest sweep brushes 60s on loaded/CI machines
+  // (documented contention flake) — headroom, not a behavior change.
+  { cmd: "pnpm", args: ["test"], timeoutMs: 180_000 },
+  // 300s: 8 Next.js apps + all packages; 120s was a repeated flake source
+  // under parallel-agent contention and is tight for a 2-core CI runner.
+  { cmd: "pnpm", args: ["build"], timeoutMs: 300_000 },
   { cmd: "pnpm", args: ["audit:similarity"], timeoutMs: 60_000 },
   { cmd: "pnpm", args: ["audit:bundle"], timeoutMs: 60_000 },
   { cmd: "pnpm", args: ["audit:css"], timeoutMs: 60_000 },
