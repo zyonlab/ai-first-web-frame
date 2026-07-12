@@ -186,7 +186,7 @@
       "scope": "page",
       "unit": "page-trade",
       "metric": "jsBytes",
-      "actual": 202097,
+      "actual": 202096,
       "budget": 220000,
       "status": "pass",
       "measurement": "Next first-load JS (.next manifests), gzipped bytes"
