@@ -218,9 +218,11 @@ and the generated file, not that wrapper.
 
 ## 5. Verify
 
-Runs the full repo gate (13 steps): typecheck, lint, format check,
+Runs the full repo gate (14 steps): typecheck, lint, format check,
 `verify:manifest-gen` (fails if any page's `fragmentSlots.gen.ts` has drifted
-from its `manifest.slots.json` — see step 4's `--check` mode), `docs:test`
+from its `manifest.slots.json` — see step 4's `--check` mode), `verify:demos`
+(fails if `docs/DEMOS.md`'s generated capability block has drifted from any
+page manifest's `demonstrates` array), `docs:test`
 (executes every AGENT.md fenced TypeScript snippet for real, so a drifted doc
 example fails like a broken test), all tests,
 build, and six audits (similarity, bundle, css, deps, optimizer, boundary).
@@ -253,7 +255,7 @@ step. Exit 0 only if every step's `status === "passed"`.
 has no entry with `"status": "failed"`.
 
 **Failure recovery**: read the failing entry's `stdout`/`stderr` tail in the
-report (or the console `FAIL <command>` line) to find which of the 13 steps
+report (or the console `FAIL <command>` line) to find which of the 14 steps
 broke. Budget failures (`audit:bundle`/`audit:css`) require shrinking JS/CSS
 or splitting the unit — see each unit's `budget.ts`. Similarity failures
 (`audit:similarity`) mean reuse the flagged existing component instead of
@@ -340,6 +342,13 @@ missing/malformed.
 
 ## Cross-cutting notes
 
+- **Unknown flags are rejected**: `register-fragment`, `mount-slot`,
+  `promote-fragment`, and `rollback-fragment` each declare an allowlist of
+  known flags. Any flag outside it — e.g. the typo `--chanel canary` — fails
+  with `"status": "failed"` and `error: 'unknown flag --chanel (did you mean
+  --channel?)'` (suggestion included when a known flag is a close match),
+  exit 1, **no files written**. Previously a typo'd flag was silently
+  ignored and the script proceeded with defaults.
 - **Idempotency**: `register-fragment` and `mount-slot` are safe to rerun
   with identical arguments — both report `action: "unchanged"` (register) or
   `status: "unchanged"` (mount) instead of rewriting files.
@@ -355,3 +364,25 @@ missing/malformed.
 - **Env override convention**: `<FRAGMENT_NAME>_URL` (e.g. `PRICE_PANEL_URL`)
   rewrites a registered fragment's `serviceUrl`/`manifestUrl` at runtime
   without touching the registry file — use for local/staging overrides.
+
+---
+
+## Auxiliary tool envelopes
+
+Non-lifecycle repo CLIs share the same `status: "ok" | "failed"` envelope
+convention (one JSON object on stdout; exit code mirrors `status`):
+
+- **`scripts/docker-smoke.mts`** (`pnpm smoke`) — success/check-failure
+  output is `{ tool: "docker-smoke", status: "ok" | "failed", ok: boolean,
+  elapsedMs, timeoutMs, checks }` (`ok` and the other pre-existing keys are
+  kept for older consumers; `status` mirrors `ok`). An unexpected crash
+  prints `{ tool: "docker-smoke", status: "failed", ok: false, error }`
+  instead of raw text. Exit 0 only when `status === "ok"`; bad usage still
+  exits 2 with a usage message on stderr.
+- **`scripts/build-all.mts`** — streams `pnpm -r build` output, then prints
+  `{ tool: "build-all", status: "ok" | "failed", exitCode, error? }` and
+  passes the child's exit code through.
+- **`scripts/deploy-affected.mts`** (`pnpm deploy:affected`) — progress is
+  human-readable text, but an unhandled failure prints
+  `{ tool: "deploy-affected", status: "failed", error }` on stdout and exits
+  1 (previously a raw stringified error on stderr).

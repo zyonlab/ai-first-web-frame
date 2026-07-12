@@ -5,3 +5,4 @@
  * package's `bin`).
  */
 export * from "./tools";
+export * from "./validate";

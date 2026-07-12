@@ -1,0 +1,64 @@
+# Image tag is parameterized through kustomization.yaml (images transformer).
+# CI/CD sets the release tag with:
+#   kustomize edit set image funding-bar=$REGISTRY_URL/funding-bar:$GIT_SHA
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: funding-bar
+  labels:
+    app.kubernetes.io/name: funding-bar
+    app.kubernetes.io/part-of: ai-first-web-frame
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: funding-bar
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: funding-bar
+    spec:
+      containers:
+        - name: funding-bar
+          image: funding-bar:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4210
+          env:
+            - name: PORT
+              value: "4210"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4210
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4210
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: funding-bar
+spec:
+  selector:
+    app.kubernetes.io/name: funding-bar
+  ports:
+    - name: http
+      port: 4210
+      targetPort: 4210

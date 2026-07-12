@@ -65,7 +65,8 @@ doesn't run fails CI.
    (`diffManifestAgainstRuntime` from `@mvp/registry`'s `packages/registry/src/slots.ts`) as a
    belt-and-suspenders check, though `--check`/`verify:manifest-gen` now makes manifest↔runtime
    drift structurally impossible rather than merely detected.
-5. **Verify** the whole repo (13 gates: typecheck, lint, check, verify:manifest-gen, docs:test,
+5. **Verify** the whole repo (14 gates: typecheck, lint, check, verify:manifest-gen, verify:demos
+   (docs/DEMOS.md generated block in sync with each page manifest's `demonstrates`), docs:test,
    test, build, 6 audits; writes `reports/`):
    `pnpm verify`
    Accept: exit 0. Never ship with a failing audit or budget.

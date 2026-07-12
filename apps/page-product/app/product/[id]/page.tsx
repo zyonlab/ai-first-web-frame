@@ -178,19 +178,19 @@ export default async function ProductPage({
       </Suspense>
       <Suspense fallback={STATIC_PROOF_FALLBACK}>
         <FragmentSlotStream
-          slotPromise={stream.slots.staticProof}
+          slotPromise={stream.slotPromises.staticProof}
           fallback={STATIC_PROOF_FALLBACK}
         />
       </Suspense>
       <Suspense fallback={PROMOTION_FALLBACK}>
         <FragmentSlotStream
-          slotPromise={stream.slots.promotion}
+          slotPromise={stream.slotPromises.promotion}
           fallback={PROMOTION_FALLBACK}
         />
       </Suspense>
       <Suspense fallback={RECOMMENDATIONS_FALLBACK}>
         <FragmentSlotStream
-          slotPromise={stream.slots.recommendations}
+          slotPromise={stream.slotPromises.recommendations}
           fallback={RECOMMENDATIONS_FALLBACK}
         />
       </Suspense>

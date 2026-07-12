@@ -84,10 +84,13 @@ it easy to *install* into an agent's MCP config, not a repo-independent tool.
 - `tools/call` looks up the tool by `params.name`, calls its handler with
   `params.arguments` and `{ root: <detected repo root> }`, and wraps the
   result as `{ content: [{ type: "text", text: result.text }], isError:
-  result.isError ?? false }`. A handler that throws is caught and reported as
-  `isError: true` with the error's `String(error)` as the text, not a
-  JSON-RPC protocol error — only an unknown tool name or unknown method use
-  the JSON-RPC `error` field (see below).
+  result.isError ?? false }`. Every handler validates `params.arguments`
+  against the tool's own declared `inputSchema` first (see "Invalid
+  arguments" below) — for lifecycle tools that happens before any subprocess
+  spawn. A handler that throws is caught and reported as `isError: true`
+  with the error's `String(error)` as the text, not a JSON-RPC protocol
+  error — only an unknown tool name or unknown method use the JSON-RPC
+  `error` field (see below).
 - Run inside this repo: `pnpm mcp` (== `pnpm --filter @mvp/mcp start`). Once
   built + published: `npx @mvp/mcp` (the package's `bin`, `mvp-mcp`, built by
   `pnpm --filter @mvp/mcp build`).
@@ -97,6 +100,19 @@ it easy to *install* into an agent's MCP config, not a repo-independent tool.
 - **Unknown tool** (`tools/call` with a `name` not in `devxTools()`) — a
   JSON-RPC error response: `{ error: { code: -32602, message: 'unknown tool
   "<name>"' } }`. No tool handler runs.
+- **Invalid arguments** — every tool's input is validated against its own
+  declared `inputSchema` (a minimal dependency-free JSON-Schema-subset
+  validator, `src/validate.ts`: `type`, `required`, `properties`, `items`,
+  `enum`; extra keys are allowed per standard JSON-Schema semantics since no
+  inputSchema sets `additionalProperties: false`). A violation is a normal
+  `tools/call` result with `isError: true` and `text` set to the JSON
+  envelope `{"status": "failed", "tool": "<name>", "error": "invalid
+  arguments: <path> must be of type <type> (got <actual>)"}` — the violation
+  path and expected type are always named, and nothing is silently coerced
+  or dropped. For lifecycle tools this runs **before** the subprocess spawn,
+  so e.g. `mount_slot` with `{ page: 123 }` never reaches
+  `scripts/mount-slot.mts` at all (previously a wrong-typed value became a
+  silently missing CLI flag).
 - **Unknown method** (anything other than `initialize`,
   `notifications/initialized`, `ping`, `tools/list`, `tools/call`) — a
   JSON-RPC error response: `{ error: { code: -32601, message: "method not
@@ -153,12 +169,32 @@ const result = await queryRegistry.handler(
 console.log(JSON.parse(result.text).units);
 ```
 
+Invalid arguments are rejected against the declared `inputSchema` before
+anything runs (no subprocess is spawned for lifecycle tools):
+
+```ts
+const mountSlot = tools.find((t) => t.name === "mount_slot")!;
+const invalid = await mountSlot.handler({ page: 123 }, { root: process.cwd() });
+if (invalid.isError !== true) throw new Error("expected isError: true");
+const envelope = JSON.parse(invalid.text);
+if (
+  envelope.status !== "failed" ||
+  envelope.error !==
+    "invalid arguments: arguments.page must be of type string (got number)"
+) {
+  throw new Error(`unexpected envelope: ${invalid.text}`);
+}
+```
+
 ## Accept
 
 ```
 pnpm --filter @mvp/mcp test
 ```
 Expected: Vitest exits 0. `packages/mcp/src/tools.test.ts` covers the tool
-registry shape (every tool has a description + object input schema) and the
+registry shape (every tool has a description + object input schema), the
 pure lifecycle arg-mapping functions (`register_fragment`, `mount_slot`'s
-mount/remove branching) without spawning any subprocess.
+mount/remove branching), and schema rejection of wrong-typed/missing/enum
+arguments without spawning any subprocess;
+`packages/mcp/src/validate.test.ts` covers the JSON-Schema-subset validator
+itself (paths, expected types, extra-key semantics).

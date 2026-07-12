@@ -1,6 +1,6 @@
 {
   "tool": "docs-test",
-  "generatedAt": "2026-07-12T01:28:33.560Z",
+  "generatedAt": "2026-07-12T08:39:44.853Z",
   "status": "pass",
   "packages": [
     {
@@ -34,13 +34,6 @@
     {
       "agentMd": "domains/trade-theme/AGENT.md",
       "package": "@mvp/trade-theme",
-      "status": "pass",
-      "executableBlocks": 1,
-      "noRunBlocks": 0
-    },
-    {
-      "agentMd": "packages/assets/AGENT.md",
-      "package": "@mvp/assets",
       "status": "pass",
       "executableBlocks": 1,
       "noRunBlocks": 0
@@ -165,88 +158,11 @@
       "noRunBlocks": 0
     },
     {
-      "agentMd": "packages/workers/AGENT.md",
-      "package": "@mvp/workers",
-      "status": "pass",
-      "executableBlocks": 1,
-      "noRunBlocks": 0
-    },
-    {
-      "agentMd": "tools/_shared/AGENT.md",
-      "package": null,
-      "status": "pass",
-      "executableBlocks": 1,
-      "noRunBlocks": 0
-    },
-    {
-      "agentMd": "tools/bundle-budget-check/AGENT.md",
-      "package": "@mvp/bundle-budget-check",
-      "status": "pass",
-      "executableBlocks": 1,
-      "noRunBlocks": 0
-    },
-    {
-      "agentMd": "tools/component-similarity-check/AGENT.md",
-      "package": "@mvp/component-similarity-check",
-      "status": "pass",
-      "executableBlocks": 1,
-      "noRunBlocks": 0
-    },
-    {
       "agentMd": "tools/create-component/AGENT.md",
       "package": "@mvp/create-component",
       "status": "skipped",
       "executableBlocks": 0,
       "noRunBlocks": 2
-    },
-    {
-      "agentMd": "tools/css-budget-check/AGENT.md",
-      "package": "@mvp/css-budget-check",
-      "status": "pass",
-      "executableBlocks": 1,
-      "noRunBlocks": 0
-    },
-    {
-      "agentMd": "tools/dependency-audit/AGENT.md",
-      "package": "@mvp/dependency-audit",
-      "status": "pass",
-      "executableBlocks": 1,
-      "noRunBlocks": 0
-    },
-    {
-      "agentMd": "tools/dev-harness/AGENT.md",
-      "package": null,
-      "status": "pass",
-      "executableBlocks": 1,
-      "noRunBlocks": 0
-    },
-    {
-      "agentMd": "tools/optimization-audit/AGENT.md",
-      "package": "@mvp/optimization-audit",
-      "status": "pass",
-      "executableBlocks": 1,
-      "noRunBlocks": 0
-    },
-    {
-      "agentMd": "tools/release-tools/AGENT.md",
-      "package": "@mvp/release-tools",
-      "status": "pass",
-      "executableBlocks": 1,
-      "noRunBlocks": 0
-    },
-    {
-      "agentMd": "tools/runtime-gate/AGENT.md",
-      "package": null,
-      "status": "pass",
-      "executableBlocks": 1,
-      "noRunBlocks": 0
-    },
-    {
-      "agentMd": "tools/server-client-boundary-check/AGENT.md",
-      "package": "@mvp/server-client-boundary-check",
-      "status": "pass",
-      "executableBlocks": 1,
-      "noRunBlocks": 0
     }
   ]
 }

@@ -62,7 +62,20 @@ trade demo and lives in `domains/trade-data/src/transport` (re-exported from
 - `defineDataSource<TData, TParams>(source: DataSource<TData, TParams>): DataSource<TData, TParams>`
   — identity helper purely for call-site type inference; use when declaring a
   source object so its `load` input/output types are checked without an
-  explicit generic.
+  explicit generic. Also runs the `DataDependencySchema` invariants at
+  definition time (see error taxonomy).
+- `DataSource.responseSchema?: ResponseSchema<TData>` — opt-in payload
+  contract for what `load` resolves. `ResponseSchema<T>` is a minimal
+  structural type (`safeParse` + optional `description`) that any Zod schema
+  satisfies without this package depending on Zod. When present, every loaded
+  payload (`readData`/`preloadData` and the `subscribeData` poll loop) is
+  `safeParse`d before it is cached or returned, and the *parsed* value is used
+  (so Zod stripping/defaults/transforms apply); a mismatch throws
+  `DataDependencyError` naming the schema and nothing is cached.
+  Transport-pushed subscription messages are NOT validated here (a push
+  transport owns its own wire contract). When absent, behavior is unchanged.
+  Reference adoption: the `account` source in `domains/trade-data`
+  (`AccountMarginSchema` in `domains/trade-data/src/tradeSources.ts`).
 - `createDataKey(dependency: DataDependency, ctx: RequestContext, params: unknown): string`
   — the partitioning function: always includes `{ id, freshness, params }`;
   adds `tenant: ctx.tenant` when `privacy !== "public"`, `experiment:
@@ -92,14 +105,19 @@ trade demo and lives in `domains/trade-data/src/transport` (re-exported from
   `sourceId` is not in the client's `sources` list; by
   `validateRuntimeFreshness` (and therefore `readData`) when
   `dependency.freshness === "client-local"` (client-local data cannot be read
-  during SSR); and by `subscribeData` when the source's freshness is neither
-  `"realtime"` nor `"near-realtime"` (not subscribable). This is the only
-  error type the package defines — it always signals a caller/config bug
-  (wrong source id, wrong freshness tier for the call), never a transient
+  during SSR); by `subscribeData` when the source's freshness is neither
+  `"realtime"` nor `"near-realtime"` (not subscribable); by `defineDataSource`
+  when the dependency violates `DataDependencySchema` at definition time; and
+  by the load path when a source declares a `responseSchema` and the loaded
+  payload fails it (`data source "<id>" response violates <schemaName> —
+  <path>: <message>`, `schemaName` from the schema's `description`, e.g. Zod's
+  `.describe(...)`). This is the only error type the package defines — it
+  always signals a caller/config/contract bug (wrong source id, wrong
+  freshness tier for the call, upstream payload drift), never a transient
   network condition. `source.load` rejections propagate as-is (not wrapped)
-  from `readData`; `subscribeData`'s polling path catches `load` rejections
-  internally and only records them on the trace span, it does not call
-  `handler` or throw.
+  from `readData`; `subscribeData`'s polling path catches `load` rejections —
+  including `responseSchema` violations — internally and only records them on
+  the trace span, it does not call `handler` or throw.
 
 ## Example
 
@@ -107,6 +125,7 @@ trade demo and lives in `domains/trade-data/src/transport` (re-exported from
 import { createDataClient, defineDataSource, DataDependencyError } from "@mvp/data";
 import { createRequestContext } from "@mvp/request-context";
 import type { DataDependency } from "@mvp/contracts";
+import { z } from "zod";
 
 // `defineDataSource` parses this against `DataDependencySchema` at
 // definition time — an incomplete or contradictory declaration throws.
@@ -124,6 +143,12 @@ const recommendationsDependency: DataDependency = {
 const recommendationsSource = defineDataSource({
   id: "recommendations",
   dependency: recommendationsDependency,
+  // Opt-in payload contract: every loaded payload is safeParse'd before it
+  // is cached or returned; a mismatch throws DataDependencyError naming the
+  // schema (from `.describe(...)`). Omit responseSchema for legacy behavior.
+  responseSchema: z
+    .object({ items: z.array(z.string()) })
+    .describe("RecommendationsSchema"),
   load: async ({ ctx, params }) => {
     return { items: [`hello-${ctx.tenant}`, `for-${params.userId ?? "anon"}`] };
   },
@@ -143,6 +168,25 @@ try {
   if (error instanceof DataDependencyError) console.error(error.message);
 }
 
+// An upstream shape drift fails loudly at the data edge, naming the schema:
+const drifted = defineDataSource({
+  id: "recommendations.drifted",
+  dependency: { ...recommendationsDependency, id: "recommendations.drifted" },
+  responseSchema: z
+    .object({ items: z.array(z.string()) })
+    .describe("RecommendationsSchema"),
+  load: async () => ({ items: [1, 2] }) as never,
+});
+try {
+  await createDataClient({ ctx, sources: [drifted] }).readData(
+    "recommendations.drifted",
+  );
+} catch (error) {
+  // data source "recommendations.drifted" response violates
+  // RecommendationsSchema — items.0: ...
+  if (error instanceof DataDependencyError) console.error(error.message);
+}
+
 const unsubscribe = client.subscribeData("recommendations", (event) => {
   console.log("update", event.data);
 });
@@ -156,5 +200,7 @@ pnpm --filter @mvp/data test
 ```
 Expected: Vitest exits 0. `packages/data/src/index.test.ts` covers cache hit /
 loader / pending-dedup paths, tag invalidation, privacy-based key
-partitioning, `client-local` rejection, and polling/transport subscription
-delivery with change-detection.
+partitioning, `client-local` rejection, opt-in `responseSchema` validation
+(valid payload unchanged, mismatch throws naming the schema, rejected payloads
+never cached), and polling/transport subscription delivery with
+change-detection.

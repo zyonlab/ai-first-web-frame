@@ -1,0 +1,72 @@
+# Image tag is parameterized through kustomization.yaml (images transformer).
+# CI/CD sets the release tag with:
+#   kustomize edit set image page-portfolio=$REGISTRY_URL/page-portfolio:$GIT_SHA
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: page-portfolio
+  labels:
+    app.kubernetes.io/name: page-portfolio
+    app.kubernetes.io/part-of: ai-first-web-frame
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: page-portfolio
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: page-portfolio
+    spec:
+      containers:
+        - name: page-portfolio
+          image: page-portfolio:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4105
+          env:
+            - name: PORT
+              value: "4105"
+            # In-cluster fragment endpoints for the slots this page's
+            # manifest.slots.json mounts (validated as URLs at boot).
+            - name: PORTFOLIO_SUMMARY_URL
+              value: "http://portfolio-summary:4213"
+            - name: PNL_CHART_URL
+              value: "http://pnl-chart:4214"
+          # Probes hit the dedicated app/health/route.ts (static, dependency
+          # free — never fans out into fragment calls).
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4105
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4105
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: page-portfolio
+spec:
+  selector:
+    app.kubernetes.io/name: page-portfolio
+  ports:
+    - name: http
+      port: 4105
+      targetPort: 4105

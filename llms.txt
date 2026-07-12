@@ -54,7 +54,7 @@ deliberately unlisted — consult `docs/` directly for history.
   bus publish/subscribe, or slice contract.
 - [docs/DELIVERY.md](docs/DELIVERY.md): the graph-based affected model — the
   exact narrow-vs-GLOBAL seeding rules, registry-write narrowing, deploy
-  gates (`pnpm verify`'s 13 gates, `verify:runtime`, E2E tiers). Consult
+  gates (`pnpm verify`'s 14 gates, `verify:runtime`, E2E tiers). Consult
   before reasoning about blast radius or CI/deploy behavior.
 
 ## Package AGENT.md (stable packages; API not part of the current refactor)

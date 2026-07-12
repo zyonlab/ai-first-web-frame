@@ -8,12 +8,16 @@
  * Then run:
  *   pnpm exec tsx scripts/docker-smoke.mts [--timeout <seconds>] [--interval <ms>] [--host <host>]
  *
- * Polls the three Fastify services' /health endpoints, the two Next.js page
- * apps' rendered pages (they expose no /health route yet), and the shell
- * gateway's composed home and product routes including their HTML markers.
- * Prints a JSON result to stdout and exits non-zero on timeout or failure.
- * Check definitions and polling logic live in tools/release-tools/src/smoke.ts
- * and are unit tested there.
+ * Polls /health on the shell gateway, every registered fragment service, and
+ * every routed Next.js page app, plus the shell gateway's composed home and
+ * product routes including their HTML markers. The check list is derived
+ * from registry/registry.data.json and packages/routes/src/registry.ts, so
+ * new fragments/pages get covered automatically. The derivation imports
+ * @mvp/routes sources, whose @mvp/contracts import resolves to its dist/
+ * under tsx — on a fresh checkout run `pnpm --filter @mvp/contracts build`
+ * once first. Prints a JSON result to stdout and exits non-zero on timeout
+ * or failure. Check derivation and polling logic live in
+ * tools/release-tools/src/smoke.ts and are unit tested there.
  */
 
 import {
@@ -99,10 +103,13 @@ async function main(): Promise<void> {
     intervalMs: args.intervalMs,
   });
 
+  // `status` is the uniform envelope field (audit contract M6); `ok` and the
+  // other keys are kept verbatim for existing consumers of this output.
   process.stdout.write(
     `${JSON.stringify(
       {
         tool: "docker-smoke",
+        status: suite.ok ? "ok" : "failed",
         ok: suite.ok,
         elapsedMs: suite.elapsedMs,
         timeoutMs: args.timeoutMs,
@@ -116,6 +123,18 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  process.stderr.write(`docker-smoke failed: ${error}\n`);
+  // Unexpected crash (not a failing check): same envelope shape, not raw text.
+  process.stdout.write(
+    `${JSON.stringify(
+      {
+        tool: "docker-smoke",
+        status: "failed",
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      null,
+      2,
+    )}\n`,
+  );
   process.exit(1);
 });
