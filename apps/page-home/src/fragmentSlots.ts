@@ -80,13 +80,13 @@ export type HomeFragmentHtml = {
  * by whatever `buildHomeSlotDefinitions()` (sourced from the generated
  * `fragmentSlots.gen.ts`) enumerates — there is no named-slot coupling left
  * to hand-maintain here. `app/page.tsx` still looks up individual keys
- * (`stream.slots["promotion"]`) because CHOOSING which slots get their own
+ * (`stream.slotPromises["promotion"]`) because CHOOSING which slots get their own
  * `<Suspense>` boundary and what fallback markup they render is genuine
  * human-judgment JSX placement (A1's explicit carve-out) — not something
  * codegen can or should decide.
  */
 export type HomeFragmentStream = {
-  slots: Record<string, Promise<FragmentRenderResponse>>;
+  slotPromises: Record<string, Promise<FragmentRenderResponse>>;
   /** Raw scheduler aggregate (`@mvp/runtime` shape); settles last. */
   execution: Promise<FragmentSlotsExecution>;
   /** Page-shaped diagnostics/dataDiagnostics/scheduler/traceLog, derived from `execution`. */
@@ -124,7 +124,7 @@ export function buildHomeSlotDefinitions(
  * scheduling `fetchHomeFragmentSlots` always ran, but returns IMMEDIATELY —
  * before any slot has resolved — exposing one promise per fragment slot plus
  * one aggregate promise for the diagnostics/scheduler-health/trace-log
- * section. `app/page.tsx` awaits each of `slots.*` inside its own
+ * section. `app/page.tsx` awaits each of `slotPromises.*` inside its own
  * `<Suspense>`+`<FragmentSlotStream>` boundary so the static shell and any
  * already-settled slot can flush to the client ahead of slower siblings,
  * instead of the whole page blocking on one `await`.
@@ -238,7 +238,7 @@ export function streamHomeFragmentSlots({
     // `stream.slots` (`@mvp/runtime`'s `FragmentSlotStreamHandle.slots`) is
     // already `Record<string, Promise<FragmentRenderResponse>>` — passed
     // through as-is instead of re-listing each slot name into a new object.
-    slots: stream.slots,
+    slotPromises: stream.slots,
     execution: stream.result,
     aggregate,
   };
@@ -255,12 +255,12 @@ export async function fetchHomeFragmentSlots(
   options: FetchFragmentSlotsOptions = {},
 ): Promise<HomeFragmentHtml> {
   const stream = streamHomeFragmentSlots(options);
-  // Resolve every slot's promise generically (whatever names `stream.slots`
-  // currently has) instead of destructuring three named fields — the
-  // "final returned HTML-string map" the A1 refactor targets.
+  // Resolve every slot's promise generically (whatever names
+  // `stream.slotPromises` currently has) instead of destructuring three named
+  // fields — the "final returned HTML-string map" the A1 refactor targets.
   const [htmlEntries, aggregate, execution] = await Promise.all([
     Promise.all(
-      Object.entries(stream.slots).map(async ([name, slotPromise]) => {
+      Object.entries(stream.slotPromises).map(async ([name, slotPromise]) => {
         const response = await slotPromise;
         return [name, response.html] as const;
       }),

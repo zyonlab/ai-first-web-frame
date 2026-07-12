@@ -67,13 +67,13 @@ export type MarketsFragmentAggregate = {
  * by whatever `buildMarketsSlotDefinitions()` (sourced from the generated
  * `fragmentSlots.gen.ts`) enumerates — there is no named-slot coupling left
  * to hand-maintain here. `app/markets/page.tsx` still looks up the individual
- * key (`stream.slots.marketsTable`) because CHOOSING which slots get their
+ * key (`stream.slotPromises.marketsTable`) because CHOOSING which slots get their
  * own `<Suspense>` boundary and what fallback markup they render is genuine
  * human-judgment JSX placement (A1's explicit carve-out) — not something
  * codegen can or should decide.
  */
 export type MarketsFragmentStream = {
-  slots: Record<string, Promise<FragmentRenderResponse>>;
+  slotPromises: Record<string, Promise<FragmentRenderResponse>>;
   /** Raw scheduler aggregate (`@mvp/runtime` shape); settles last. */
   execution: Promise<FragmentSlotsExecution>;
   /** Page-shaped diagnostics/scheduler/traceLog, derived from `execution`. */
@@ -113,7 +113,7 @@ export function buildMarketsSlotDefinitions(
  * scheduling `fetchMarketsFragmentSlots` always ran, but returns IMMEDIATELY
  * — before the `marketsTable` slot has resolved — exposing its promise plus
  * one aggregate promise for the diagnostics/scheduler-health/trace-log
- * section. `app/markets/page.tsx` awaits `slots.marketsTable` inside its own
+ * section. `app/markets/page.tsx` awaits `slotPromises.marketsTable` inside its own
  * `<Suspense>`+`<FragmentSlotStream>` boundary so the static shell can flush
  * ahead of the fragment fetch, instead of the whole page blocking on one
  * `await`.
@@ -170,7 +170,7 @@ export function streamMarketsFragmentSlots({
     // `stream.slots` (`@mvp/runtime`'s `FragmentSlotStreamHandle.slots`) is
     // already `Record<string, Promise<FragmentRenderResponse>>` — passed
     // through as-is instead of re-listing each slot name into a new object.
-    slots: stream.slots,
+    slotPromises: stream.slots,
     execution: stream.result,
     aggregate,
   };
@@ -194,12 +194,12 @@ export async function fetchMarketsFragmentSlots(
   options: FetchMarketsFragmentSlotsOptions = {},
 ): Promise<MarketsFragmentHtml> {
   const stream = streamMarketsFragmentSlots(options);
-  // Resolve every slot's promise generically (whatever names `stream.slots`
-  // currently has) instead of destructuring a single named field — the
-  // "final returned HTML-string map" the A1 refactor targets.
+  // Resolve every slot's promise generically (whatever names
+  // `stream.slotPromises` currently has) instead of destructuring a single
+  // named field — the "final returned HTML-string map" the A1 refactor targets.
   const [htmlEntries, aggregate, execution] = await Promise.all([
     Promise.all(
-      Object.entries(stream.slots).map(async ([name, slotPromise]) => {
+      Object.entries(stream.slotPromises).map(async ([name, slotPromise]) => {
         const response = await slotPromise;
         return [name, response.html] as const;
       }),

@@ -121,8 +121,9 @@ export default async function PortfolioPage() {
         </div>
 
         {/*
-          `stream.slots` is now `Record<string, Promise<FragmentRenderResponse>>`
-          (@mvp/runtime's own generic shape — see fragmentSlots.ts). Dot access
+          `stream.slotPromises` is now
+          `Record<string, Promise<FragmentRenderResponse>>` (@mvp/runtime's own
+          generic shape — see fragmentSlots.ts). Dot access
           below still type-checks (this repo's tsconfig does not set
           `noPropertyAccessFromIndexSignature`) and is what biome's
           `useLiteralKeys` lint rule expects, so it is kept — the generic type
@@ -139,7 +140,7 @@ export default async function PortfolioPage() {
         <div data-area="portfolio-summary" data-slot="portfolioSummary">
           <Suspense fallback={PORTFOLIO_SUMMARY_FALLBACK}>
             <FragmentSlotStream
-              slotPromise={stream.slots.portfolioSummary}
+              slotPromise={stream.slotPromises.portfolioSummary}
               fallback={PORTFOLIO_SUMMARY_FALLBACK}
             />
           </Suspense>
@@ -149,7 +150,7 @@ export default async function PortfolioPage() {
         <div data-area="portfolio-chart" data-slot="pnlChart">
           <Suspense fallback={PNL_CHART_FALLBACK}>
             <FragmentSlotStream
-              slotPromise={stream.slots.pnlChart}
+              slotPromise={stream.slotPromises.pnlChart}
               fallback={PNL_CHART_FALLBACK}
             />
           </Suspense>
