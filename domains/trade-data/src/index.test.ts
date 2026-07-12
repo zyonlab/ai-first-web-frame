@@ -2,10 +2,13 @@ import { DataDependencySchema, type RequestContext } from "@mvp/contracts";
 import {
   createDataKey,
   createMemorySubscriptionTransport,
+  type DataSource,
   defineDataSource,
 } from "@mvp/data";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  AccountMarginSchema,
+  accountSource,
   createTradeDataClient,
   FIXTURE_SEED,
   GLOBAL_SOURCE_IDS,
@@ -225,6 +228,34 @@ describe("createTradeDataClient read + dedupe (C4)", () => {
     await client.readData(eth.id, { symbol: "ETH" });
     expect(btcCalls).toBe(1);
     expect(ethCalls).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// H2 — opt-in payload validation (reference adoption: `account`)
+// ---------------------------------------------------------------------------
+
+describe("account responseSchema (H2 reference adoption)", () => {
+  it("declares AccountMarginSchema and still loads the fixture snapshot", async () => {
+    expect(accountSource().responseSchema).toBe(AccountMarginSchema);
+    const client = createTradeDataClient({ ctx });
+    const result = await client.readData(sourceIds.account);
+    expect(AccountMarginSchema.safeParse(result.data).success).toBe(true);
+  });
+
+  it("rejects an upstream shape drift naming AccountMarginSchema", async () => {
+    const base = accountSource();
+    const drifted = {
+      ...base,
+      id: "account.drifted",
+      dependency: { ...base.dependency, id: "account.drifted" },
+      // Upstream drift: equity became a string.
+      load: () => ({ equity: "1e5", used: 1, free: 1, maintenance: 1 }),
+    } as DataSource<unknown, never>;
+    const client = createTradeDataClient({ ctx, extraSources: [drifted] });
+    await expect(client.readData("account.drifted")).rejects.toThrow(
+      /"account\.drifted" response violates AccountMarginSchema — equity:/,
+    );
   });
 });
 

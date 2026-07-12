@@ -1,7 +1,9 @@
 import { createRequestContext } from "@mvp/request-context";
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import {
   createRequestClient,
+  RequestContractError,
   RequestPolicyError,
   RequestTimeoutError,
 } from "./index";
@@ -70,6 +72,59 @@ describe("@mvp/request", () => {
     const result = await client.requestJson<{ ok: boolean }>("catalog");
     expect(result.attempts).toBe(2);
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns the schema-parsed body when responseSchema accepts the payload", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({ price: 42, extra: "ignored" }),
+    ) as unknown as typeof fetch;
+    const client = createRequestClient({ ctx, policy, fetchImpl });
+    const result = await client.requestJson("catalog", {
+      responseSchema: z.object({ price: z.number() }).describe("QuoteSchema"),
+    });
+    // Zod strips unknown keys, so the parsed (not raw) body is returned.
+    expect(result.data).toEqual({ price: 42 });
+  });
+
+  it("throws RequestContractError naming the schema on a mismatched payload", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({ price: "not-a-number" }),
+    ) as unknown as typeof fetch;
+    const client = createRequestClient({ ctx, policy, fetchImpl });
+    const request = client.requestJson("catalog", {
+      responseSchema: z.object({ price: z.number() }).describe("QuoteSchema"),
+    });
+    await expect(request).rejects.toThrow(RequestContractError);
+    await expect(
+      client.requestJson("catalog", {
+        responseSchema: z.object({ price: z.number() }).describe("QuoteSchema"),
+      }),
+    ).rejects.toThrow(/QuoteSchema/);
+    try {
+      await client.requestJson("catalog", {
+        responseSchema: z.object({ price: z.number() }).describe("QuoteSchema"),
+      });
+    } catch (error) {
+      const contractError = error as RequestContractError;
+      expect(contractError.endpointId).toBe("catalog");
+      expect(contractError.url).toBe("https://api.example.test/catalog");
+      expect(contractError.schemaName).toBe("QuoteSchema");
+      expect(contractError.issues[0]?.path).toEqual(["price"]);
+    }
+  });
+
+  it("never retries a contract violation (not a transient failure)", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({ price: "still-wrong" }),
+    ) as unknown as typeof fetch;
+    const client = createRequestClient({ ctx, policy, fetchImpl });
+    await expect(
+      client.requestJson("catalog", {
+        // Endpoint declares retries: 1, but a schema mismatch is deterministic.
+        responseSchema: z.object({ price: z.number() }).describe("QuoteSchema"),
+      }),
+    ).rejects.toThrow(RequestContractError);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it("times out slow requests", async () => {
