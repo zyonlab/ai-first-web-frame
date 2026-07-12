@@ -2,12 +2,15 @@ import { createRequestTrace } from "@mvp/observability";
 import { fragmentRegistry } from "@mvp/registry";
 import { createRequestContext } from "@mvp/request-context";
 import {
+  applySlotRequestOverrides,
+  collectSlotDiagnostics,
   type DataResolutionResult,
-  type FragmentRenderResponse,
   type FragmentSlotDefinition,
   type FragmentSlotResult,
   type FragmentSlotsExecution,
+  type PageFragmentStream,
   type PageHealth,
+  resolveFragmentStream,
   type SchedulerHint,
   streamFragmentSlots,
 } from "@mvp/runtime";
@@ -113,13 +116,8 @@ export type ProductFragmentAggregate = {
  * here: it is `reserved: true` in the manifest, so `fragmentSlots.gen.ts`
  * (and therefore `stream.slots`) never enumerates it in the first place.
  */
-export type ProductFragmentStream = {
-  slotPromises: Record<string, Promise<FragmentRenderResponse>>;
-  /** Raw scheduler aggregate (`@mvp/runtime` shape); settles last. */
-  execution: Promise<FragmentSlotsExecution>;
-  /** Page-shaped diagnostics/dag/recentlyViewed/backgroundJobs, derived from `execution` plus the independent per-request work. */
-  aggregate: Promise<ProductFragmentAggregate>;
-};
+export type ProductFragmentStream =
+  PageFragmentStream<ProductFragmentAggregate>;
 
 type FetchProductFragmentSlotsOptions = {
   headers?: Headers;
@@ -152,9 +150,7 @@ type FetchProductFragmentSlotsOptions = {
 export function buildProductSlotDefinitions(
   timeoutMs = 200,
 ): FragmentSlotDefinition[] {
-  return generatedProductSlots.map((slot) =>
-    slot.strategy === "static" ? slot : { ...slot, timeoutMs },
-  );
+  return applySlotRequestOverrides(generatedProductSlots, { timeoutMs });
 }
 
 /**
@@ -259,21 +255,12 @@ export function streamProductFragmentSlots({
     ([execution, recentlyViewed, backgroundJobs]): ProductFragmentAggregate => {
       const summaryData = execution.data["product-summary"];
       const summaryValue = (summaryData?.value ?? {}) as { label?: string };
-      // Generic per-slot diagnostics: every slot's result carries everything
-      // `toDiagnostic` needs (source/strategy), and the map key IS the
-      // slot's name, so there is no genuine reason to hand-list slot names
-      // here — iterate `execution.slots` (already `Record<string,
-      // FragmentSlotResult>`, see `packages/runtime/src/index.ts`) instead of
-      // repeating the 3 current names.
-      const diagnostics: Record<
-        string,
-        Pick<FragmentSlotResult, "source" | "strategy">
-      > = Object.fromEntries(
-        Object.entries(execution.slots).map(([name, result]) => [
-          name,
-          toDiagnostic(result),
-        ]),
-      );
+      // Generic per-slot diagnostics (`@mvp/runtime`'s
+      // `collectSlotDiagnostics`): the map key IS the slot's name, so no
+      // slot names are hand-listed here. Page-product's diagnostic shape is
+      // narrower than the default (source/strategy only, no status/required),
+      // so a custom projection is passed instead of the default.
+      const diagnostics = collectSlotDiagnostics(execution.slots, toDiagnostic);
 
       return {
         diagnostics,
@@ -325,31 +312,10 @@ export function streamProductFragmentSlots({
 export async function fetchProductFragmentSlots(
   options: FetchProductFragmentSlotsOptions = {},
 ): Promise<ProductFragmentHtml> {
-  const stream = streamProductFragmentSlots(options);
-  // Resolve every slot's promise generically (whatever names
-  // `stream.slotPromises` currently has) instead of destructuring three named
-  // fields — the "final returned HTML-string map" the A1 refactor targets.
-  const [htmlEntries, aggregate, execution] = await Promise.all([
-    Promise.all(
-      Object.entries(stream.slotPromises).map(async ([name, slotPromise]) => {
-        const response = await slotPromise;
-        return [name, response.html] as const;
-      }),
-    ),
-    stream.aggregate,
-    stream.execution,
-  ]);
-
-  return {
-    html: Object.fromEntries(htmlEntries),
-    diagnostics: aggregate.diagnostics,
-    dataDiagnostics: aggregate.dataDiagnostics,
-    dag: aggregate.dag,
-    recentlyViewed: aggregate.recentlyViewed,
-    backgroundJobs: aggregate.backgroundJobs,
-    traceLog: aggregate.traceLog,
-    execution,
-  };
+  const { html, aggregate, execution } = await resolveFragmentStream(
+    streamProductFragmentSlots(options),
+  );
+  return { html, ...aggregate, execution };
 }
 
 function toDiagnostic(

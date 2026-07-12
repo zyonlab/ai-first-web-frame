@@ -3,23 +3,20 @@ import { createRequestTrace } from "@mvp/observability";
 import { fragmentRegistry } from "@mvp/registry";
 import { createRequestContext } from "@mvp/request-context";
 import {
-  type FragmentRenderResponse,
+  applySlotRequestOverrides,
+  collectSlotDiagnostics,
   type FragmentSlotDefinition,
-  type FragmentSlotResult,
+  type FragmentSlotDiagnostic,
   type FragmentSlotsExecution,
+  type PageFragmentStream,
   type PageHealth,
+  resolveFragmentStream,
   type SchedulerHint,
   streamFragmentSlots,
 } from "@mvp/runtime";
 import { fragmentSlots as generatedPortfolioSlots } from "./fragmentSlots.gen";
 
-export type PortfolioSlotDiagnostic = Pick<
-  FragmentSlotResult,
-  "source" | "strategy"
-> & {
-  status: FragmentSlotResult["status"];
-  required: boolean;
-};
+export type PortfolioSlotDiagnostic = FragmentSlotDiagnostic;
 
 export type PortfolioFragmentHtml = {
   // Per-slot resolved HTML, keyed by slot name (whatever names
@@ -74,18 +71,8 @@ export type PortfolioFragmentAggregate = {
  * genuine human-judgment JSX placement (A1's explicit carve-out) — not
  * something codegen can or should decide.
  */
-export type PortfolioFragmentSlotPromises = Record<
-  string,
-  Promise<FragmentRenderResponse>
->;
-
-export type PortfolioFragmentStream = {
-  slotPromises: PortfolioFragmentSlotPromises;
-  /** Raw scheduler aggregate (`@mvp/runtime` shape); settles last. */
-  execution: Promise<FragmentSlotsExecution>;
-  /** Page-shaped diagnostics/scheduler/traceLog, derived from `execution`. */
-  aggregate: Promise<PortfolioFragmentAggregate>;
-};
+export type PortfolioFragmentStream =
+  PageFragmentStream<PortfolioFragmentAggregate>;
 
 type FetchPortfolioFragmentSlotsOptions = {
   headers?: Headers;
@@ -111,9 +98,7 @@ type FetchPortfolioFragmentSlotsOptions = {
 export function buildPortfolioSlotDefinitions(
   timeoutMs = 200,
 ): FragmentSlotDefinition[] {
-  return generatedPortfolioSlots.map((slot) =>
-    slot.strategy === "static" ? slot : { ...slot, timeoutMs },
-  );
+  return applySlotRequestOverrides(generatedPortfolioSlots, { timeoutMs });
 }
 
 /**
@@ -168,29 +153,17 @@ export function streamPortfolioFragmentSlots({
   });
 
   const aggregate = stream.result.then(
-    (execution): PortfolioFragmentAggregate => {
-      // Generic per-slot diagnostics: every slot's result carries everything
-      // `toDiagnostic` needs (source/strategy/status/required), and the map
-      // key IS the slot's name, so there is no genuine reason to hand-list
-      // slot names here — iterate `execution.slots` (already `Record<string,
-      // FragmentSlotResult>`, see `packages/runtime/src/index.ts`) instead of
-      // repeating the 2 current names.
-      const diagnostics: Record<string, PortfolioSlotDiagnostic> =
-        Object.fromEntries(
-          Object.entries(execution.slots).map(([name, result]) => [
-            name,
-            toDiagnostic(result),
-          ]),
-        );
-      return {
-        diagnostics,
-        scheduler: {
-          health: execution.health,
-          hints: execution.hints,
-        },
-        traceLog: trace.toDependencyGraphLog(),
-      };
-    },
+    (execution): PortfolioFragmentAggregate => ({
+      // Generic per-slot diagnostics (`@mvp/runtime`'s
+      // `collectSlotDiagnostics`): the map key IS the slot's name, so no
+      // slot names are hand-listed here.
+      diagnostics: collectSlotDiagnostics(execution.slots),
+      scheduler: {
+        health: execution.health,
+        hints: execution.hints,
+      },
+      traceLog: trace.toDependencyGraphLog(),
+    }),
   );
 
   return {
@@ -214,35 +187,8 @@ export function streamPortfolioFragmentSlots({
 export async function fetchPortfolioFragmentSlots(
   options: FetchPortfolioFragmentSlotsOptions = {},
 ): Promise<PortfolioFragmentHtml> {
-  const stream = streamPortfolioFragmentSlots(options);
-  // Resolve every slot's promise generically (whatever names
-  // `stream.slotPromises` currently has) instead of destructuring two named
-  // fields — the "final returned HTML-string map" the A1 refactor targets.
-  const [htmlEntries, aggregate, execution] = await Promise.all([
-    Promise.all(
-      Object.entries(stream.slotPromises).map(async ([name, slotPromise]) => {
-        const response = await slotPromise;
-        return [name, response.html] as const;
-      }),
-    ),
-    stream.aggregate,
-    stream.execution,
-  ]);
-
-  return {
-    html: Object.fromEntries(htmlEntries),
-    diagnostics: aggregate.diagnostics,
-    scheduler: aggregate.scheduler,
-    traceLog: aggregate.traceLog,
-    execution,
-  };
-}
-
-function toDiagnostic(result: FragmentSlotResult): PortfolioSlotDiagnostic {
-  return {
-    source: result.source,
-    strategy: result.strategy,
-    status: result.status,
-    required: result.slot.required ?? false,
-  };
+  const { html, aggregate, execution } = await resolveFragmentStream(
+    streamPortfolioFragmentSlots(options),
+  );
+  return { html, ...aggregate, execution };
 }
