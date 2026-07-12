@@ -28,6 +28,12 @@ import {
   toPlaceOrderInput,
 } from "./islandLogic";
 import { submitOrder } from "./placeOrderFlow";
+// TYPE-ONLY on purpose: this file is also island.browser.ts's build entry
+// (the C3 spike's minimal browser bundle, tools/bundle-budget-check-measured).
+// A real (value) import/re-export from "./render" here would pull zod +
+// @mvp/trade-data's AccountMarginSchema into that bundle — import
+// OrderFormIslandPropsSchema from "@mvp/fragment-order-form/render" instead
+// wherever it's actually needed (e.g. apps/page-trade/src/hydrate.tsx).
 import type { OrderFormIslandProps } from "./render";
 
 /**

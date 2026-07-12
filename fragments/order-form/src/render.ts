@@ -3,6 +3,8 @@ import type { DataCacheEntry } from "@mvp/data";
 import type { RequestTrace } from "@mvp/observability";
 import { createRequestContext } from "@mvp/request-context";
 import { TRADE_ORDER_DRAFT } from "@mvp/trade-contracts";
+import { AccountMarginSchema } from "@mvp/trade-data";
+import { z } from "zod";
 import { type AccountMargin, loadAccountMargin } from "./data";
 import { createDefaultDraft, type OrderFormDraft } from "./islandLogic";
 import { orderFormManifest } from "./manifest";
@@ -35,6 +37,31 @@ export type OrderFormIslandProps = {
   draft: OrderFormDraft;
   account: AccountMargin;
 };
+
+/**
+ * M3 reference adoption (`@mvp/islands`' opt-in `propsSchema` handshake,
+ * `docs/ARCHITECTURE_REFACTOR_PLAN.md` §4.3.2): mirrors {@link OrderFormIslandProps}
+ * field-for-field so `mountIsland` can validate the EFFECTIVE props it is
+ * about to hydrate with, not just the snapshot envelope's generic
+ * `z.record(z.unknown())` shape. Reuses `@mvp/trade-data`'s
+ * `AccountMarginSchema` directly for `account` rather than re-declaring it —
+ * one source of truth, no drift risk between the two. Wired in
+ * `apps/page-trade/src/hydrate.tsx`'s `registerTradeIslands`.
+ */
+export const OrderFormIslandPropsSchema = z
+  .object({
+    symbol: z.string(),
+    draft: z.object({
+      side: z.enum(["buy", "sell"]),
+      price: z.number().optional(),
+      size: z.number().optional(),
+      leverage: z.number(),
+      reduceOnly: z.boolean(),
+      type: z.enum(["market", "limit"]),
+    }),
+    account: AccountMarginSchema,
+  })
+  .describe("OrderFormIslandPropsSchema");
 
 const sharedCache = new Map<string, DataCacheEntry>();
 

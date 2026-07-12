@@ -11,6 +11,7 @@ import {
   type OrderFormIslandComponentProps,
 } from "@mvp/fragment-order-form/island";
 import { orderFormManifest } from "@mvp/fragment-order-form/manifest";
+import { OrderFormIslandPropsSchema } from "@mvp/fragment-order-form/render";
 import type { InteractionBus } from "@mvp/interaction";
 import {
   clearIslandRegistry,
@@ -118,6 +119,10 @@ export function registerTradeIslands(
   );
   registerIsland("orderForm", makeOrderFormIsland(store), {
     expectedVersion: orderFormManifest.version,
+    // M3 reference adoption (docs/ARCHITECTURE_REFACTOR_PLAN.md §4.3.2):
+    // validates the effective props against OrderFormIslandPropsSchema, not
+    // just the snapshot envelope's generic z.record(z.unknown()) shape.
+    propsSchema: OrderFormIslandPropsSchema,
   });
 }
 

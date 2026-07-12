@@ -147,24 +147,48 @@ fragment emits, per hydratable sub-part,
 
 - `registerIsland(name, component, expectation?)` — registers under the
   `data-island` name. The optional third argument
-  `{ expectedVersion?, expectedContractHash? }` is the C2 handshake
-  declaration (source it from the fragment's own manifest export, e.g.
-  `marketHeaderManifest.version`). Omitting it opts the island out of the
-  handshake (unconditional hydrate).
+  `{ expectedVersion?, expectedContractHash?, propsSchema? }` is the C2/M3
+  handshake declaration: `expectedVersion`/`expectedContractHash` (source
+  from the fragment's own manifest export, e.g. `marketHeaderManifest.version`)
+  opt into the version handshake; `propsSchema` (M3 — any Zod schema, or a
+  hand-rolled object satisfying the same minimal `{ safeParse, description? }`
+  contract as `@mvp/request`'s `ResponseSchema<T>`) opts into validating the
+  EFFECTIVE props (`opts.props ?? snapshot.props`) after the version check
+  passes. Omitting the whole third argument opts the island out of both
+  (unconditional hydrate).
 - `mountIsland(el, opts?)` / `hydrateIslands(root?)` — parse + Zod-validate
-  the snapshot, run the handshake, then `createRoot(el).render(...)`.
-  `hydrateIslands` skips unregistered islands (never throws page-wide);
-  `mountIsland` throws on a missing `data-island` name or unregistered name
-  (authoring errors).
+  the snapshot, run the version/contract-hash handshake, then (if declared)
+  the propsSchema check, then `createRoot(el).render(...)`. `hydrateIslands`
+  skips unregistered islands (never throws page-wide); `mountIsland` throws on
+  a missing `data-island` name or unregistered name (authoring errors).
 - **Skip-hydration degradation**: on `reason: "version-mismatch"`,
-  `"contract-hash-mismatch"`, or `"invalid-snapshot"` (unparseable/
-  schema-failing snapshot JSON — the A2 case), NO React root is created — the
+  `"contract-hash-mismatch"`, `"invalid-snapshot"` (unparseable/
+  schema-failing snapshot JSON — the A2 case), or `"invalid-props"` (M3 —
+  the snapshot envelope was valid but the effective props failed the
+  island's own `propsSchema`; closes the gap `IslandSnapshotSchema.props`
+  being `z.record(z.unknown())` leaves open), NO React root is created — the
   SSR HTML remains the final static state. The mismatch is `console.warn`ed
   unconditionally and also reported through the hook set via
   `configureIslandRuntime({ onSnapshotMismatch })` (a
   `SnapshotMismatchHandler` receiving `SnapshotMismatchInfo`). A snapshot with
   no `version` at all (old/non-participating fragment) hydrates normally —
-  backward compatible by design.
+  backward compatible by design; an island with no declared `propsSchema` is
+  likewise unaffected by the M3 check.
+- **Reference adoption**: `fragments/order-form`'s `OrderFormIslandPropsSchema`
+  (`fragments/order-form/src/render.ts`) mirrors `OrderFormIslandProps`
+  field-for-field, reusing `@mvp/trade-data`'s `AccountMarginSchema` directly
+  for the `account` field (one source of truth, no drift). Wired in
+  `apps/page-trade/src/hydrate.tsx`'s `registerTradeIslands` via a dedicated
+  `@mvp/fragment-order-form/render` package export — deliberately NOT
+  re-exported through `./island`, because `island.tsx` doubles as the entry
+  `island.browser.ts` builds for the C3 spike's minimal browser bundle
+  (`tools/bundle-budget-check`-measured, budget 30KB); a real (value)
+  re-export of the schema from `island.tsx` pulled zod + the whole
+  `@mvp/trade-data` module graph into that bundle, 4.6KB → 64.8KB, before
+  being caught and fixed. `island.tsx`'s existing `import type
+  { OrderFormIslandProps } from "./render"` stays type-only on purpose (a
+  comment in-file says so) — anything importing a VALUE from `render.ts`
+  belongs on the `./render` export path, not `./island`.
 
 **Bus injection pattern**: every island component accepts an injected
 `bus?: InteractionBus` prop and prefers it over its own
