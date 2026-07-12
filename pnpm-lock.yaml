@@ -264,9 +264,6 @@ importers:
       '@mvp/assets':
         specifier: workspace:*
         version: link:../../packages/assets
-      '@mvp/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
       '@mvp/data':
         specifier: workspace:*
         version: link:../../packages/data
@@ -1097,6 +1094,12 @@ importers:
         specifier: workspace:*
         version: link:../request-context
     devDependencies:
+      '@mvp/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@testing-library/react':
+        specifier: ^16.0.0
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1

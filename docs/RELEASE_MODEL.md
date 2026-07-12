@@ -14,8 +14,8 @@ change on a branch
   |
   v
 [1] CI verify (.github/workflows/ci.yml, job: verify)          IMPLEMENTED
-      pnpm verify (13 gates): typecheck, lint, format, manifest-gen,
-      docs:test, tests, build, 6 audits
+      pnpm verify (14 gates): typecheck, lint, format, manifest-gen,
+      demos-index, docs:test, tests, build, 6 audits
   |
   v
 [2] Affected detection (job: affected)                         IMPLEMENTED
