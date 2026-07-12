@@ -342,6 +342,13 @@ missing/malformed.
 
 ## Cross-cutting notes
 
+- **Unknown flags are rejected**: `register-fragment`, `mount-slot`,
+  `promote-fragment`, and `rollback-fragment` each declare an allowlist of
+  known flags. Any flag outside it — e.g. the typo `--chanel canary` — fails
+  with `"status": "failed"` and `error: 'unknown flag --chanel (did you mean
+  --channel?)'` (suggestion included when a known flag is a close match),
+  exit 1, **no files written**. Previously a typo'd flag was silently
+  ignored and the script proceeded with defaults.
 - **Idempotency**: `register-fragment` and `mount-slot` are safe to rerun
   with identical arguments — both report `action: "unchanged"` (register) or
   `status: "unchanged"` (mount) instead of rewriting files.
@@ -357,3 +364,25 @@ missing/malformed.
 - **Env override convention**: `<FRAGMENT_NAME>_URL` (e.g. `PRICE_PANEL_URL`)
   rewrites a registered fragment's `serviceUrl`/`manifestUrl` at runtime
   without touching the registry file — use for local/staging overrides.
+
+---
+
+## Auxiliary tool envelopes
+
+Non-lifecycle repo CLIs share the same `status: "ok" | "failed"` envelope
+convention (one JSON object on stdout; exit code mirrors `status`):
+
+- **`scripts/docker-smoke.mts`** (`pnpm smoke`) — success/check-failure
+  output is `{ tool: "docker-smoke", status: "ok" | "failed", ok: boolean,
+  elapsedMs, timeoutMs, checks }` (`ok` and the other pre-existing keys are
+  kept for older consumers; `status` mirrors `ok`). An unexpected crash
+  prints `{ tool: "docker-smoke", status: "failed", ok: false, error }`
+  instead of raw text. Exit 0 only when `status === "ok"`; bad usage still
+  exits 2 with a usage message on stderr.
+- **`scripts/build-all.mts`** — streams `pnpm -r build` output, then prints
+  `{ tool: "build-all", status: "ok" | "failed", exitCode, error? }` and
+  passes the child's exit code through.
+- **`scripts/deploy-affected.mts`** (`pnpm deploy:affected`) — progress is
+  human-readable text, but an unhandled failure prints
+  `{ tool: "deploy-affected", status: "failed", error }` on stdout and exits
+  1 (previously a raw stringified error on stderr).
