@@ -1,4 +1,5 @@
-# Kustomize entry point for the five deployable units.
+# Kustomize entry point for all 22 deployable units: the shell gateway,
+# the 7 Next.js page apps, and the 14 fragment services.
 #
 # Image tags are parameterized here instead of being hardcoded in the
 # manifests. The manifests keep the local-dev default tag (:dev); CI/CD
@@ -17,8 +18,25 @@ resources:
   - shell-gateway.yaml
   - page-home.yaml
   - page-product.yaml
+  - page-trade.yaml
+  - page-markets.yaml
+  - page-portfolio.yaml
+  - page-vaults.yaml
+  - page-referrals.yaml
   - promotion-banner.yaml
   - recommendation-widget.yaml
+  - market-header.yaml
+  - order-book.yaml
+  - order-form.yaml
+  - trades-feed.yaml
+  - account-bar.yaml
+  - positions-table.yaml
+  - open-orders.yaml
+  - funding-bar.yaml
+  - chart-panel.yaml
+  - markets-table.yaml
+  - portfolio-summary.yaml
+  - pnl-chart.yaml
 images:
   - name: shell-gateway
     newTag: dev
@@ -26,7 +44,41 @@ images:
     newTag: dev
   - name: page-product
     newTag: dev
+  - name: page-trade
+    newTag: dev
+  - name: page-markets
+    newTag: dev
+  - name: page-portfolio
+    newTag: dev
+  - name: page-vaults
+    newTag: dev
+  - name: page-referrals
+    newTag: dev
   - name: promotion-banner
     newTag: dev
   - name: recommendation-widget
+    newTag: dev
+  - name: market-header
+    newTag: dev
+  - name: order-book
+    newTag: dev
+  - name: order-form
+    newTag: dev
+  - name: trades-feed
+    newTag: dev
+  - name: account-bar
+    newTag: dev
+  - name: positions-table
+    newTag: dev
+  - name: open-orders
+    newTag: dev
+  - name: funding-bar
+    newTag: dev
+  - name: chart-panel
+    newTag: dev
+  - name: markets-table
+    newTag: dev
+  - name: portfolio-summary
+    newTag: dev
+  - name: pnl-chart
     newTag: dev

@@ -1,23 +1,64 @@
 # DEMOS.md — demo capability index
 
 Machine-actionable index answering "which page proves which capability?"
-(refactor plan §6). Each of the 5 composed pages (`apps/page-{home,product,
-markets,portfolio,trade}`) declares an optional `demonstrates: string[]` on
-its `PageManifest` (`packages/contracts/src/index.ts`), populated in that
-page's `src/manifest.ts`. Every value below was verified by hand against the
-page's actual `src/manifest.slots.json` + `src/fragmentSlots.ts` (+
-`app/**/page.tsx`, `src/hydrate*.tsx` for page-trade) — not copied from a
-plan doc — as of this writing. Re-verify before trusting a stale copy.
+(refactor plan §6). Each page app (`apps/page-*`) declares an optional
+`demonstrates: string[]` on its `PageManifest`
+(`packages/contracts/src/index.ts`), populated in that page's
+`src/manifest.ts`. The Index table below is **generated** from those arrays
+by `scripts/verify-demos.mts` (`--write` regenerates it, `pnpm verify:demos`
+— a `pnpm verify` gate — fails when it drifts), so the table cannot go stale
+against the manifests. The capability *values* themselves were verified
+against each page's actual `src/manifest.slots.json` + `src/fragmentSlots.ts`
+(+ `app/**/page.tsx`, `src/hydrate*.tsx` for page-trade) — not copied from a
+plan doc — see the per-value comments in each `src/manifest.ts`.
 
 ## Index
 
-| Page | Route | `demonstrates` | Key files |
-| --- | --- | --- | --- |
-| `page-home` | `/` | `composition:static+cached-ssr+dynamic-ssr`, `streaming:suspense-per-slot`, `fallback-isolation`, `trace-panel` | `apps/page-home/src/manifest.slots.json`, `apps/page-home/src/fragmentSlots.ts` (`streamHomeFragmentSlots`), `apps/page-home/app/page.tsx` |
-| `page-product` | `/product/:id` | `ttl-cache-freshness`, `reserved-slots`, `streaming:suspense-per-slot` | `apps/page-product/src/manifest.slots.json` (`promotion` slot), `apps/page-product/src/fragmentSlots.ts` (`streamProductFragmentSlots`), `apps/page-product/app/product/[id]/page.tsx` (hand-rendered `price-panel` aside) |
-| `page-markets` | `/markets` | `cached-ssr-freshness`, `fallback-isolation`, `streaming:suspense-per-slot` | `apps/page-markets/src/manifest.slots.json` (`marketsTable` slot), `apps/page-markets/src/fragmentSlots.ts` (`streamMarketsFragmentSlots`), `apps/page-markets/app/markets/page.tsx` |
-| `page-portfolio` | `/portfolio` | `private-data-dynamic-ssr`, `ttl-cache-freshness`, `fallback-isolation`, `streaming:suspense-per-slot` | `apps/page-portfolio/src/manifest.slots.json` (`portfolioSummary`, `pnlChart` slots), `apps/page-portfolio/src/fragmentSlots.ts` (`streamPortfolioFragmentSlots`), `apps/page-portfolio/app/portfolio/page.tsx` |
-| `page-trade` | `/trade/:symbol` | `dag-scheduling`, `cross-island-interaction:typed-bus`, `island-version-handshake`, `layout-hints`, `runtime-island-assets:spike` | `apps/page-trade/src/fragmentSlots.ts`, `apps/page-trade/src/hydrate.tsx`, `apps/page-trade/src/hydrateSpike.tsx`, `apps/page-trade/src/spikeImportMap.ts` |
+<!-- BEGIN GENERATED: demonstrates -->
+<!-- Generated from each apps/page-*/src/manifest.ts `demonstrates` array.
+     Do not edit by hand. Regenerate:
+       pnpm exec tsx scripts/verify-demos.mts --write
+     Freshness gate (wired into `pnpm verify`):
+       pnpm verify:demos -->
+
+| Page | Route | `demonstrates` |
+| --- | --- | --- |
+| `page-home` | `/` | `composition:static+cached-ssr+dynamic-ssr`, `streaming:suspense-per-slot`, `fallback-isolation`, `trace-panel` |
+| `page-markets` | `/markets` | `cached-ssr-freshness`, `fallback-isolation`, `streaming:suspense-per-slot` |
+| `page-portfolio` | `/portfolio` | `private-data-dynamic-ssr`, `ttl-cache-freshness`, `fallback-isolation`, `streaming:suspense-per-slot` |
+| `page-product` | `/product/:id` | `ttl-cache-freshness`, `reserved-slots`, `streaming:suspense-per-slot` |
+| `page-referrals` | `/referrals` | _(no demonstrated capabilities declared)_ |
+| `page-trade` | `/trade/:symbol` | `dag-scheduling`, `cross-island-interaction:typed-bus`, `island-version-handshake`, `layout-hints`, `runtime-island-assets:spike` |
+| `page-vaults` | `/vaults` | _(no demonstrated capabilities declared)_ |
+<!-- END GENERATED: demonstrates -->
+
+The slotless pages (`page-vaults`, `page-referrals`) declare no
+`demonstrates` values today: their manifests document them as the
+page-level-ISR / page-level-SSG demo patterns (see the docblocks in
+`apps/page-vaults/src/manifest.ts` and `apps/page-referrals/src/manifest.ts`),
+but those patterns have no verified capability definition in this index yet,
+and an undeclared capability is reported honestly as "(none declared)" rather
+than invented here.
+
+### Key files (hand-maintained)
+
+- `page-home` — `apps/page-home/src/manifest.slots.json`,
+  `apps/page-home/src/fragmentSlots.ts` (`streamHomeFragmentSlots`),
+  `apps/page-home/app/page.tsx`
+- `page-product` — `apps/page-product/src/manifest.slots.json` (`promotion`
+  slot), `apps/page-product/src/fragmentSlots.ts`
+  (`streamProductFragmentSlots`), `apps/page-product/app/product/[id]/page.tsx`
+  (hand-rendered `price-panel` aside)
+- `page-markets` — `apps/page-markets/src/manifest.slots.json`
+  (`marketsTable` slot), `apps/page-markets/src/fragmentSlots.ts`
+  (`streamMarketsFragmentSlots`), `apps/page-markets/app/markets/page.tsx`
+- `page-portfolio` — `apps/page-portfolio/src/manifest.slots.json`
+  (`portfolioSummary`, `pnlChart` slots),
+  `apps/page-portfolio/src/fragmentSlots.ts`
+  (`streamPortfolioFragmentSlots`), `apps/page-portfolio/app/portfolio/page.tsx`
+- `page-trade` — `apps/page-trade/src/fragmentSlots.ts`,
+  `apps/page-trade/src/hydrate.tsx`, `apps/page-trade/src/hydrateSpike.tsx`,
+  `apps/page-trade/src/spikeImportMap.ts`
 
 ## Capability definitions
 

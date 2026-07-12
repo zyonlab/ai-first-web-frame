@@ -1,0 +1,64 @@
+# Image tag is parameterized through kustomization.yaml (images transformer).
+# CI/CD sets the release tag with:
+#   kustomize edit set image order-book=$REGISTRY_URL/order-book:$GIT_SHA
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-book
+  labels:
+    app.kubernetes.io/name: order-book
+    app.kubernetes.io/part-of: ai-first-web-frame
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: order-book
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: order-book
+    spec:
+      containers:
+        - name: order-book
+          image: order-book:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4204
+          env:
+            - name: PORT
+              value: "4204"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4204
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4204
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-book
+spec:
+  selector:
+    app.kubernetes.io/name: order-book
+  ports:
+    - name: http
+      port: 4204
+      targetPort: 4204

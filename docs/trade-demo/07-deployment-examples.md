@@ -162,11 +162,12 @@ pnpm exec tsx scripts/docker-smoke.mts --timeout 180
 
 - **Accept:** docker-smoke JSON has `"ok": true`. It polls `/health` on the
   Fastify fragments and the composed shell routes.
-- **Gap to close:** `docker-smoke` uses `createDefaultSmokeChecks` in
-  `tools/release-tools/src/smoke.ts`, which currently hard-codes the five
-  original units' checks. **Add an `order-book` `/health` check there** (and a
-  `page-trade` route check) so the smoke suite actually exercises the new
-  fragment. Until then, smoke passes without covering it.
+- **Gap closed:** `docker-smoke` uses `createDefaultSmokeChecks` in
+  `tools/release-tools/src/smoke.ts`, which now DERIVES its check list from
+  the fragment registry (`registry/registry.data.json`) and the route
+  registry (`packages/routes/src/registry.ts`). Registering `order-book`
+  automatically adds its `/health` check (and `page-trade` is covered via
+  its route) — no hand-editing of the check list.
 
 ### Step 1.7 — Promote canary → stable
 
@@ -324,9 +325,10 @@ credentials are configured.
 
 ### Step 2.6 — Smoke
 
-Add a `page-markets` rendered-page check (marker `data-page="markets"`) and a
-shell composed-route check for `/markets` to
-`createDefaultSmokeChecks` in `tools/release-tools/src/smoke.ts`, then:
+`createDefaultSmokeChecks` in `tools/release-tools/src/smoke.ts` derives a
+`page-markets` `/health` check from the route registry automatically. (A
+shell composed-route marker check for `/markets`, like the existing `/` and
+`/product/123` ones, would still be a hand-added extra.) Then:
 
 ```bash
 docker compose -f infra/docker/docker-compose.yml build --provenance=false --sbom=false page-markets
@@ -334,7 +336,8 @@ docker compose -f infra/docker/docker-compose.yml up -d --no-build
 pnpm exec tsx scripts/docker-smoke.mts --timeout 180
 ```
 
-- **Accept:** docker-smoke `"ok": true`, including the new `/markets` check.
+- **Accept:** docker-smoke `"ok": true`, including the derived
+  `page-markets-health` check.
 
 ### Step 2.7 — Promote route canary → stable
 

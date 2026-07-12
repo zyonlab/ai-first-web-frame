@@ -1,0 +1,64 @@
+# Image tag is parameterized through kustomization.yaml (images transformer).
+# CI/CD sets the release tag with:
+#   kustomize edit set image portfolio-summary=$REGISTRY_URL/portfolio-summary:$GIT_SHA
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portfolio-summary
+  labels:
+    app.kubernetes.io/name: portfolio-summary
+    app.kubernetes.io/part-of: ai-first-web-frame
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: portfolio-summary
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: portfolio-summary
+    spec:
+      containers:
+        - name: portfolio-summary
+          image: portfolio-summary:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4213
+          env:
+            - name: PORT
+              value: "4213"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4213
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4213
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portfolio-summary
+spec:
+  selector:
+    app.kubernetes.io/name: portfolio-summary
+  ports:
+    - name: http
+      port: 4213
+      targetPort: 4213

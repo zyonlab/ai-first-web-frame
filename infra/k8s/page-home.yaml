@@ -27,6 +27,12 @@ spec:
           env:
             - name: PORT
               value: "4101"
+            # In-cluster fragment endpoints for the slots this page's
+            # manifest.slots.json mounts (validated as URLs at boot).
+            - name: PROMOTION_BANNER_URL
+              value: "http://promotion-banner:4201"
+            - name: RECOMMENDATION_WIDGET_URL
+              value: "http://recommendation-widget:4202"
           # Probes hit the dedicated app/health/route.ts (static, dependency
           # free — never fans out into fragment calls).
           readinessProbe:

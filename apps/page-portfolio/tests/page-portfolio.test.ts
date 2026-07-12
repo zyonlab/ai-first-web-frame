@@ -186,8 +186,8 @@ describe("page-portfolio", () => {
     expect(ports).toEqual([SUMMARY_PORT, CHART_PORT].sort());
     expect(calls.every((c) => c.includes("/render"))).toBe(true);
 
-    expect(result.slots.portfolioSummary).toContain("12,480.20");
-    expect(result.slots.pnlChart).toContain('aria-label="Cumulative PnL"');
+    expect(result.html.portfolioSummary).toContain("12,480.20");
+    expect(result.html.pnlChart).toContain('aria-label="Cumulative PnL"');
     expect(result.diagnostics.portfolioSummary).toMatchObject({
       status: "ok",
       strategy: "dynamic-ssr",
@@ -215,9 +215,9 @@ describe("page-portfolio", () => {
     });
 
     expect(result.diagnostics.portfolioSummary.status).toBe("fallback");
-    expect(result.slots.portfolioSummary).toContain('data-fallback="true"');
+    expect(result.html.portfolioSummary).toContain('data-fallback="true"');
     expect(result.diagnostics.pnlChart.status).toBe("fallback");
-    expect(result.slots.pnlChart).toContain('data-fallback="true"');
+    expect(result.html.pnlChart).toContain('data-fallback="true"');
     // Required summary unresolved -> page unhealthy.
     expect(result.scheduler.health).toBe("unhealthy");
   });
@@ -234,9 +234,9 @@ describe("page-portfolio", () => {
     });
 
     expect(result.diagnostics.portfolioSummary.status).toBe("fallback");
-    expect(result.slots.portfolioSummary).toContain('data-fallback="true"');
+    expect(result.html.portfolioSummary).toContain('data-fallback="true"');
     expect(result.diagnostics.pnlChart.status).toBe("fallback");
-    expect(result.slots.pnlChart).toContain('data-fallback="true"');
+    expect(result.html.pnlChart).toContain('data-fallback="true"');
     expect(result.scheduler.health).toBe("unhealthy");
   });
 
@@ -246,8 +246,8 @@ describe("page-portfolio", () => {
       fetchImpl: makePortfolioFetch(),
     });
     const html = renderPortfolioHtml({
-      portfolioSummary: result.slots.portfolioSummary,
-      pnlChart: result.slots.pnlChart,
+      portfolioSummary: result.html.portfolioSummary,
+      pnlChart: result.html.pnlChart,
     });
 
     expect(html).toContain('data-page="portfolio"');

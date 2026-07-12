@@ -1,0 +1,64 @@
+# Image tag is parameterized through kustomization.yaml (images transformer).
+# CI/CD sets the release tag with:
+#   kustomize edit set image pnl-chart=$REGISTRY_URL/pnl-chart:$GIT_SHA
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pnl-chart
+  labels:
+    app.kubernetes.io/name: pnl-chart
+    app.kubernetes.io/part-of: ai-first-web-frame
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pnl-chart
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pnl-chart
+    spec:
+      containers:
+        - name: pnl-chart
+          image: pnl-chart:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4214
+          env:
+            - name: PORT
+              value: "4214"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4214
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4214
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pnl-chart
+spec:
+  selector:
+    app.kubernetes.io/name: pnl-chart
+  ports:
+    - name: http
+      port: 4214
+      targetPort: 4214

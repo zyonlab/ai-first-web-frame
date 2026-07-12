@@ -17,6 +17,17 @@ import { useCallback, useSyncExternalStore } from "react";
  * `useStoreSlice` hook uses `useSyncExternalStore`, which is server-render
  * safe.
  */
+/**
+ * The channel union of a slice map: slice name === bus channel, so the
+ * store's bus is typed over exactly the (string) keys of `TSlices` (M4 typed
+ * channels). For an untyped `Record<string, unknown>` slice map this is just
+ * `string` — the pre-M4 surface.
+ */
+export type SliceChannel<TSlices extends Record<string, unknown>> = Extract<
+  keyof TSlices,
+  string
+>;
+
 export interface SliceStore<TSlices extends Record<string, unknown>> {
   /** Current value of a slice. */
   get<K extends keyof TSlices>(slice: K): TSlices[K];
@@ -27,8 +38,12 @@ export interface SliceStore<TSlices extends Record<string, unknown>> {
     slice: K,
     listener: (value: TSlices[K]) => void,
   ): () => void;
-  /** The underlying interaction bus (for advanced/bridge use). */
-  bus: InteractionBus;
+  /**
+   * The underlying interaction bus (for advanced/bridge use). Channel-typed
+   * over the slice names, so `store.bus.publish("typo", ...)` fails at
+   * compile time when `TSlices` has literal keys.
+   */
+  bus: InteractionBus<SliceChannel<TSlices>>;
 }
 
 export interface CreateSliceStoreOptions<
@@ -52,11 +67,16 @@ export interface CreateSliceStoreOptions<
  * enforces), so slice typos surface immediately.
  */
 export function createSliceStore<TSlices extends Record<string, unknown>>(
-  contracts: InteractionContract[],
+  contracts: ReadonlyArray<InteractionContract>,
   options: CreateSliceStoreOptions<TSlices>,
 ): SliceStore<TSlices> {
   const owner = options.owner ?? "slice-store";
-  const bus = createInteractionBus({ contracts });
+  // The runtime declared-channel check below (`requireChannel`) is what ties
+  // contracts to slices; at the type level the exposed bus is narrowed to the
+  // slice-name union (slice name === channel by construction).
+  const bus = createInteractionBus({ contracts }) as InteractionBus<
+    SliceChannel<TSlices>
+  >;
   const declared = new Set(bus.listChannels());
   const values = new Map<keyof TSlices, TSlices[keyof TSlices]>(
     Object.entries(options.initial) as Array<
@@ -64,8 +84,8 @@ export function createSliceStore<TSlices extends Record<string, unknown>>(
     >,
   );
 
-  function requireChannel(slice: keyof TSlices): string {
-    const channel = String(slice);
+  function requireChannel(slice: keyof TSlices): SliceChannel<TSlices> {
+    const channel = String(slice) as SliceChannel<TSlices>;
     if (!declared.has(channel)) {
       throw new Error(
         `slice-store: slice "${channel}" has no declared interaction contract`,
