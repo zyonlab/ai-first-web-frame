@@ -591,6 +591,122 @@ export async function executeFragmentSlots(
   return streamFragmentSlots(options).result;
 }
 
+// ---------------------------------------------------------------------------
+// Page wrapper helpers — the per-request scaffolding every page's
+// `src/fragmentSlots.ts` repeats around the generated slot array. Each page
+// keeps its genuinely page-specific glue (data resolvers, aggregate shapes,
+// props merges); these helpers own only what is identical across pages.
+// ---------------------------------------------------------------------------
+
+/** Per-request values a page merges onto its generated slot definitions. */
+export type SlotRequestOverrides = {
+  /** Timeout for every network-fetching slot (tests pass a short one). */
+  timeoutMs: number;
+  /**
+   * Per-request props merged onto every non-static slot (page-trade's
+   * `props.symbol` pattern). Omit to leave each slot's own props untouched.
+   */
+  props?: Record<string, unknown>;
+};
+
+/**
+ * Merge per-request overrides onto a generated slot array
+ * (`src/fragmentSlots.gen.ts`): every non-static slot gets the caller's
+ * `timeoutMs` (and `props`, when given); `strategy: "static"` slots never
+ * fetch over the network, so they pass through untouched. Never mutates the
+ * generated array.
+ */
+export function applySlotRequestOverrides(
+  slots: readonly FragmentSlotDefinition[],
+  { timeoutMs, props }: SlotRequestOverrides,
+): FragmentSlotDefinition[] {
+  return slots.map((slot) => {
+    if (slot.strategy === "static") return slot;
+    return props === undefined
+      ? { ...slot, timeoutMs }
+      : { ...slot, timeoutMs, props };
+  });
+}
+
+/**
+ * The diagnostic slice of one slot's result — what a page's diagnostics
+ * panel/tests need (source/strategy/status/required) without carrying the
+ * full response payload.
+ */
+export type FragmentSlotDiagnostic = Pick<
+  FragmentSlotResult,
+  "source" | "strategy" | "status"
+> & {
+  required: boolean;
+};
+
+/** Project one slot result to its {@link FragmentSlotDiagnostic} slice. */
+export function toSlotDiagnostic(
+  result: FragmentSlotResult,
+): FragmentSlotDiagnostic {
+  return {
+    source: result.source,
+    strategy: result.strategy,
+    status: result.status,
+    required: result.slot.required ?? false,
+  };
+}
+
+/**
+ * Assemble the per-slot diagnostics map from an execution's slot results —
+ * the map key IS the slot's name, so no page ever hand-lists slot names.
+ * Pages with a narrower diagnostic shape pass their own projection (e.g.
+ * page-product's two-field `source`/`strategy` slice).
+ */
+export function collectSlotDiagnostics<TDiagnostic = FragmentSlotDiagnostic>(
+  slots: Record<string, FragmentSlotResult>,
+  project: (result: FragmentSlotResult) => TDiagnostic = toSlotDiagnostic as (
+    result: FragmentSlotResult,
+  ) => TDiagnostic,
+): Record<string, TDiagnostic> {
+  return Object.fromEntries(
+    Object.entries(slots).map(([name, result]) => [name, project(result)]),
+  );
+}
+
+/**
+ * The page-shaped stream handle every streaming `fragmentSlots.ts` wrapper
+ * returns: one pending promise per slot (`slotPromises`), the raw scheduler
+ * aggregate (`execution`), and the page-specific aggregate section.
+ */
+export type PageFragmentStream<TAggregate> = {
+  slotPromises: Record<string, Promise<FragmentRenderResponse>>;
+  execution: Promise<FragmentSlotsExecution>;
+  aggregate: Promise<TAggregate>;
+};
+
+/**
+ * Barrier over a {@link PageFragmentStream}: awaits every slot promise into
+ * the per-slot resolved-HTML map (`html`, keyed by slot name) alongside the
+ * aggregate and execution. This is how each page's `fetch*FragmentSlots`
+ * stays behaviorally identical to its `stream*FragmentSlots` by construction
+ * — the barrier is BUILT ON the stream, not a second scheduling code path.
+ */
+export async function resolveFragmentStream<TAggregate>(
+  stream: PageFragmentStream<TAggregate>,
+): Promise<{
+  html: Record<string, string | null>;
+  aggregate: TAggregate;
+  execution: FragmentSlotsExecution;
+}> {
+  const [htmlEntries, aggregate, execution] = await Promise.all([
+    Promise.all(
+      Object.entries(stream.slotPromises).map(async ([name, slotPromise]) => {
+        const response = await slotPromise;
+        return [name, response.html] as const;
+      }),
+    ),
+    stream.aggregate,
+    stream.execution,
+  ]);
+  return { html: Object.fromEntries(htmlEntries), aggregate, execution };
+}
+
 function directDependencyKeys(node: ScheduledNode): string[] {
   if (node.type === "data")
     return node.dependsOn.map((dependency) => `data:${dependency}`);

@@ -9,7 +9,9 @@ import {
 import { createRequestTrace } from "@mvp/observability";
 import { describe, expect, it, vi } from "vitest";
 import {
+  applySlotRequestOverrides,
   clearFragmentCache,
+  collectSlotDiagnostics,
   composePage,
   createFallbackResponse,
   createFragmentCacheKey,
@@ -19,15 +21,19 @@ import {
   DEFAULT_RENDER_STRATEGY,
   executeFragmentSlots,
   type FragmentSlotDefinition,
+  type FragmentSlotResult,
+  type FragmentSlotsExecution,
   fetchFragment,
   fetchFragmentSlots,
   isFallbackResponse,
   mergeAssets,
   type RuntimeTrace,
   resolveFragment,
+  resolveFragmentStream,
   resolveRoute,
   type SchedulerHint,
   streamFragmentSlots,
+  toSlotDiagnostic,
   withTimeout,
 } from "./index";
 
@@ -1299,5 +1305,137 @@ describe("streamFragmentSlots streaming order", () => {
     expect(execution.slots.fast.response.html).toContain("fast-fragment live");
     expect(execution.slots.slow.response.html).toContain("slow-fragment live");
     expect(execution.health).toBe("ok");
+  });
+});
+
+describe("page wrapper helpers", () => {
+  function makeSlotResult(
+    overrides: Partial<FragmentSlotResult> & { name: string },
+  ): FragmentSlotResult {
+    const { name, ...rest } = overrides;
+    return {
+      slot: rest.slot ?? { name, fragment: `${name}-fragment` },
+      strategy: "dynamic-ssr",
+      source: "network",
+      status: "ok",
+      response: {
+        html: `<section>${name} live</section>`,
+        assets: { js: [], css: [] },
+        cache: { ttl: 0, tags: [name] },
+        metadata: { name: `${name}-fragment`, version: "0.1.0" },
+      },
+      ...rest,
+    };
+  }
+
+  describe("applySlotRequestOverrides", () => {
+    const generated: FragmentSlotDefinition[] = [
+      {
+        name: "editorial",
+        fragment: "editorial",
+        strategy: "static",
+        staticHtml: "<p>static</p>",
+      },
+      { name: "promo", fragment: "promotion-banner", strategy: "dynamic-ssr" },
+    ];
+
+    it("merges the per-request timeout onto every non-static slot and leaves static slots untouched", () => {
+      const slots = applySlotRequestOverrides(generated, { timeoutMs: 50 });
+      // Static slots never fetch over the network, so they never carry a
+      // timeout — the exact object reference passes through.
+      expect(slots[0]).toBe(generated[0]);
+      expect(slots[1]).toEqual({ ...generated[1], timeoutMs: 50 });
+      // The generated array itself is never mutated.
+      expect(generated[1].timeoutMs).toBeUndefined();
+    });
+
+    it("merges per-request props only when provided (page-trade's symbol pattern)", () => {
+      const withProps = applySlotRequestOverrides(generated, {
+        timeoutMs: 50,
+        props: { symbol: "ETH" },
+      });
+      expect(withProps[1]).toEqual({
+        ...generated[1],
+        timeoutMs: 50,
+        props: { symbol: "ETH" },
+      });
+      // No props override -> existing props survive the merge untouched.
+      const existing: FragmentSlotDefinition[] = [
+        { name: "promo", fragment: "promotion-banner", props: { a: 1 } },
+      ];
+      expect(applySlotRequestOverrides(existing, { timeoutMs: 50 })[0]).toEqual(
+        {
+          name: "promo",
+          fragment: "promotion-banner",
+          props: { a: 1 },
+          timeoutMs: 50,
+        },
+      );
+    });
+  });
+
+  describe("toSlotDiagnostic / collectSlotDiagnostics", () => {
+    it("projects the diagnostic slice of a slot result (required defaults to false)", () => {
+      const result = makeSlotResult({
+        name: "promo",
+        source: "fallback",
+        status: "fallback",
+      });
+      expect(toSlotDiagnostic(result)).toEqual({
+        source: "fallback",
+        strategy: "dynamic-ssr",
+        status: "fallback",
+        required: false,
+      });
+      const required = makeSlotResult({
+        name: "summary",
+        slot: { name: "summary", fragment: "summary", required: true },
+      });
+      expect(toSlotDiagnostic(required).required).toBe(true);
+    });
+
+    it("assembles the per-slot diagnostics map keyed by slot name", () => {
+      const slots = {
+        promo: makeSlotResult({ name: "promo" }),
+        summary: makeSlotResult({ name: "summary", source: "cache" }),
+      };
+      expect(collectSlotDiagnostics(slots)).toEqual({
+        promo: toSlotDiagnostic(slots.promo),
+        summary: toSlotDiagnostic(slots.summary),
+      });
+    });
+
+    it("supports a page-specific projection (page-product's two-field diagnostics)", () => {
+      const slots = { promo: makeSlotResult({ name: "promo" }) };
+      const diagnostics = collectSlotDiagnostics(slots, (result) => ({
+        source: result.source,
+        strategy: result.strategy,
+      }));
+      expect(diagnostics).toEqual({
+        promo: { source: "network", strategy: "dynamic-ssr" },
+      });
+    });
+  });
+
+  describe("resolveFragmentStream", () => {
+    it("awaits every slot promise into the resolved-HTML map plus the aggregate and execution", async () => {
+      const promoResult = makeSlotResult({ name: "promo" });
+      const execution: FragmentSlotsExecution = {
+        slots: { promo: promoResult },
+        data: {},
+        health: "ok",
+        hints: [],
+      };
+      const aggregate = { traceLog: "trace" };
+      const resolved = await resolveFragmentStream({
+        slotPromises: { promo: Promise.resolve(promoResult.response) },
+        execution: Promise.resolve(execution),
+        aggregate: Promise.resolve(aggregate),
+      });
+      expect(resolved.html).toEqual({ promo: "<section>promo live</section>" });
+      // The aggregate passes through with its page-specific type intact.
+      expect(resolved.aggregate).toBe(aggregate);
+      expect(resolved.execution).toBe(execution);
+    });
   });
 });

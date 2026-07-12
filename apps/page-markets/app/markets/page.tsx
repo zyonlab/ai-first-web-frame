@@ -111,7 +111,7 @@ export default async function MarketsPage() {
         </div>
 
         {/*
-          `stream.slots` is `Record<string, Promise<FragmentRenderResponse>>`
+          `stream.slotPromises` is `Record<string, Promise<FragmentRenderResponse>>`
           (@mvp/runtime's own generic shape — see fragmentSlots.ts). Dot access
           below still type-checks (this repo's tsconfig does not set
           `noPropertyAccessFromIndexSignature`) and is what biome's
@@ -128,7 +128,7 @@ export default async function MarketsPage() {
         <div data-area="markets-table" data-slot="marketsTable">
           <Suspense fallback={MARKETS_TABLE_FALLBACK}>
             <FragmentSlotStream
-              slotPromise={stream.slots.marketsTable}
+              slotPromise={stream.slotPromises.marketsTable}
               fallback={MARKETS_TABLE_FALLBACK}
             />
           </Suspense>
