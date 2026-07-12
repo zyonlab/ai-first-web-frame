@@ -1,6 +1,7 @@
 import type { DataDependency, RequestContext } from "@mvp/contracts";
 import { createRequestTrace } from "@mvp/observability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import {
   type CacheAdapter,
   createDataClient,
@@ -193,6 +194,55 @@ describe("@mvp/data", () => {
     await expect(
       createDataClient({ ctx, sources: [source] }).readData("local"),
     ).rejects.toThrow("client-local data cannot be read during SSR");
+  });
+
+  it("returns loader data unchanged when responseSchema accepts the payload", async () => {
+    const source = defineDataSource({
+      id: "product",
+      dependency: productDependency,
+      responseSchema: z
+        .object({ sku: z.string(), price: z.number() })
+        .describe("ProductPayloadSchema"),
+      load: async () => ({ sku: "sku-1", price: 10 }),
+    });
+    const client = createDataClient({ ctx, sources: [source] });
+    const result = await client.readData("product");
+    expect(result.data).toEqual({ sku: "sku-1", price: 10 });
+    expect(result.source).toBe("loader");
+  });
+
+  it("throws DataDependencyError naming the responseSchema on a mismatched payload", async () => {
+    const source = defineDataSource({
+      id: "product",
+      dependency: productDependency,
+      responseSchema: z
+        .object({ sku: z.string(), price: z.number() })
+        .describe("ProductPayloadSchema"),
+      // Upstream shape drift: price became a string.
+      load: async () => ({ sku: "sku-1", price: "10" }) as never,
+    });
+    const client = createDataClient({ ctx, sources: [source] });
+    await expect(client.readData("product")).rejects.toThrow(
+      DataDependencyError,
+    );
+    await expect(client.readData("product")).rejects.toThrow(
+      /"product" response violates ProductPayloadSchema — price:/,
+    );
+  });
+
+  it("never caches a payload rejected by responseSchema", async () => {
+    const cache = new Map<string, DataCacheEntry>();
+    const source = defineDataSource({
+      id: "product",
+      dependency: productDependency,
+      responseSchema: z.object({ sku: z.string() }).describe("ProductSchema"),
+      load: async () => ({ sku: 7 }) as never,
+    });
+    const client = createDataClient({ ctx, sources: [source], cache });
+    await expect(client.readData("product")).rejects.toThrow(
+      DataDependencyError,
+    );
+    expect(cache.size).toBe(0);
   });
 
   it("creates stable partitioned data keys", () => {

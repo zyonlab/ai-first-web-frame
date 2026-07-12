@@ -34,6 +34,7 @@ import {
   defineDataSource,
   type SubscriptionTransport,
 } from "@mvp/data";
+import { z } from "zod";
 import {
   normalizeInterval,
   normalizeSymbol,
@@ -85,13 +86,25 @@ export type LeverageTier = {
 /** Static leverage tiers payload. */
 export type LeverageTiers = { symbol: string; tiers: LeverageTier[] };
 
+/**
+ * Payload contract for the `account` source — the reference adoption of
+ * `@mvp/data`'s opt-in `DataSource.responseSchema` hook. The shape is stable
+ * (plain margin numbers), so every `readData("account")` now proves its
+ * payload against this schema and an upstream drift throws a
+ * `DataDependencyError` naming `AccountMarginSchema` instead of rendering
+ * typed-but-wrong HTML.
+ */
+export const AccountMarginSchema = z
+  .object({
+    equity: z.number(),
+    used: z.number(),
+    free: z.number(),
+    maintenance: z.number(),
+  })
+  .describe("AccountMarginSchema");
+
 /** Request-time account margin payload. */
-export type AccountMargin = {
-  equity: number;
-  used: number;
-  free: number;
-  maintenance: number;
-};
+export type AccountMargin = z.infer<typeof AccountMarginSchema>;
 
 /** Request-time balances payload. */
 export type Balances = {
@@ -552,6 +565,8 @@ export function accountSource(): DataSource<AccountMargin> {
     dependency: requestTimeDep(sourceIds.account, "fragment", [
       "account:{user}",
     ]),
+    // Reference `responseSchema` adoption — see {@link AccountMarginSchema}.
+    responseSchema: AccountMarginSchema,
     load: () => accountMargin(),
   });
 }

@@ -19,17 +19,29 @@ stamps every request with the current `RequestContext` as headers (via
   `{ ctx: RequestContext, policy: RequestPolicy, fetchImpl?: typeof fetch, trace?: RequestTrace }`.
   Build one client per request (it captures `ctx`) and reuse `requestJson` for
   every call in that request's lifecycle.
-- `requestJson<T>(endpointId: string, options?: RequestJsonOptions): Promise<RequestResult<T>>`
-  — the only call surface. `RequestJsonOptions` is
-  `{ path?, method?: "GET"|"POST"|"PUT"|"PATCH"|"DELETE", body?, headers?, timeoutMs?, retries? }`.
+- `requestJson<T>(endpointId: string, options?: RequestJsonOptions<T>): Promise<RequestResult<T>>`
+  — the only call surface. `RequestJsonOptions<T>` is
+  `{ path?, method?: "GET"|"POST"|"PUT"|"PATCH"|"DELETE", body?, headers?, timeoutMs?, retries?, responseSchema? }`.
   Returns `{ data: T, endpoint: ApiEndpointPolicy, url: string, attempts: number, durationMs: number }`.
   `endpointId` must match an `id` in `policy.endpoints`; per-call `timeoutMs`/
   `retries` override the endpoint's and are still capped by
   `policy.maxRetries`.
+- `responseSchema?: ResponseSchema<T>` (inside `RequestJsonOptions<T>`) —
+  opt-in response payload validation. `ResponseSchema<T>` is a minimal
+  structural type (`safeParse` + optional `description`) that any Zod schema
+  satisfies without this package depending on Zod. When present, the JSON body
+  is `safeParse`d and the *parsed* value is returned (so Zod stripping/
+  defaults/transforms apply); a mismatch throws `RequestContractError`. When
+  absent, behavior is unchanged (the body is cast to `T`). Deliberately a
+  per-call option, NOT part of `ApiEndpointPolicy`: policies are serializable
+  contracts, runtime schemas are code.
 - `RequestPolicyError` (class extends `Error`, `name === "RequestPolicyError"`)
   — see error taxonomy.
 - `RequestTimeoutError` (class extends `Error`, `name === "RequestTimeoutError"`)
   — see error taxonomy.
+- `RequestContractError` (class extends `Error`,
+  `name === "RequestContractError"`, fields `endpointId`/`url`/`schemaName`/
+  `issues: ResponseSchemaIssue[]`) — see error taxonomy.
 
 ## Error taxonomy
 
@@ -46,6 +58,14 @@ stamps every request with the current `RequestContext` as headers (via
   DOMException case too, so callers only ever see `RequestTimeoutError` for
   timeouts, never a raw `AbortError`. Subject to the endpoint's retry budget
   like any other failure.
+- **`RequestContractError`** — thrown when `options.responseSchema` is set and
+  the JSON body fails `safeParse` (`response from endpoint "<id>" (<url>)
+  violates <schemaName> — <path>: <message>`). `schemaName` comes from the
+  schema's `description` (Zod's `.describe(...)`), falling back to
+  `responseSchema`; the structured `issues` ride on the error. **Never
+  retried** — shape drift is deterministic, so a violation exhausts the retry
+  budget immediately even when `retries > 0`. Only possible when the caller
+  opted in; without `responseSchema` the body is cast, never parsed.
 - **Generic `Error`** — any non-2xx HTTP response (`request status <code>`) or
   network-level fetch rejection; retried up to `min(options.retries ??
   endpoint.retries ?? 0, policy.maxRetries)` times, then the last error is
@@ -59,9 +79,10 @@ behavior (like `@mvp/runtime`) must catch at the call site.
 ## Example
 
 ```ts no-run
-import { createRequestClient, RequestPolicyError, RequestTimeoutError } from "@mvp/request";
+import { createRequestClient, RequestContractError, RequestPolicyError, RequestTimeoutError } from "@mvp/request";
 import { createRequestContext } from "@mvp/request-context";
 import type { RequestPolicy } from "@mvp/contracts";
+import { z } from "zod";
 
 const policy: RequestPolicy = {
   endpoints: [
@@ -81,8 +102,13 @@ const policy: RequestPolicy = {
 const client = createRequestClient({ ctx: createRequestContext(), policy });
 
 try {
-  const { data } = await client.requestJson<{ price: number }>("pricing-api", {
+  const { data } = await client.requestJson("pricing-api", {
     path: "/v1/quote?symbol=BTC-USD",
+    // Opt-in payload validation: the parsed body is returned; a shape drift
+    // throws RequestContractError (never retried) instead of flowing
+    // typed-but-wrong into rendering. Omit responseSchema for the legacy
+    // cast-to-T behavior.
+    responseSchema: z.object({ price: z.number() }).describe("QuoteSchema"),
   });
   console.log(data.price);
 } catch (error) {
@@ -90,6 +116,8 @@ try {
     console.error("pricing-api timed out");
   } else if (error instanceof RequestPolicyError) {
     console.error("misconfigured request:", error.message);
+  } else if (error instanceof RequestContractError) {
+    console.error(`upstream drift: ${error.schemaName}`, error.issues);
   } else {
     throw error;
   }
@@ -103,4 +131,6 @@ pnpm --filter @mvp/request test
 ```
 Expected: Vitest exits 0. `packages/request/src/index.test.ts` exercises the
 policy-rejection paths (`RequestPolicyError`), the timeout path
-(`RequestTimeoutError`), and the retry/backoff counting in `RequestResult.attempts`.
+(`RequestTimeoutError`), the opt-in `responseSchema` paths
+(`RequestContractError` naming the schema, contract violations never retried),
+and the retry/backoff counting in `RequestResult.attempts`.
