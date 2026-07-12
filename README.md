@@ -91,7 +91,7 @@ The home and product demos render a `Request trace` section showing one request'
 
 ## Quality Gates
 
-`pnpm verify` runs 13 gates (see `scripts/verify.mts`): typecheck, lint, format check, `verify:manifest-gen` (page manifest codegen sync), `docs:test` (executes every AGENT.md fenced TypeScript snippet), unit tests, build, and six audits (similarity, bundle, CSS, dependency, optimizer, server/client boundary). Reports are written to `reports/`.
+`pnpm verify` runs 14 gates (see `scripts/verify.mts`): typecheck, lint, format check, `verify:manifest-gen` (page manifest codegen sync), `verify:demos` (docs/DEMOS.md generated capability table in sync with each page manifest's `demonstrates`), `docs:test` (executes every AGENT.md fenced TypeScript snippet), unit tests, build, and six audits (similarity, bundle, CSS, dependency, optimizer, server/client boundary). Reports are written to `reports/`.
 
 ## Known Limitations
 
