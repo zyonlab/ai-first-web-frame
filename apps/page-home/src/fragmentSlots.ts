@@ -7,11 +7,14 @@ import { createRequestTrace } from "@mvp/observability";
 import { fragmentRegistry } from "@mvp/registry";
 import { createRequestContext } from "@mvp/request-context";
 import {
-  type FragmentRenderResponse,
+  applySlotRequestOverrides,
+  collectSlotDiagnostics,
   type FragmentSlotDefinition,
-  type FragmentSlotResult,
+  type FragmentSlotDiagnostic,
   type FragmentSlotsExecution,
+  type PageFragmentStream,
   type PageHealth,
+  resolveFragmentStream,
   type SchedulerHint,
   streamFragmentSlots,
 } from "@mvp/runtime";
@@ -19,13 +22,7 @@ import { fragmentSlots as generatedHomeSlots } from "./fragmentSlots.gen";
 
 const FEATURED_CONTENT_ID = "home-featured-content";
 
-export type HomeSlotDiagnostic = Pick<
-  FragmentSlotResult,
-  "source" | "strategy"
-> & {
-  status: FragmentSlotResult["status"];
-  required: boolean;
-};
+export type HomeSlotDiagnostic = FragmentSlotDiagnostic;
 
 /**
  * The diagnostics/scheduler-health/trace-log slice of the page — everything
@@ -85,13 +82,7 @@ export type HomeFragmentHtml = {
  * human-judgment JSX placement (A1's explicit carve-out) — not something
  * codegen can or should decide.
  */
-export type HomeFragmentStream = {
-  slotPromises: Record<string, Promise<FragmentRenderResponse>>;
-  /** Raw scheduler aggregate (`@mvp/runtime` shape); settles last. */
-  execution: Promise<FragmentSlotsExecution>;
-  /** Page-shaped diagnostics/dataDiagnostics/scheduler/traceLog, derived from `execution`. */
-  aggregate: Promise<HomeFragmentAggregate>;
-};
+export type HomeFragmentStream = PageFragmentStream<HomeFragmentAggregate>;
 
 type FetchFragmentSlotsOptions = {
   headers?: Headers;
@@ -114,9 +105,7 @@ type FetchFragmentSlotsOptions = {
 export function buildHomeSlotDefinitions(
   timeoutMs = 200,
 ): FragmentSlotDefinition[] {
-  return generatedHomeSlots.map((slot) =>
-    slot.strategy === "static" ? slot : { ...slot, timeoutMs },
-  );
+  return applySlotRequestOverrides(generatedHomeSlots, { timeoutMs });
 }
 
 /**
@@ -205,20 +194,11 @@ export function streamHomeFragmentSlots({
     const featuredTitle =
       featuredReads.first?.data.title ??
       (ctx.locale.startsWith("zh") ? "精选内容" : "Featured content");
-    // Generic per-slot diagnostics: every slot's result carries everything
-    // `toDiagnostic` needs (source/strategy/status/required), and the map
-    // key IS the slot's name, so there is no genuine reason to hand-list slot
-    // names here — iterate `execution.slots` (already `Record<string,
-    // FragmentSlotResult>`, see `packages/runtime/src/index.ts`) instead of
-    // repeating the 3 current names.
-    const diagnostics: Record<string, HomeSlotDiagnostic> = Object.fromEntries(
-      Object.entries(execution.slots).map(([name, result]) => [
-        name,
-        toDiagnostic(result),
-      ]),
-    );
     return {
-      diagnostics,
+      // Generic per-slot diagnostics (`@mvp/runtime`'s
+      // `collectSlotDiagnostics`): the map key IS the slot's name, so no
+      // slot names are hand-listed here.
+      diagnostics: collectSlotDiagnostics(execution.slots),
       dataDiagnostics: {
         featuredContent: {
           firstRead: featuredReads.first?.source ?? "loader",
@@ -254,36 +234,8 @@ export function streamHomeFragmentSlots({
 export async function fetchHomeFragmentSlots(
   options: FetchFragmentSlotsOptions = {},
 ): Promise<HomeFragmentHtml> {
-  const stream = streamHomeFragmentSlots(options);
-  // Resolve every slot's promise generically (whatever names
-  // `stream.slotPromises` currently has) instead of destructuring three named
-  // fields — the "final returned HTML-string map" the A1 refactor targets.
-  const [htmlEntries, aggregate, execution] = await Promise.all([
-    Promise.all(
-      Object.entries(stream.slotPromises).map(async ([name, slotPromise]) => {
-        const response = await slotPromise;
-        return [name, response.html] as const;
-      }),
-    ),
-    stream.aggregate,
-    stream.execution,
-  ]);
-
-  return {
-    html: Object.fromEntries(htmlEntries),
-    diagnostics: aggregate.diagnostics,
-    dataDiagnostics: aggregate.dataDiagnostics,
-    scheduler: aggregate.scheduler,
-    traceLog: aggregate.traceLog,
-    execution,
-  };
-}
-
-function toDiagnostic(result: FragmentSlotResult): HomeSlotDiagnostic {
-  return {
-    source: result.source,
-    strategy: result.strategy,
-    status: result.status,
-    required: result.slot.required ?? false,
-  };
+  const { html, aggregate, execution } = await resolveFragmentStream(
+    streamHomeFragmentSlots(options),
+  );
+  return { html, ...aggregate, execution };
 }
