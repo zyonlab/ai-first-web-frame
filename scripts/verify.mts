@@ -8,6 +8,11 @@ const commands = [
   // Refactor plan §3.4/§3.2: fails the same way a lint error would when a
   // page's `fragmentSlots.gen.ts` has drifted from `manifest.slots.json`.
   { cmd: "pnpm", args: ["verify:manifest-gen"], timeoutMs: 60_000 },
+  // Refactor plan §6: docs/DEMOS.md's generated `demonstrates` block must
+  // match every page manifest's `demonstrates` array — a hand-maintained
+  // capability index already went stale once, so drift fails CI like a
+  // lint error would (`scripts/verify-demos.mts --check`).
+  { cmd: "pnpm", args: ["verify:demos"], timeoutMs: 60_000 },
   // Refactor plan §7: every AGENT.md fenced TypeScript snippet is executed
   // for real (not just typechecked), so a doc example that drifted from the
   // real exports fails the gate the same way a broken test would.
