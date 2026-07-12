@@ -1,4 +1,5 @@
 import type { InteractionContract } from "@mvp/contracts";
+import type { InteractionBus } from "@mvp/interaction";
 
 /**
  * Trade-demo cross-component store slices (spine §7, data doc 03 §5).
@@ -136,7 +137,7 @@ const leverageSchema = {
  * publishes a *price* only on the dedicated `trade.order-draft.price` channel;
  * the order-form is the sole writer of the full `trade.order-draft`.
  */
-export const tradeSliceContracts: InteractionContract[] = [
+export const tradeSliceContracts = [
   {
     channel: TRADE_ACTIVE_SYMBOL,
     publisher: "symbol-switcher",
@@ -187,7 +188,17 @@ export const tradeSliceContracts: InteractionContract[] = [
     subscribers: ["account-bar", "order-form"],
     payloadSchema: leverageSchema,
   },
-];
+  // M4 typed channels: `satisfies` (instead of a widening `InteractionContract[]`
+  // annotation) keeps each contract's `channel` at its literal type, so
+  // `createInteractionBus({ contracts: tradeSliceContracts })` infers
+  // `InteractionBus<TradeChannel>` and a typo'd channel fails at compile time.
+] satisfies ReadonlyArray<InteractionContract>;
+
+/** The frozen union of trade channel ids (slice keys === bus channels). */
+export type TradeChannel = (typeof tradeSliceContracts)[number]["channel"];
+
+/** An interaction bus narrowed to the trade channel union (M4). */
+export type TradeBus = InteractionBus<TradeChannel>;
 
 // --- TradeSlices type + initial values --------------------------------------
 
@@ -240,13 +251,14 @@ export const initialTradeSlices: TradeSlices = {
  * uses a single owner identity by construction (see `@mvp/store`'s
  * `createSliceStore`).
  */
-export const tradeStoreContracts: InteractionContract[] =
-  tradeSliceContracts.map((contract) => ({
-    channel: contract.channel,
-    publisher: TRADE_STORE_OWNER,
-    subscribers: [TRADE_STORE_OWNER],
-    payloadSchema: contract.payloadSchema,
-  }));
+export const tradeStoreContracts: ReadonlyArray<
+  InteractionContract & { channel: TradeChannel }
+> = tradeSliceContracts.map((contract) => ({
+  channel: contract.channel,
+  publisher: TRADE_STORE_OWNER,
+  subscribers: [TRADE_STORE_OWNER],
+  payloadSchema: contract.payloadSchema,
+}));
 
 /** Type guard: valid chart interval. */
 export function isChartInterval(value: unknown): value is ChartInterval {
