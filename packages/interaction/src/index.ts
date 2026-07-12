@@ -38,33 +38,53 @@ export type InteractionHandler = (
   meta: { channel: string; owner: string },
 ) => void | Promise<void>;
 
-export type InteractionBusOptions = {
-  contracts: InteractionContract[];
+/**
+ * `C` is the union of channel names this bus knows about (M4 typed channels).
+ * It is inferred from the literal `channel` types of the contracts passed to
+ * {@link createInteractionBus}; contracts typed as plain `InteractionContract[]`
+ * widen `channel` to `string`, so `C` defaults to `string` and every untyped
+ * call site keeps compiling unchanged.
+ */
+export type InteractionBusOptions<C extends string = string> = {
+  contracts: ReadonlyArray<InteractionContract & { channel: C }>;
   /** Optional trace hook invoked once per successful publish. */
   onEvent?: (event: InteractionBusEvent) => void;
   /** Injectable clock, used to measure publish duration. */
   now?: () => number;
 };
 
-export type InteractionBus = {
-  publish: (
-    channel: string,
+/**
+ * The bus surface, generic over its declared channel union `C` (default
+ * `string`, so `InteractionBus` written without a type argument is exactly the
+ * pre-M4 shape). When `C` is a literal union (contracts declared with `const`
+ * channel ids + `satisfies`), publishing/subscribing/looking up a typo'd
+ * channel fails at COMPILE time instead of only at runtime.
+ *
+ * Members are declared with method syntax deliberately: methods are checked
+ * bivariantly, so a channel-narrowed `InteractionBus<"a" | "b">` remains
+ * assignable wherever a plain `InteractionBus` is expected (island `bus`
+ * props, bridges) and vice versa — the narrowing is a call-site check, not an
+ * assignability wall.
+ */
+export type InteractionBus<C extends string = string> = {
+  publish(
+    channel: C,
     payload: unknown,
     options: { owner: string },
-  ) => Promise<{ subscriberCount: number }>;
-  subscribe: (
-    channel: string,
+  ): Promise<{ subscriberCount: number }>;
+  subscribe(
+    channel: C,
     handler: InteractionHandler,
     options: { subscriber: string },
-  ) => () => void;
+  ): () => void;
   /**
    * Infrastructure-level observer (bridges, devtools). Taps fire synchronously
    * for every published message and bypass subscriber declarations; they are
    * not a substitute for `subscribe`.
    */
-  tap: (listener: (message: InteractionMessage) => void) => () => void;
-  listChannels: () => string[];
-  getContract: (channel: string) => InteractionContract | undefined;
+  tap(listener: (message: InteractionMessage) => void): () => void;
+  listChannels(): C[];
+  getContract(channel: C): InteractionContract | undefined;
 };
 
 type ZodLikeSchema = {
@@ -194,28 +214,35 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * Every channel must be declared up front. Publishing requires the declared
  * publisher identity, subscribing requires a declared subscriber identity,
  * and payloads are validated against the contract payload schema.
+ *
+ * M4 typed channels: `C` is inferred from the contracts' literal `channel`
+ * types. Declare contracts with `const` channel ids and
+ * `satisfies ReadonlyArray<InteractionContract>` (NOT a widening
+ * `InteractionContract[]` annotation) and the returned `InteractionBus<C>`
+ * rejects `publish`/`subscribe`/`getContract` on any channel outside the
+ * declared union at compile time. Runtime behavior is unchanged either way.
  */
-export function createInteractionBus({
+export function createInteractionBus<C extends string = string>({
   contracts,
   onEvent,
   now = Date.now,
-}: InteractionBusOptions): InteractionBus {
-  const contractMap = new Map<string, InteractionContract>();
+}: InteractionBusOptions<C>): InteractionBus<C> {
+  const contractMap = new Map<C, InteractionContract>();
   for (const raw of contracts) {
     const contract = InteractionContractSchema.parse(raw);
-    if (contractMap.has(contract.channel)) {
+    if (contractMap.has(contract.channel as C)) {
       throw new InteractionContractError(
         `duplicate interaction contract for channel "${contract.channel}"`,
       );
     }
-    contractMap.set(contract.channel, contract);
+    contractMap.set(contract.channel as C, contract);
   }
 
   const subscriptions = new Map<string, Set<InteractionHandler>>();
   const taps = new Set<(message: InteractionMessage) => void>();
 
   function requireContract(channel: string): InteractionContract {
-    const contract = contractMap.get(channel);
+    const contract = contractMap.get(channel as C);
     if (!contract) {
       throw new InteractionContractError(
         `channel "${channel}" has no declared interaction contract`,
@@ -370,9 +397,9 @@ export type BroadcastChannelLike = {
   close: () => void;
 };
 
-export type BroadcastBridgeOptions = {
+export type BroadcastBridgeOptions<C extends string = string> = {
   /** Channels to bridge. Defaults to every channel declared on the bus. */
-  channels?: string[];
+  channels?: ReadonlyArray<C>;
   /**
    * Creates the transport for one channel. Defaults to the global
    * `BroadcastChannel` constructor; when neither is available the bridge
@@ -425,9 +452,11 @@ function defaultChannelFactory():
  * (echo prevention). Remote messages that fail contract validation are
  * dropped silently.
  */
-export function createBroadcastBridge(
-  bus: InteractionBus,
-  options: BroadcastBridgeOptions = {},
+export function createBroadcastBridge<C extends string = string>(
+  bus: InteractionBus<C>,
+  // NoInfer: the channel union comes from the bus alone, so a typo'd entry in
+  // `options.channels` is a compile error instead of widening the inference.
+  options: BroadcastBridgeOptions<NoInfer<C>> = {},
 ): BroadcastBridge {
   const channels = options.channels ?? bus.listChannels();
   for (const channel of channels) {
@@ -457,8 +486,11 @@ export function createBroadcastBridge(
       receiving = true;
       try {
         // Contract violations from remote contexts are dropped, not thrown.
+        // `data.channel` arrives as a bare string off the wire; the guard
+        // above pinned it to this port's (declared) channel, so the cast to
+        // the bus's channel union is safe.
         void bus
-          .publish(data.channel, data.payload, { owner: data.owner })
+          .publish(data.channel as C, data.payload, { owner: data.owner })
           .catch(() => undefined);
       } finally {
         receiving = false;
