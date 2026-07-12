@@ -21,9 +21,9 @@ Status: pass
 | page | page-home | jsBytes | 127745 | 180000 | pass | Next first-load JS (.next manifests), gzipped bytes |
 | page | page-markets | jsBytes | 102532 | 180000 | pass | Next first-load JS (.next manifests), gzipped bytes |
 | page | page-portfolio | jsBytes | 102532 | 180000 | pass | Next first-load JS (.next manifests), gzipped bytes |
-| page | page-product | jsBytes | 108008 | 180000 | pass | Next first-load JS (.next manifests), gzipped bytes |
+| page | page-product | jsBytes | 108007 | 180000 | pass | Next first-load JS (.next manifests), gzipped bytes |
 | page | page-referrals | jsBytes | 102532 | 110000 | pass | Next first-load JS (.next manifests), gzipped bytes |
-| page | page-trade | jsBytes | 202106 | 220000 | pass | Next first-load JS (.next manifests), gzipped bytes |
+| page | page-trade | jsBytes | 202098 | 220000 | pass | Next first-load JS (.next manifests), gzipped bytes |
 | page | page-vaults | jsBytes | 102532 | 110000 | pass | Next first-load JS (.next manifests), gzipped bytes |
 
 ## Not measured by this audit

@@ -33,6 +33,7 @@
     "promote:fragment": "tsx scripts/promote-fragment.mts",
     "rollback:fragment": "tsx scripts/rollback-fragment.mts",
     "verify:manifest-gen": "tsx scripts/verify-manifest-gen.mts",
+    "verify:demos": "tsx scripts/verify-demos.mts --check",
     "docs:test": "tsx scripts/docs-test.mts",
     "audit:similarity": "pnpm --filter @mvp/component-similarity-check start -- --ci",
     "audit:bundle": "pnpm --filter @mvp/bundle-budget-check start -- --ci",

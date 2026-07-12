@@ -155,7 +155,7 @@ Verdict logic is pure and unit-tested in `tools/runtime-gate/src/checks.ts`
 `pnpm verify:runtime [--url http://localhost:4100/trade/BTC] [--json]` —
 requires the target stack to be up.
 
-### 3.3 `pnpm verify` — the 13-gate list (`scripts/verify.mts`)
+### 3.3 `pnpm verify` — the 14-gate list (`scripts/verify.mts`)
 
 Exit 0 only if all pass; report written to `reports/verify-report.json`
 (envelope in [OPERATIONS.md](./OPERATIONS.md) §5).
@@ -165,12 +165,12 @@ Exit 0 only if all pass; report written to `reports/verify-report.json`
 | 1 | `pnpm typecheck` | tsgo, per-project tsconfigs |
 | 2 | `pnpm lint` | oxlint |
 | 3 | `pnpm check` | biome format/lint |
-| 4 | `pnpm verify:manifest-gen` | every page's `fragmentSlots.gen.ts` in sync with `manifest.slots.json` (`mount-slot --check` for all pages) — manifest↔runtime drift is structurally blocked |
-| 5 | `pnpm docs:test` | every `AGENT.md` fenced TypeScript snippet is **executed** (not just typechecked) — doc drift fails like a broken test |
-| 6 | `pnpm test` | all Vitest suites (incl. each page's `tests/manifestSync.test.ts` belt-and-suspenders drift check) |
-| 7 | `pnpm build` | tsdown / next build for every package |
-| 8 | `pnpm audit:similarity` | no near-duplicate components |
-| 9 | `pnpm audit:bundle` | JS budgets (`budget.ts` per unit) — hard gate |
+| 4 | `pnpm verify:manifest-gen` | every page with a non-empty `manifest.slots.json` has a fresh `fragmentSlots.gen.ts` (`mount-slot --check`; a missing gen file fails too — discovery is by `manifest.slots.json`, so deleting a gen file cannot drop a page out of the gate; slotless pages with an empty slots array are exempt-and-reported) — manifest↔runtime drift is structurally blocked |
+| 5 | `pnpm verify:demos` | `docs/DEMOS.md`'s generated capability table in sync with every page manifest's `demonstrates` array (`scripts/verify-demos.mts --check`; regenerate with `--write`) |
+| 6 | `pnpm docs:test` | every `AGENT.md` fenced TypeScript snippet is **executed** (not just typechecked) — doc drift fails like a broken test |
+| 7 | `pnpm test` | all Vitest suites (incl. each page's `tests/manifestSync.test.ts` belt-and-suspenders drift check) |
+| 8 | `pnpm build` | tsdown / next build for every package |
+| 9 | `pnpm audit:similarity` | no near-duplicate components |
 | 10 | `pnpm audit:css` | CSS budgets — hard gate |
 | 11 | `pnpm audit:deps` | dependency rules: no bare `fetch`, layering (`domain-code-in-framework-package`), orphan-bus (`island-bus-without-escape-hatch` — see [INTERACTION.md](./INTERACTION.md) §5) |
 | 12 | `pnpm audit:optimizer` | optimizer conformance |
