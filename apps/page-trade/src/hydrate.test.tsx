@@ -14,7 +14,7 @@ import {
   tradeStoreContracts,
 } from "@mvp/trade-contracts";
 import { act } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   attachOrderbookPriceBridge,
   hydrateTrade,
@@ -224,6 +224,59 @@ describe("attachOrderbookPriceBridge", () => {
     attachOrderbookPriceBridge(store, root);
     stray.dispatchEvent(new Event("click", { bubbles: true }));
     expect(priceUpdates).toEqual([]);
+  });
+});
+
+describe("hydrateTrade — order-form M3 propsSchema handshake", () => {
+  it("skips hydration when the live snapshot violates OrderFormIslandPropsSchema", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const store = makeStore();
+
+    // Same envelope shape as buildOrderFormNode(), but `draft.side` is not
+    // one of the declared enum values — a schema-valid IslandSnapshot (A2
+    // passes) whose props still violate the fragment's own propsSchema.
+    const orderFormNode = document.createElement("div");
+    orderFormNode.setAttribute("data-island", "orderForm");
+    const script = document.createElement("script");
+    script.setAttribute("type", "application/json");
+    script.setAttribute("data-island-props", "orderForm");
+    script.textContent = JSON.stringify({
+      props: {
+        symbol: "BTC",
+        draft: {
+          side: "long", // invalid: schema only allows "buy" | "sell"
+          type: "market",
+          size: 1,
+          leverage: 1,
+          reduceOnly: false,
+        },
+        account: { equity: 12480.2, used: 4200, free: 8110, maintenance: 300 },
+      },
+      slice: TRADE_ORDER_DRAFT,
+    });
+    orderFormNode.appendChild(script);
+    const ssrHtmlBefore = orderFormNode.innerHTML;
+
+    const root = document.createElement("div");
+    root.setAttribute("data-page", "trade");
+    root.appendChild(orderFormNode);
+    document.body.appendChild(root);
+
+    let handles: ReturnType<typeof hydrateTrade> | undefined;
+    await act(async () => {
+      handles = hydrateTrade(root, store);
+    });
+
+    // No React content was ever rendered into the node; SSR HTML untouched.
+    expect(orderFormNode.querySelector("[data-of-form]")).toBeNull();
+    expect(orderFormNode.innerHTML).toBe(ssrHtmlBefore);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("OrderFormIslandPropsSchema"),
+      expect.objectContaining({ island: "orderForm", reason: "invalid-props" }),
+    );
+
+    await act(async () => handles?.teardown());
+    warnSpy.mockRestore();
   });
 });
 

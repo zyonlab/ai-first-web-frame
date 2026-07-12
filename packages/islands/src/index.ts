@@ -75,18 +75,57 @@ export type IslandComponent<TProps = Record<string, unknown>> = ComponentType<
   TProps & { slice?: string }
 >;
 
+/** One validation failure reported by an {@link IslandPropsSchema}. */
+export type IslandPropsSchemaIssue = {
+  path: Array<string | number>;
+  message: string;
+};
+
+/**
+ * Minimal structural contract for an opt-in island props schema (M3: the
+ * A2/C2 handshake validates the snapshot ENVELOPE — `props` is
+ * `z.record(z.unknown())` in `IslandSnapshotSchema`, so `{"props":{"symbol":42}}`
+ * from a same-version fragment hydrated and NaN-rendered silently). Any Zod
+ * schema satisfies this shape (`safeParse` + the `.describe(...)` name), but
+ * `@mvp/islands` itself does not depend on Zod directly — mirroring
+ * `@mvp/request`'s `ResponseSchema<T>` (PR #44) and `@mvp/interaction`'s
+ * zod-like `payloadSchema` carriers. (`@mvp/islands` already ships Zod
+ * transitively via `@mvp/contracts`'s `IslandSnapshotSchema`, so this isn't a
+ * new runtime dependency — just a narrower structural type than importing
+ * `ZodType` directly.)
+ */
+export type IslandPropsSchema<TProps> = {
+  safeParse: (
+    value: unknown,
+  ) =>
+    | { success: true; data: TProps }
+    | { success: false; error: { issues: IslandPropsSchemaIssue[] } };
+  /** Used to name the schema in the `console.warn`/mismatch-hook message. */
+  description?: string;
+};
+
 /**
  * What the page-bundled island component was built against (C2 handshake).
- * Passed as the third argument to {@link registerIsland}. Both fields are
- * optional: a caller that doesn't pass this object (or omits `expectedVersion`)
- * opts the island out of the handshake entirely — `mountIsland` then hydrates
- * unconditionally, exactly as it did before this contract existed.
+ * Passed as the third argument to {@link registerIsland}. All fields are
+ * optional: a caller that doesn't pass this object (or omits `expectedVersion`
+ * and `propsSchema`) opts the island out of the handshake entirely —
+ * `mountIsland` then hydrates unconditionally, exactly as it did before this
+ * contract existed.
  */
-export interface IslandVersionExpectation {
+export interface IslandVersionExpectation<TProps = Record<string, unknown>> {
   /** The fragment manifest `version` this island component expects. */
   expectedVersion?: string;
   /** Optional finer-grained contract hash this island component expects. */
   expectedContractHash?: string;
+  /**
+   * Opt-in prop-shape validation (M3). When present, the EFFECTIVE props
+   * `mountIsland` is about to hydrate with (`opts.props ?? snapshot.props`)
+   * are `safeParse`d after the C2 version/contract-hash check passes; a
+   * mismatch skips hydration via the same path as a version mismatch
+   * (`reason: "invalid-props"`) instead of mounting the component with a
+   * malformed prop shape. When absent, behavior is unchanged.
+   */
+  propsSchema?: IslandPropsSchema<TProps>;
 }
 
 /** Info handed to a {@link SnapshotMismatchHandler} on a C2 handshake failure. */
@@ -102,11 +141,20 @@ export interface SnapshotMismatchInfo {
    * goal "never silent fallback"): the inline snapshot JSON was unparseable
    * or failed `IslandSnapshotSchema` validation (`@mvp/contracts`) — it is
    * not a version disagreement, just a corrupted/malformed payload.
+   * `"invalid-props"` (M3) is the narrower case: the snapshot envelope
+   * itself was valid, but the EFFECTIVE props failed the island's own
+   * declared `propsSchema` (e.g. `{"symbol": 42}` — a valid envelope,
+   * wrong-typed prop).
    */
-  reason: "version-mismatch" | "contract-hash-mismatch" | "invalid-snapshot";
+  reason:
+    | "version-mismatch"
+    | "contract-hash-mismatch"
+    | "invalid-snapshot"
+    | "invalid-props";
   /**
-   * Present only when `reason` is `"invalid-snapshot"`: the JSON-parse error
-   * or Zod validation issues that failed, for telemetry/debugging.
+   * Present when `reason` is `"invalid-snapshot"` or `"invalid-props"`: the
+   * JSON-parse error or schema validation issues that failed, for
+   * telemetry/debugging.
    */
   issues?: string[];
 }
@@ -121,26 +169,27 @@ export interface SnapshotMismatchInfo {
 export type SnapshotMismatchHandler = (info: SnapshotMismatchInfo) => void;
 
 const registry = new Map<string, IslandComponent<never>>();
-const expectations = new Map<string, IslandVersionExpectation>();
+const expectations = new Map<string, IslandVersionExpectation<never>>();
 let mismatchHandler: SnapshotMismatchHandler | undefined;
 
 /**
  * Registers an island component under a stable name (its `data-island` value).
  *
- * `expectation` is the optional C2 handshake declaration: pass
+ * `expectation` is the optional C2/M3 handshake declaration: pass
  * `{ expectedVersion }` (sourced from the fragment's own manifest, e.g.
  * `marketHeaderManifest.version`) to have {@link mountIsland} verify the live
- * snapshot's `version` matches before hydrating. Omitting it (or the whole
- * third argument) keeps today's unconditional-hydrate behavior.
+ * snapshot's `version` matches before hydrating, and/or `{ propsSchema }` to
+ * have it verify the effective props' shape. Omitting the whole third
+ * argument keeps today's unconditional-hydrate behavior.
  */
 export function registerIsland<TProps>(
   name: string,
   component: IslandComponent<TProps>,
-  expectation?: IslandVersionExpectation,
+  expectation?: IslandVersionExpectation<TProps>,
 ): void {
   registry.set(name, component as IslandComponent<never>);
   if (expectation) {
-    expectations.set(name, expectation);
+    expectations.set(name, expectation as IslandVersionExpectation<never>);
   } else {
     expectations.delete(name);
   }
@@ -320,6 +369,14 @@ function detectSnapshotMismatch(
  * with empty/garbage props. A snapshot that is simply missing optional
  * fields (e.g. no `version` — an old, non-participating fragment) is NOT
  * invalid and hydrates exactly as before.
+ *
+ * M3 props validation: `IslandSnapshotSchema.props` is `z.record(z.unknown())`
+ * — structurally present but untyped — so a same-version fragment could
+ * still stamp a wrong-typed prop (`{"symbol": 42}`) and hydrate garbage
+ * silently. When the registered component declared a `propsSchema` (via
+ * `registerIsland`'s third argument), the EFFECTIVE props (`opts.props ??
+ * snapshot.props`) are checked against it after the C2 check passes; a
+ * mismatch skips hydration via the same path, `reason: "invalid-props"`.
  */
 export function mountIsland<TProps = Record<string, unknown>>(
   el: HTMLElement,
@@ -385,6 +442,36 @@ export function mountIsland<TProps = Record<string, unknown>>(
 
   const props = opts.props ?? snapshot.props;
   const slice = opts.slice ?? snapshot.slice;
+
+  // M3: the C2 handshake above validates version/contractHash; the snapshot
+  // ENVELOPE was already validated against IslandSnapshotSchema (A2) — but
+  // `props` itself is `z.record(z.unknown())` there, so a wrong-typed prop
+  // (e.g. `{"symbol": 42}`) would otherwise hydrate and render garbage
+  // silently. An island's own declared `propsSchema` closes that gap.
+  const propsSchema = expectations.get(name)?.propsSchema;
+  if (propsSchema) {
+    const result = propsSchema.safeParse(props);
+    if (!result.success) {
+      const issues = result.error.issues.map(
+        (issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`,
+      );
+      return skipHydration(
+        {
+          island: name,
+          expected: {},
+          actual: {
+            fragment: snapshot.fragment,
+            version: snapshot.version,
+            contractHash: snapshot.contractHash,
+          },
+          reason: "invalid-props",
+          issues,
+        },
+        `props for island "${name}" failed ${propsSchema.description ?? "its declared propsSchema"}: ` +
+          `${issues.join("; ")}. Skipping hydration; the SSR HTML remains the static final state.`,
+      );
+    }
+  }
 
   const root: Root = createRoot(el);
   root.render(

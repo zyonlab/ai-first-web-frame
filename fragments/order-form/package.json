@@ -5,7 +5,8 @@
   "private": true,
   "exports": {
     "./island": "./src/island.tsx",
-    "./manifest": "./src/manifest.ts"
+    "./manifest": "./src/manifest.ts",
+    "./render": "./src/render.ts"
   },
   "scripts": {
     "dev": "tsx src/server.ts",

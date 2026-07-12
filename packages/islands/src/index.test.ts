@@ -389,6 +389,169 @@ describe("A2 island snapshot schema validation", () => {
   });
 });
 
+describe("M3 island props schema validation", () => {
+  // A hand-rolled schema (not zod) proves IslandPropsSchema is a structural
+  // contract — any object with `safeParse`/`description` satisfies it,
+  // exactly like `@mvp/request`'s ResponseSchema<T> (PR #44).
+  function symbolSchema(): {
+    safeParse: (value: unknown) =>
+      | { success: true; data: { symbol: string } }
+      | {
+          success: false;
+          error: { issues: { path: string[]; message: string }[] };
+        };
+    description: string;
+  } {
+    return {
+      description: "SymbolPropsSchema",
+      safeParse(value: unknown) {
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          typeof (value as { symbol?: unknown }).symbol === "string"
+        ) {
+          return {
+            success: true,
+            data: value as { symbol: string },
+          } as const;
+        }
+        return {
+          success: false,
+          error: {
+            issues: [{ path: ["symbol"], message: "expected string" }],
+          },
+        } as const;
+      },
+    };
+  }
+
+  it("hydrates normally when props pass the declared propsSchema", () => {
+    registerIsland(
+      "orderForm",
+      (props: { symbol?: string }) =>
+        createElement("span", { "data-testid": "sym" }, props.symbol),
+      { propsSchema: symbolSchema() },
+    );
+    const el = buildMountNode("orderForm", { props: { symbol: "BTC" } });
+    document.body.appendChild(el);
+
+    act(() => {
+      mountIsland(el);
+    });
+    expect(el.querySelector("[data-testid='sym']")?.textContent).toBe("BTC");
+  });
+
+  it("skips hydration and reports reason: invalid-props on a schema-invalid prop", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onSnapshotMismatch = vi.fn<(info: SnapshotMismatchInfo) => void>();
+    configureIslandRuntime({ onSnapshotMismatch });
+    registerIsland(
+      "orderForm",
+      (props: { symbol?: string }) =>
+        createElement("span", { "data-testid": "sym" }, props.symbol),
+      { propsSchema: symbolSchema() },
+    );
+    // Valid envelope (passes IslandSnapshotSchema/A2), wrong-typed prop at
+    // the untyped JSON boundary (fails the island's OWN propsSchema): exactly
+    // the gap M3 closes.
+    const el = buildMountNode("orderForm", {
+      props: { symbol: 42 },
+      fragment: "order-form",
+      version: "0.1.0",
+    });
+    const ssrHtmlBefore = el.innerHTML;
+    document.body.appendChild(el);
+
+    let handle: { unmount(): void } | undefined;
+    act(() => {
+      handle = mountIsland(el);
+    });
+
+    // No React content was ever rendered into the node.
+    expect(el.querySelector("[data-testid='sym']")).toBeNull();
+    expect(el.innerHTML).toBe(ssrHtmlBefore);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/SymbolPropsSchema/);
+    expect(onSnapshotMismatch).toHaveBeenCalledTimes(1);
+    expect(onSnapshotMismatch.mock.calls[0]?.[0]).toEqual({
+      island: "orderForm",
+      expected: {},
+      actual: { fragment: "order-form", version: "0.1.0" },
+      reason: "invalid-props",
+      issues: ["symbol: expected string"],
+    });
+
+    // The returned handle is a safe no-op (callers never need to null-check).
+    expect(() => handle?.unmount()).not.toThrow();
+    warnSpy.mockRestore();
+  });
+
+  it("checks the EFFECTIVE props (opts.props override), not just the raw snapshot", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    registerIsland(
+      "orderForm",
+      (props: { symbol?: string }) =>
+        createElement("span", { "data-testid": "sym" }, props.symbol),
+      { propsSchema: symbolSchema() },
+    );
+    // The inline snapshot itself is schema-valid...
+    const el = buildMountNode("orderForm", { props: { symbol: "BTC" } });
+    document.body.appendChild(el);
+
+    let handle: { unmount(): void } | undefined;
+    act(() => {
+      // ...but the caller-supplied override is not.
+      handle = mountIsland(el, { props: { symbol: 42 as unknown as string } });
+    });
+
+    expect(el.querySelector("[data-testid='sym']")).toBeNull();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(() => handle?.unmount()).not.toThrow();
+    warnSpy.mockRestore();
+  });
+
+  it("runs the C2 version/contract-hash check before the propsSchema check", () => {
+    const onSnapshotMismatch = vi.fn<(info: SnapshotMismatchInfo) => void>();
+    configureIslandRuntime({ onSnapshotMismatch });
+    registerIsland("orderForm", () => createElement("span"), {
+      expectedVersion: "2.0.0",
+      propsSchema: symbolSchema(),
+    });
+    // A version mismatch AND a schema-invalid prop — the version check must
+    // win (and report its own reason), since it runs first.
+    const el = buildMountNode("orderForm", {
+      props: { symbol: 42 },
+      fragment: "order-form",
+      version: "1.0.0",
+    });
+    document.body.appendChild(el);
+
+    act(() => {
+      mountIsland(el);
+    });
+
+    expect(onSnapshotMismatch).toHaveBeenCalledTimes(1);
+    expect(onSnapshotMismatch.mock.calls[0]?.[0]?.reason).toBe(
+      "version-mismatch",
+    );
+  });
+
+  it("hydrates unconditionally when the island declares no propsSchema (backward compat)", () => {
+    // No propsSchema at all -> M3 opts the island out entirely, preserving
+    // today's behavior (a wrong-typed prop still hydrates unchecked).
+    registerIsland("orderForm", (props: { symbol?: number }) =>
+      createElement("span", { "data-testid": "sym" }, String(props.symbol)),
+    );
+    const el = buildMountNode("orderForm", { props: { symbol: 42 } });
+    document.body.appendChild(el);
+
+    act(() => {
+      mountIsland(el);
+    });
+    expect(el.querySelector("[data-testid='sym']")?.textContent).toBe("42");
+  });
+});
+
 describe("hydrateIslands", () => {
   it("mounts every data-island node under the root and returns handles", () => {
     registerIsland("a", () => createElement("i", { "data-mark": "a" }, "A"));
