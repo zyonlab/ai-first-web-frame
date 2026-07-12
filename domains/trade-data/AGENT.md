@@ -53,7 +53,11 @@ layer included) is exported from the single `.` root entry.
   `marketsIndexSource()`, `sessionWalletSource()` — each returns a typed
   `DataSource<TData, TParams>` whose `dependency` satisfies
   `DataDependencySchema` (realtime sources declare NO ttl) and whose `load`
-  returns the deterministic fixture snapshot.
+  returns the deterministic fixture snapshot. `accountSource()` is the
+  reference adoption of `@mvp/data`'s opt-in `DataSource.responseSchema`: it
+  declares `AccountMarginSchema` (exported Zod schema, source of truth for the
+  `AccountMargin` type), so a drifted `account` payload throws a
+  `DataDependencyError` naming the schema instead of rendering wrong numbers.
   `buildTradeSources(symbols: string[], intervals: string[]): DataSource[]`
   assembles the full set (what `createTradeDataClient` registers).
 - `tradeSourceRegistry: readonly TradeSourceEntry[]` — the enumerable catalog

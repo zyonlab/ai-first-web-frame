@@ -118,7 +118,7 @@ export default async function HomePage() {
         <SchedulerDiagnostics aggregate={stream.aggregate} />
       </Suspense>
       {/*
-        `stream.slots` is now `Record<string, Promise<FragmentRenderResponse>>`
+        `stream.slotPromises` is now `Record<string, Promise<FragmentRenderResponse>>`
         (@mvp/runtime's own generic shape — see fragmentSlots.ts). Dot access
         below still type-checks (this repo's tsconfig does not set
         `noPropertyAccessFromIndexSignature`) and is what biome's
@@ -134,13 +134,13 @@ export default async function HomePage() {
       */}
       <Suspense fallback={STATIC_EDITORIAL_FALLBACK}>
         <FragmentSlotStream
-          slotPromise={stream.slots.staticEditorial}
+          slotPromise={stream.slotPromises.staticEditorial}
           fallback={STATIC_EDITORIAL_FALLBACK}
         />
       </Suspense>
       <Suspense fallback={PROMOTION_FALLBACK}>
         <FragmentSlotStream
-          slotPromise={stream.slots.promotion}
+          slotPromise={stream.slotPromises.promotion}
           fallback={PROMOTION_FALLBACK}
         />
       </Suspense>
@@ -154,7 +154,7 @@ export default async function HomePage() {
       </section>
       <Suspense fallback={RECOMMENDATIONS_FALLBACK}>
         <FragmentSlotStream
-          slotPromise={stream.slots.recommendations}
+          slotPromise={stream.slotPromises.recommendations}
           fallback={RECOMMENDATIONS_FALLBACK}
         />
       </Suspense>

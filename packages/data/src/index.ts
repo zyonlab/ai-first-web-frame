@@ -12,10 +12,43 @@ export type DataLoaderInput<TParams> = {
   signal?: AbortSignal;
 };
 
+/** One validation failure reported by a {@link ResponseSchema}. */
+export type ResponseSchemaIssue = {
+  path: Array<string | number>;
+  message: string;
+};
+
+/**
+ * Minimal structural contract for an opt-in payload schema. Any Zod schema
+ * satisfies it (`safeParse` + the `.describe(...)` description), but the
+ * package does not depend on Zod — mirroring how `@mvp/interaction` accepts
+ * zod-like `payloadSchema` carriers.
+ */
+export type ResponseSchema<T> = {
+  safeParse: (
+    value: unknown,
+  ) =>
+    | { success: true; data: T }
+    | { success: false; error: { issues: ResponseSchemaIssue[] } };
+  /** Used to name the schema in the thrown {@link DataDependencyError}. */
+  description?: string;
+};
+
 export type DataSource<TData = unknown, TParams = Record<string, unknown>> = {
   id: string;
   dependency: DataDependency;
   load: (input: DataLoaderInput<TParams>) => TData | Promise<TData>;
+  /**
+   * Opt-in payload contract for what `load` resolves. When present, every
+   * loaded payload (`readData`/`preloadData` and the `subscribeData` poll
+   * loop) is `safeParse`d before it is cached or returned; a mismatch throws
+   * a {@link DataDependencyError} naming the schema, so an upstream shape
+   * change fails loudly at the data edge instead of flowing typed-but-wrong
+   * into rendered HTML. Transport-pushed subscription messages are NOT
+   * validated here — a push transport owns its own wire contract. When
+   * absent, behavior is unchanged.
+   */
+  responseSchema?: ResponseSchema<TData>;
 };
 
 export type DataReadResult<TData> = {
@@ -349,7 +382,10 @@ export function createDataClient({
       if (!active || polling) return;
       polling = true;
       try {
-        const data = await subscribedSource.load({ ctx, params });
+        const data = parseSourceResponse(
+          subscribedSource,
+          await subscribedSource.load({ ctx, params }),
+        );
         if (active) await deliver(data);
       } catch (error) {
         const spanId = trace?.startSpan(`data:${sourceId}`, "data", {
@@ -389,7 +425,10 @@ export function createDataClient({
       },
     });
     try {
-      const data = await source.load({ ctx, params });
+      const data = parseSourceResponse(
+        source,
+        await source.load({ ctx, params }),
+      );
       const ttl = source.dependency.cachePolicy?.ttl ?? 0;
       if (ttl > 0 && source.dependency.freshness !== "realtime") {
         await cacheAdapter.set(key, {
@@ -417,6 +456,30 @@ export function createDataClient({
     mutateData,
     subscribeData,
   };
+}
+
+/**
+ * Runs a loaded payload through the source's opt-in `responseSchema` (see
+ * {@link DataSource.responseSchema}). Returns the parsed value so schema
+ * defaults/transforms apply; throws a `DataDependencyError` naming the schema
+ * on a mismatch. A source without a schema passes through untouched.
+ */
+function parseSourceResponse<TData, TParams>(
+  source: DataSource<TData, TParams>,
+  data: TData,
+): TData {
+  const schema = source.responseSchema;
+  if (!schema) return data;
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    throw new DataDependencyError(
+      `data source "${source.id}" response violates ${
+        schema.description ?? "its responseSchema"
+      }${issue ? ` — ${issue.path.join(".") || "(root)"}: ${issue.message}` : ""}`,
+    );
+  }
+  return result.data;
 }
 
 function cacheTagsForDependency(dependency: DataDependency): string[] {

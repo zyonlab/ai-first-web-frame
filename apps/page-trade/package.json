@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@mvp/assets": "workspace:*",
-    "@mvp/contracts": "workspace:*",
     "@mvp/data": "workspace:*",
     "@mvp/design-system": "workspace:*",
     "@mvp/fragment-account-bar": "workspace:*",

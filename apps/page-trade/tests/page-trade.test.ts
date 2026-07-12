@@ -172,7 +172,7 @@ describe("page-trade", () => {
     // Each slot resolved to its fragment's live HTML.
     for (const [port, slotKey] of Object.entries(FRAGMENT_PORTS)) {
       const name = FRAGMENT_NAME_BY_PORT[port];
-      expect(result.slots[slotKey]).toContain(`${name} live`);
+      expect(result.html[slotKey]).toContain(`${name} live`);
       expect(result.diagnostics[slotKey].status).toBe("ok");
     }
 
@@ -214,7 +214,7 @@ describe("page-trade", () => {
     expect(result.diagnostics.book.status).toBe("fallback");
     // The failed optional slot returns a no-JS-readable fallback section
     // (data-fallback="true") — the panel degrades instead of breaking.
-    expect(result.slots.book).toContain('data-fallback="true"');
+    expect(result.html.book).toContain('data-fallback="true"');
   });
 
   it("reports unhealthy when the required market-header fails", async () => {
@@ -239,14 +239,14 @@ describe("page-trade", () => {
       fetchImpl: makeFragmentFetch(),
     });
     const html = renderTradeHtml(result.symbol, {
-      marketHeader: result.slots.marketHeader,
-      book: result.slots.book,
-      trades: result.slots.trades,
-      orderForm: result.slots.orderForm,
-      accountBar: result.slots.accountBar,
-      positions: result.slots.positions,
-      openOrders: result.slots.openOrders,
-      fundingBar: result.slots.fundingBar,
+      marketHeader: result.html.marketHeader,
+      book: result.html.book,
+      trades: result.html.trades,
+      orderForm: result.html.orderForm,
+      accountBar: result.html.accountBar,
+      positions: result.html.positions,
+      openOrders: result.html.openOrders,
+      fundingBar: result.html.fundingBar,
     });
 
     expect(html).toContain("market-header live");

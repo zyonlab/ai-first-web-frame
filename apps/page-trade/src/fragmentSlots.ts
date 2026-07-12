@@ -50,8 +50,8 @@ export type TradeSlotDiagnostic = Pick<
 
 export type TradeFragmentHtml = {
   symbol: string;
-  /** Rendered (or null) HTML per slot; null → render the panel fallback. */
-  slots: Record<TradeSlotKey, string | null>;
+  /** Per-slot resolved HTML; null → render the panel fallback. */
+  html: Record<TradeSlotKey, string | null>;
   diagnostics: Record<TradeSlotKey, TradeSlotDiagnostic>;
   dataDiagnostics: {
     account: {
@@ -215,7 +215,7 @@ export async function fetchTradeFragmentSlots({
 
   return {
     symbol: activeSymbol,
-    slots: html,
+    html,
     diagnostics,
     dataDiagnostics: {
       account: {

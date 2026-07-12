@@ -138,6 +138,11 @@ jobs:
         run: docker compose -f infra/docker/docker-compose.yml build --provenance=false --sbom=false
       - name: Start compose stack
         run: docker compose -f infra/docker/docker-compose.yml up -d --no-build
+      # docker-smoke derives its full-fleet check list from
+      # packages/routes/src/registry.ts at runtime, whose @mvp/contracts
+      # import resolves to the built dist/ under tsx.
+      - name: Build contracts dist for smoke derivation
+        run: pnpm --filter @mvp/contracts build
       - name: Smoke check services
         run: pnpm exec tsx scripts/docker-smoke.mts --timeout 180
       - name: Install Playwright browsers

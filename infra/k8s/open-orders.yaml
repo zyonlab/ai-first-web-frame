@@ -1,0 +1,64 @@
+# Image tag is parameterized through kustomization.yaml (images transformer).
+# CI/CD sets the release tag with:
+#   kustomize edit set image open-orders=$REGISTRY_URL/open-orders:$GIT_SHA
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-orders
+  labels:
+    app.kubernetes.io/name: open-orders
+    app.kubernetes.io/part-of: ai-first-web-frame
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: open-orders
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: open-orders
+    spec:
+      containers:
+        - name: open-orders
+          image: open-orders:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4209
+          env:
+            - name: PORT
+              value: "4209"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4209
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4209
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-orders
+spec:
+  selector:
+    app.kubernetes.io/name: open-orders
+  ports:
+    - name: http
+      port: 4209
+      targetPort: 4209

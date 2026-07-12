@@ -1,6 +1,6 @@
 {
   "tool": "docs-test",
-  "generatedAt": "2026-07-12T01:26:29.507Z",
+  "generatedAt": "2026-07-12T08:39:44.853Z",
   "status": "pass",
   "packages": [
     {
@@ -84,7 +84,7 @@
       "agentMd": "packages/mcp/AGENT.md",
       "package": "@mvp/mcp",
       "status": "pass",
-      "executableBlocks": 2,
+      "executableBlocks": 1,
       "noRunBlocks": 0
     },
     {

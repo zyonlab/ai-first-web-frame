@@ -27,7 +27,7 @@ vi.mock("../src/fragmentSlots", async (importOriginal) => {
     ...actual,
     fetchTradeFragmentSlots: async ({ symbol }: { symbol: string }) => ({
       symbol,
-      slots: {},
+      html: {},
       diagnostics: {},
       dataDiagnostics: {
         account: { firstRead: "loader", secondRead: "pending" },
@@ -36,7 +36,7 @@ vi.mock("../src/fragmentSlots", async (importOriginal) => {
       traceLog: "trace",
       // Empty execution envelope: this test only asserts the nav/theme
       // markup, so every <FragmentSlot> resolves to its fallback (no slot
-      // entries) — consistent with the empty `slots`/`diagnostics` above.
+      // entries) — consistent with the empty `html`/`diagnostics` above.
       execution: { slots: {}, data: {}, health: "ok", hints: [] },
       traceSnapshot: {
         traceId: "trace-abc123",

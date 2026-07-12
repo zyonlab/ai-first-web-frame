@@ -264,9 +264,6 @@ importers:
       '@mvp/assets':
         specifier: workspace:*
         version: link:../../packages/assets
-      '@mvp/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
       '@mvp/data':
         specifier: workspace:*
         version: link:../../packages/data
@@ -442,6 +439,9 @@ importers:
       '@mvp/data':
         specifier: workspace:*
         version: link:../../packages/data
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
     devDependencies:
       tsdown:
         specifier: ^0.11.0
@@ -965,6 +965,9 @@ importers:
       tsdown:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
 
   packages/design-system:
     dependencies:
@@ -1067,6 +1070,9 @@ importers:
       tsdown:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
 
   packages/request-context:
     dependencies:
@@ -1097,6 +1103,12 @@ importers:
         specifier: workspace:*
         version: link:../request-context
     devDependencies:
+      '@mvp/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@testing-library/react':
+        specifier: ^16.0.0
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1

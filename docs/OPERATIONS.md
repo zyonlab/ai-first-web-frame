@@ -218,9 +218,11 @@ and the generated file, not that wrapper.
 
 ## 5. Verify
 
-Runs the full repo gate (13 steps): typecheck, lint, format check,
+Runs the full repo gate (14 steps): typecheck, lint, format check,
 `verify:manifest-gen` (fails if any page's `fragmentSlots.gen.ts` has drifted
-from its `manifest.slots.json` — see step 4's `--check` mode), `docs:test`
+from its `manifest.slots.json` — see step 4's `--check` mode), `verify:demos`
+(fails if `docs/DEMOS.md`'s generated capability block has drifted from any
+page manifest's `demonstrates` array), `docs:test`
 (executes every AGENT.md fenced TypeScript snippet for real, so a drifted doc
 example fails like a broken test), all tests,
 build, and six audits (similarity, bundle, css, deps, optimizer, boundary).
@@ -253,7 +255,7 @@ step. Exit 0 only if every step's `status === "passed"`.
 has no entry with `"status": "failed"`.
 
 **Failure recovery**: read the failing entry's `stdout`/`stderr` tail in the
-report (or the console `FAIL <command>` line) to find which of the 13 steps
+report (or the console `FAIL <command>` line) to find which of the 14 steps
 broke. Budget failures (`audit:bundle`/`audit:css`) require shrinking JS/CSS
 or splitting the unit — see each unit's `budget.ts`. Similarity failures
 (`audit:similarity`) mean reuse the flagged existing component instead of

@@ -13,13 +13,48 @@ export type RequestClientOptions = {
   trace?: RequestTrace;
 };
 
-export type RequestJsonOptions = {
+/** One validation failure reported by a {@link ResponseSchema}. */
+export type ResponseSchemaIssue = {
+  path: Array<string | number>;
+  message: string;
+};
+
+/**
+ * Minimal structural contract for an opt-in response payload schema. Any Zod
+ * schema satisfies it (`safeParse` + the `.describe(...)` description), but
+ * the package does not depend on Zod — mirroring how `@mvp/interaction`
+ * accepts zod-like `payloadSchema` carriers.
+ */
+export type ResponseSchema<T> = {
+  safeParse: (
+    value: unknown,
+  ) =>
+    | { success: true; data: T }
+    | { success: false; error: { issues: ResponseSchemaIssue[] } };
+  /** Used to name the schema in {@link RequestContractError}. */
+  description?: string;
+};
+
+export type RequestJsonOptions<T = unknown> = {
   path?: string;
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   headers?: Record<string, string>;
   timeoutMs?: number;
   retries?: number;
+  /**
+   * Opt-in response payload validation. When present, the JSON body is
+   * `safeParse`d and the parsed value is returned; a mismatch throws
+   * {@link RequestContractError} without retrying (shape drift is
+   * deterministic, not transient). When absent, behavior is unchanged: the
+   * body is cast to `T` as before.
+   *
+   * Deliberately a per-call option and NOT part of `ApiEndpointPolicy`:
+   * policies are serializable contracts (see `ApiEndpointPolicySchema` in
+   * `@mvp/contracts`) while runtime schemas are code, so schema-to-policy
+   * wiring is out of scope.
+   */
+  responseSchema?: ResponseSchema<T>;
 };
 
 export type RequestResult<T> = {
@@ -44,6 +79,37 @@ export class RequestTimeoutError extends Error {
   }
 }
 
+/**
+ * A response body that violated the caller's `responseSchema`. Carries the
+ * offending url/endpoint, the schema name, and the structured issues so the
+ * failure is diagnosable without re-fetching. Never retried.
+ */
+export class RequestContractError extends Error {
+  readonly endpointId: string;
+  readonly url: string;
+  readonly schemaName: string;
+  readonly issues: ResponseSchemaIssue[];
+
+  constructor(options: {
+    endpointId: string;
+    url: string;
+    schemaName: string;
+    issues: ResponseSchemaIssue[];
+  }) {
+    const first = options.issues[0];
+    super(
+      `response from endpoint "${options.endpointId}" (${options.url}) violates ${options.schemaName}${
+        first ? ` — ${first.path.join(".") || "(root)"}: ${first.message}` : ""
+      }`,
+    );
+    this.name = "RequestContractError";
+    this.endpointId = options.endpointId;
+    this.url = options.url;
+    this.schemaName = options.schemaName;
+    this.issues = options.issues;
+  }
+}
+
 export function createRequestClient({
   ctx,
   policy,
@@ -56,7 +122,7 @@ export function createRequestClient({
 
   async function requestJson<T>(
     endpointId: string,
-    options: RequestJsonOptions = {},
+    options: RequestJsonOptions<T> = {},
   ): Promise<RequestResult<T>> {
     const endpoint = endpoints.get(endpointId);
     if (!endpoint)
@@ -103,7 +169,12 @@ export function createRequestClient({
           timeoutMs,
         );
         if (!response.ok) throw new Error(`request status ${response.status}`);
-        const data = (await response.json()) as T;
+        const data = parseResponseBody<T>(
+          await response.json(),
+          options.responseSchema,
+          endpointId,
+          url,
+        );
         const durationMs = performance.now() - startedAt;
         trace?.endSpan(spanId ?? "", {
           status: "ok",
@@ -112,6 +183,9 @@ export function createRequestClient({
         return { data, endpoint, url, attempts: attempt, durationMs };
       } catch (error) {
         lastError = error;
+        // A contract violation is deterministic — retrying re-fetches the
+        // same wrong shape, so it exhausts the budget immediately.
+        if (error instanceof RequestContractError) break;
         if (attempt > retries) break;
       }
     }
@@ -128,6 +202,25 @@ export function createRequestClient({
   }
 
   return { requestJson };
+}
+
+function parseResponseBody<T>(
+  raw: unknown,
+  schema: ResponseSchema<T> | undefined,
+  endpointId: string,
+  url: string,
+): T {
+  if (!schema) return raw as T;
+  const result = schema.safeParse(raw);
+  if (!result.success) {
+    throw new RequestContractError({
+      endpointId,
+      url,
+      schemaName: schema.description ?? "responseSchema",
+      issues: result.error.issues,
+    });
+  }
+  return result.data;
 }
 
 async function fetchWithTimeout(

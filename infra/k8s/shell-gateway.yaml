@@ -27,6 +27,22 @@ spec:
           env:
             - name: PORT
               value: "4100"
+            # In-cluster page endpoints for the route registry
+            # (PAGE_<NAME>_URL overrides, validated as URLs at boot).
+            - name: PAGE_HOME_URL
+              value: "http://page-home:4101"
+            - name: PAGE_PRODUCT_URL
+              value: "http://page-product:4102"
+            - name: PAGE_TRADE_URL
+              value: "http://page-trade:4103"
+            - name: PAGE_MARKETS_URL
+              value: "http://page-markets:4104"
+            - name: PAGE_PORTFOLIO_URL
+              value: "http://page-portfolio:4105"
+            - name: PAGE_VAULTS_URL
+              value: "http://page-vaults:4106"
+            - name: PAGE_REFERRALS_URL
+              value: "http://page-referrals:4107"
           readinessProbe:
             httpGet:
               path: /health

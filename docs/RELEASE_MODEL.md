@@ -14,8 +14,8 @@ change on a branch
   |
   v
 [1] CI verify (.github/workflows/ci.yml, job: verify)          IMPLEMENTED
-      pnpm verify (13 gates): typecheck, lint, format, manifest-gen,
-      docs:test, tests, build, 6 audits
+      pnpm verify (14 gates): typecheck, lint, format, manifest-gen,
+      demos-index, docs:test, tests, build, 6 audits
   |
   v
 [2] Affected detection (job: affected)                         IMPLEMENTED
@@ -95,24 +95,40 @@ and the `@mvp/mcp` `affected` tool all converged on the graph engine.)
 ## Smoke Checks
 
 `pnpm exec tsx scripts/docker-smoke.mts` polls the running Compose stack
-(prerequisite: `docker compose -f infra/docker/docker-compose.yml up -d`):
+(prerequisite: `docker compose -f infra/docker/docker-compose.yml up -d`).
+The check list is not hand-maintained: it is derived from the fragment
+registry (`registry/registry.data.json`, stable-or-canary serviceUrl per
+fragment) and the route registry (`packages/routes/src/registry.ts`, one
+route per page), so registering a fragment or adding a page automatically
+extends the smoke gate. Today that derives to:
 
-- `/health` on shell-gateway (4100), promotion-banner (4201),
-  recommendation-widget (4202).
-- `/health` on the Next.js page apps too (page-home 4101, page-product
-  4102 — every page ships `apps/page-*/app/health/route.ts`).
+- `/health` on shell-gateway (4100).
+- `/health` on all 14 fragment services (4201-4214).
+- `/health` on all 7 Next.js page apps (4101-4107 — every page ships
+  `apps/page-*/app/health/route.ts`).
 - Composed shell routes on 4100 (`/` and `/product/123`) including the
   `data-shell-gateway="true"` and rendered `data-page` markers.
 
 It prints a JSON report to stdout and exits non-zero on timeout or failure.
-Polling logic is unit tested in `tools/release-tools/src/smoke.ts`.
+Derivation and polling logic are unit tested in
+`tools/release-tools/src/smoke.ts`.
 
 ## Kubernetes Deployment
 
-- All Deployments in `infra/k8s/` carry readiness and liveness probes and
-  conservative resource requests/limits. Every service — fastify fragments
-  and Next.js page apps alike — probes `/health`
+- `infra/k8s/` covers the full 22-unit fleet: the shell gateway, all 7
+  Next.js page apps, and all 14 fragment services each get a Deployment and
+  a Service (previously only a 5-unit subset was manifested).
+- All Deployments carry readiness and liveness probes and conservative
+  resource requests/limits. Every service — fastify fragments and Next.js
+  page apps alike — probes `/health`
   (pages: `apps/page-*/app/health/route.ts`).
+- In-cluster wiring is explicit env configuration, mirroring the Compose
+  stack: shell-gateway sets `PAGE_<NAME>_URL` for every page Service
+  (e.g. `http://page-home:4101`), and each composed page sets the
+  `<FRAGMENT>_URL` vars (e.g. `PROMOTION_BANNER_URL=http://promotion-banner:4201`)
+  for exactly the fragments its `manifest.slots.json` mounts. Both override
+  families are validated as URLs at boot (`z.string().url()`), so a typo
+  fails fast instead of silently dialing localhost defaults.
 - Image tags are parameterized through `infra/k8s/kustomization.yaml`.
   Manifests keep the `:dev` tag for local clusters; a release retargets a
   unit with:

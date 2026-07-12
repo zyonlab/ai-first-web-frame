@@ -1,10 +1,11 @@
 import type { InteractionContract } from "@mvp/contracts";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import {
   type BroadcastChannelLike,
   createBroadcastBridge,
   createInteractionBus,
   defineMutation,
+  type InteractionBus,
   InteractionContractError,
   MutationContractError,
 } from "./index";
@@ -213,6 +214,91 @@ describe("createInteractionBus", () => {
       "fragment-recommendation-widget",
     );
     expect(bus.getContract("nope")).toBeUndefined();
+  });
+});
+
+describe("M4 typed channels (compile-time)", () => {
+  // Contracts declared with literal channel types (no widening
+  // `InteractionContract[]` annotation) narrow the bus's channel union. The
+  // `as const` on each channel is what keeps the literal type: `satisfies`
+  // alone would widen a fresh string literal against `channel: string`
+  // (domain packages get this for free by using `as const` channel-id
+  // constants, e.g. `TRADE_ACTIVE_SYMBOL`).
+  const typedContracts = [
+    {
+      channel: "cart:add" as const,
+      publisher: "fragment-recommendation-widget",
+      subscribers: ["page-product"],
+      payloadSchema: {},
+    },
+    {
+      channel: "filter:change" as const,
+      publisher: "page-home",
+      subscribers: ["fragment-recommendation-widget"],
+      payloadSchema: {},
+    },
+  ] satisfies ReadonlyArray<InteractionContract>;
+
+  it("infers the channel union from literal contracts and rejects typos at compile time", async () => {
+    const bus = createInteractionBus({ contracts: typedContracts });
+    expectTypeOf(bus).toEqualTypeOf<
+      InteractionBus<"cart:add" | "filter:change">
+    >();
+    expectTypeOf(bus.listChannels()).toEqualTypeOf<
+      Array<"cart:add" | "filter:change">
+    >();
+
+    // A typo'd channel is a COMPILE-time error on every bus method (the
+    // runtime contract check still backs it up for untyped buses).
+    await expect(
+      // @ts-expect-error — "cart:addd" is not in the declared channel union
+      bus.publish("cart:addd", {}, { owner: "fragment-recommendation-widget" }),
+    ).rejects.toThrow(InteractionContractError);
+    expect(() =>
+      // @ts-expect-error — "filter:changed" is not in the declared channel union
+      bus.subscribe("filter:changed", vi.fn(), { subscriber: "page-product" }),
+    ).toThrow(InteractionContractError);
+    // @ts-expect-error — "nope" is not in the declared channel union
+    expect(bus.getContract("nope")).toBeUndefined();
+
+    // Declared channels stay fully usable.
+    const receipt = await bus.publish(
+      "cart:add",
+      { productId: "p-1" },
+      { owner: "fragment-recommendation-widget" },
+    );
+    expect(receipt.subscriberCount).toBe(0);
+  });
+
+  it("keeps untyped call sites at C = string (backward compatible)", () => {
+    // Contracts annotated as plain InteractionContract[] widen channel to
+    // string — exactly the pre-M4 behavior, so nothing breaks.
+    const bus = createInteractionBus({
+      contracts: [cartContract, filterContract],
+    });
+    expectTypeOf(bus).toEqualTypeOf<InteractionBus<string>>();
+    expectTypeOf(bus).toEqualTypeOf<InteractionBus>();
+    // Any string channel compiles; undeclared ones still fail at runtime.
+    expect(bus.getContract("anything-goes")).toBeUndefined();
+  });
+
+  it("keeps a channel-narrowed bus assignable where a plain InteractionBus is expected", () => {
+    const narrowed = createInteractionBus({ contracts: typedContracts });
+    // Methods are bivariant, so narrowing is a call-site check rather than an
+    // assignability wall (island `bus` props keep accepting narrowed buses).
+    const wide: InteractionBus = narrowed;
+    expect(wide.listChannels().sort()).toEqual(["cart:add", "filter:change"]);
+  });
+
+  it("restricts createBroadcastBridge channels to the bus's channel union", () => {
+    const narrowed = createInteractionBus({ contracts: typedContracts });
+    expect(() =>
+      createBroadcastBridge(narrowed, {
+        // @ts-expect-error — "cart:addd" is not a declared channel of this bus
+        channels: ["cart:addd"],
+        channelFactory: () => undefined,
+      }),
+    ).toThrow(InteractionContractError);
   });
 });
 

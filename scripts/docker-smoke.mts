@@ -8,12 +8,16 @@
  * Then run:
  *   pnpm exec tsx scripts/docker-smoke.mts [--timeout <seconds>] [--interval <ms>] [--host <host>]
  *
- * Polls the three Fastify services' /health endpoints, the two Next.js page
- * apps' rendered pages (they expose no /health route yet), and the shell
- * gateway's composed home and product routes including their HTML markers.
- * Prints a JSON result to stdout and exits non-zero on timeout or failure.
- * Check definitions and polling logic live in tools/release-tools/src/smoke.ts
- * and are unit tested there.
+ * Polls /health on the shell gateway, every registered fragment service, and
+ * every routed Next.js page app, plus the shell gateway's composed home and
+ * product routes including their HTML markers. The check list is derived
+ * from registry/registry.data.json and packages/routes/src/registry.ts, so
+ * new fragments/pages get covered automatically. The derivation imports
+ * @mvp/routes sources, whose @mvp/contracts import resolves to its dist/
+ * under tsx — on a fresh checkout run `pnpm --filter @mvp/contracts build`
+ * once first. Prints a JSON result to stdout and exits non-zero on timeout
+ * or failure. Check derivation and polling logic live in
+ * tools/release-tools/src/smoke.ts and are unit tested there.
  */
 
 import {
