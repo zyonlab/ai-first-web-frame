@@ -24,7 +24,11 @@ export type RecommendationCategory = (typeof recommendationCategories)[number];
 export const RECOMMENDATION_FILTER_OWNER = "recommendation-filter" as const;
 export const REALTIME_INSIGHTS_SUBSCRIBER = "realtime-insights" as const;
 
-export const homeInteractionContracts: InteractionContract[] = [
+// M4 typed channels: `satisfies` (not a widening `InteractionContract[]`
+// annotation) keeps `channel` at its literal type, so the bus built from these
+// contracts is an `InteractionBus<"home.recommendation-category">` and a
+// typo'd channel fails at compile time.
+export const homeInteractionContracts = [
   {
     channel: RECOMMENDATION_CATEGORY_CHANNEL,
     publisher: RECOMMENDATION_FILTER_OWNER,
@@ -41,7 +45,10 @@ export const homeInteractionContracts: InteractionContract[] = [
       },
     },
   },
-];
+] satisfies ReadonlyArray<InteractionContract>;
+
+/** The home page's declared channel union (M4 typed channels). */
+export type HomeChannel = (typeof homeInteractionContracts)[number]["channel"];
 
 export type RecommendationCategoryEvent = {
   category: RecommendationCategory;

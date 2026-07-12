@@ -62,6 +62,8 @@ describe("trade store slices (C3)", () => {
   it("rejects an undeclared channel and a non-owner publisher", async () => {
     const bus = createInteractionBus({ contracts: tradeStoreContracts });
     await expect(
+      // @ts-expect-error — M4 typed channels: an undeclared channel is now a
+      // compile-time error too; this keeps the runtime rejection covered.
       bus.publish("trade.not-a-slice", { x: 1 }, { owner: TRADE_STORE_OWNER }),
     ).rejects.toThrow();
     await expect(
