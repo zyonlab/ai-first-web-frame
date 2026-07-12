@@ -1,44 +1,58 @@
 # Image tag is parameterized through kustomization.yaml (images transformer).
 # CI/CD sets the release tag with:
-#   kustomize edit set image page-home=$REGISTRY_URL/page-home:$GIT_SHA
+#   kustomize edit set image page-trade=$REGISTRY_URL/page-trade:$GIT_SHA
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: page-home
+  name: page-trade
   labels:
-    app.kubernetes.io/name: page-home
+    app.kubernetes.io/name: page-trade
     app.kubernetes.io/part-of: ai-first-web-frame
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app.kubernetes.io/name: page-home
+      app.kubernetes.io/name: page-trade
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: page-home
+        app.kubernetes.io/name: page-trade
     spec:
       containers:
-        - name: page-home
-          image: page-home:dev
+        - name: page-trade
+          image: page-trade:dev
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 4101
+            - containerPort: 4103
           env:
             - name: PORT
-              value: "4101"
+              value: "4103"
             # In-cluster fragment endpoints for the slots this page's
             # manifest.slots.json mounts (validated as URLs at boot).
-            - name: PROMOTION_BANNER_URL
-              value: "http://promotion-banner:4201"
-            - name: RECOMMENDATION_WIDGET_URL
-              value: "http://recommendation-widget:4202"
+            - name: MARKET_HEADER_URL
+              value: "http://market-header:4203"
+            - name: ORDER_BOOK_URL
+              value: "http://order-book:4204"
+            - name: ORDER_FORM_URL
+              value: "http://order-form:4205"
+            - name: TRADES_FEED_URL
+              value: "http://trades-feed:4206"
+            - name: ACCOUNT_BAR_URL
+              value: "http://account-bar:4207"
+            - name: POSITIONS_TABLE_URL
+              value: "http://positions-table:4208"
+            - name: OPEN_ORDERS_URL
+              value: "http://open-orders:4209"
+            - name: FUNDING_BAR_URL
+              value: "http://funding-bar:4210"
+            - name: CHART_PANEL_URL
+              value: "http://chart-panel:4211"
           # Probes hit the dedicated app/health/route.ts (static, dependency
           # free — never fans out into fragment calls).
           readinessProbe:
             httpGet:
               path: /health
-              port: 4101
+              port: 4103
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
@@ -46,7 +60,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 4101
+              port: 4103
             initialDelaySeconds: 20
             periodSeconds: 20
             timeoutSeconds: 5
@@ -62,11 +76,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: page-home
+  name: page-trade
 spec:
   selector:
-    app.kubernetes.io/name: page-home
+    app.kubernetes.io/name: page-trade
   ports:
     - name: http
-      port: 4101
-      targetPort: 4101
+      port: 4103
+      targetPort: 4103

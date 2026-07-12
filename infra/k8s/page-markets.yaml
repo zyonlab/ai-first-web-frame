@@ -1,44 +1,42 @@
 # Image tag is parameterized through kustomization.yaml (images transformer).
 # CI/CD sets the release tag with:
-#   kustomize edit set image page-home=$REGISTRY_URL/page-home:$GIT_SHA
+#   kustomize edit set image page-markets=$REGISTRY_URL/page-markets:$GIT_SHA
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: page-home
+  name: page-markets
   labels:
-    app.kubernetes.io/name: page-home
+    app.kubernetes.io/name: page-markets
     app.kubernetes.io/part-of: ai-first-web-frame
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app.kubernetes.io/name: page-home
+      app.kubernetes.io/name: page-markets
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: page-home
+        app.kubernetes.io/name: page-markets
     spec:
       containers:
-        - name: page-home
-          image: page-home:dev
+        - name: page-markets
+          image: page-markets:dev
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 4101
+            - containerPort: 4104
           env:
             - name: PORT
-              value: "4101"
+              value: "4104"
             # In-cluster fragment endpoints for the slots this page's
             # manifest.slots.json mounts (validated as URLs at boot).
-            - name: PROMOTION_BANNER_URL
-              value: "http://promotion-banner:4201"
-            - name: RECOMMENDATION_WIDGET_URL
-              value: "http://recommendation-widget:4202"
+            - name: MARKETS_TABLE_URL
+              value: "http://markets-table:4212"
           # Probes hit the dedicated app/health/route.ts (static, dependency
           # free — never fans out into fragment calls).
           readinessProbe:
             httpGet:
               path: /health
-              port: 4101
+              port: 4104
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
@@ -46,7 +44,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 4101
+              port: 4104
             initialDelaySeconds: 20
             periodSeconds: 20
             timeoutSeconds: 5
@@ -62,11 +60,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: page-home
+  name: page-markets
 spec:
   selector:
-    app.kubernetes.io/name: page-home
+    app.kubernetes.io/name: page-markets
   ports:
     - name: http
-      port: 4101
-      targetPort: 4101
+      port: 4104
+      targetPort: 4104

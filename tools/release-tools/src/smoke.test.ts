@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   createDefaultSmokeChecks,
+  deriveSmokeChecks,
   evaluateCheck,
   type HttpFetcher,
   runSmokeSuite,
   type SmokeCheck,
+  type SmokeFragmentRegistryData,
+  type SmokeRouteRegistryData,
 } from "./smoke";
 
 const check = (overrides: Partial<SmokeCheck> = {}): SmokeCheck => ({
@@ -15,18 +18,104 @@ const check = (overrides: Partial<SmokeCheck> = {}): SmokeCheck => ({
   ...overrides,
 });
 
-describe("createDefaultSmokeChecks", () => {
-  it("covers all five services plus composed shell routes", () => {
-    const checks = createDefaultSmokeChecks();
-    expect(checks.map((entry) => entry.id)).toEqual([
-      "shell-gateway-health",
-      "promotion-banner-health",
-      "recommendation-widget-health",
-      "page-home-health",
-      "page-product-health",
+const ALL_FRAGMENTS = [
+  "promotion-banner",
+  "recommendation-widget",
+  "market-header",
+  "order-book",
+  "order-form",
+  "trades-feed",
+  "account-bar",
+  "positions-table",
+  "open-orders",
+  "funding-bar",
+  "chart-panel",
+  "markets-table",
+  "portfolio-summary",
+  "pnl-chart",
+];
+
+const ALL_PAGES = [
+  "home",
+  "product",
+  "trade",
+  "markets",
+  "portfolio",
+  "vaults",
+  "referrals",
+];
+
+describe("deriveSmokeChecks", () => {
+  const registry: SmokeFragmentRegistryData = {
+    fragments: {
+      "stable-only": { stable: { serviceUrl: "http://localhost:4201" } },
+      "canary-only": { canary: { serviceUrl: "http://localhost:4203" } },
+      "stable-and-canary": {
+        stable: { serviceUrl: "http://localhost:4202" },
+        canary: { serviceUrl: "http://localhost:9999" },
+      },
+      unresolvable: {},
+    },
+  };
+  const routes: SmokeRouteRegistryData = {
+    routes: [
+      { id: "home", serviceUrl: "http://localhost:4101" },
+      { id: "trade", serviceUrl: "http://localhost:4103" },
+    ],
+  };
+
+  it("derives fragment health checks from the stable-or-canary serviceUrl", () => {
+    const checks = deriveSmokeChecks(registry, routes);
+    const byId = new Map(checks.map((entry) => [entry.id, entry]));
+    expect(byId.get("stable-only-health")?.url).toBe(
+      "http://localhost:4201/health",
+    );
+    expect(byId.get("canary-only-health")?.url).toBe(
+      "http://localhost:4203/health",
+    );
+    // stable wins over canary when both channels exist
+    expect(byId.get("stable-and-canary-health")?.url).toBe(
+      "http://localhost:4202/health",
+    );
+    // entries with no resolvable channel produce no check
+    expect(byId.has("unresolvable-health")).toBe(false);
+  });
+
+  it("derives page health checks from route serviceUrls with page markers", () => {
+    const checks = deriveSmokeChecks(registry, routes);
+    const trade = checks.find((entry) => entry.id === "page-trade-health");
+    expect(trade?.url).toBe("http://localhost:4103/health");
+    expect(trade?.expectSubstrings).toEqual(['"status":"ok"', "page-trade"]);
+  });
+
+  it("keeps the shell health and composed shell-route marker checks", () => {
+    const ids = deriveSmokeChecks(registry, routes).map((entry) => entry.id);
+    expect(ids[0]).toBe("shell-gateway-health");
+    expect(ids.slice(-2)).toEqual([
       "shell-home-composed",
       "shell-product-composed",
     ]);
+  });
+
+  it("applies the host override to every derived and fixed url", () => {
+    const checks = deriveSmokeChecks(registry, routes, "smoke-host");
+    for (const entry of checks) {
+      expect(entry.url).toMatch(/^http:\/\/smoke-host:\d{4}\//);
+    }
+  });
+});
+
+describe("createDefaultSmokeChecks", () => {
+  it("covers the full fleet: shell, all 14 fragments, all 7 pages, composed routes", () => {
+    const checks = createDefaultSmokeChecks();
+    expect(checks.map((entry) => entry.id)).toEqual([
+      "shell-gateway-health",
+      ...ALL_FRAGMENTS.map((name) => `${name}-health`),
+      ...ALL_PAGES.map((id) => `page-${id}-health`),
+      "shell-home-composed",
+      "shell-product-composed",
+    ]);
+    expect(checks).toHaveLength(1 + 14 + 7 + 2);
     for (const entry of checks) {
       expect(entry.url).toMatch(/^http:\/\/localhost:\d{4}\//);
       expect(entry.expectStatus).toBe(200);
@@ -35,8 +124,11 @@ describe("createDefaultSmokeChecks", () => {
   });
 
   it("supports a custom host", () => {
-    const [first] = createDefaultSmokeChecks("smoke-host");
-    expect(first.url).toBe("http://smoke-host:4100/health");
+    const checks = createDefaultSmokeChecks("smoke-host");
+    expect(checks[0].url).toBe("http://smoke-host:4100/health");
+    for (const entry of checks) {
+      expect(entry.url).toMatch(/^http:\/\/smoke-host:\d{4}\//);
+    }
   });
 });
 
