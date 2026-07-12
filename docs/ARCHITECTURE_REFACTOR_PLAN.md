@@ -747,13 +747,15 @@ Three tiers, all generated or verified in CI so they cannot rot:
    fields, unit-tested); the `mount_slot` tool now also covers P2's
    `mount-slot --check` freshness mode.
 
-> **P5-prep status (updated 2026-07-11):** `AGENT.md` coverage is effectively
-> complete: 17 of 19 `packages/*` (all except `packages/assets` and
-> `packages/workers`), all 5 `domains/*`, and `tools/create-component`
-> (1 of 11 `tools/*` entries), every fenced ts/tsx snippet executed by
-> `docs:test` inside `pnpm verify`. Real remainder: `packages/assets`,
-> `packages/workers`, the other `tools/*`, and an undecided policy on whether
-> `fragments/*`/`apps/*` get their own `AGENT.md`.
+> **P5-prep status (updated 2026-07-12):** `AGENT.md` coverage is complete
+> across every package-shaped unit: 19 of 19 `packages/*`, all 5 `domains/*`,
+> and all 11 `tools/*` entries (including the non-workspace-package dirs
+> `tools/_shared`, `tools/dev-harness`, `tools/runtime-gate`), every fenced
+> ts/tsx snippet executed by `docs:test` inside `pnpm verify` (zero `no-run`
+> opt-outs in the tools/assets/workers batch; CLI-shaped tools document the
+> command but their executable example exercises the pure core). Real
+> remainder: an undecided policy on whether `fragments/*`/`apps/*` get their
+> own `AGENT.md`.
 
 The doc pages formerly listed here as "to write" all exist now:
 `OPERATIONS.md` (lifecycle), plus `COMPOSITION.md`, `CONTRACTS.md`,

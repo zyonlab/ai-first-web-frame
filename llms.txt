@@ -84,6 +84,16 @@ deliberately unlisted — consult `docs/` directly for history.
 - [packages/design-tokens/AGENT.md](packages/design-tokens/AGENT.md): raw
   design token values and CSS-custom-property generation. Consult for any
   color/spacing/radius/font/z-index value instead of hard-coding one.
+- [packages/assets/AGENT.md](packages/assets/AGENT.md): the typed asset
+  manifest model — collect/merge/de-duplicate css/js/font/theme/i18n assets
+  (CSP/SRI fields preserved) and render them to HTML tag descriptors
+  (`collectAssets`, `mergeAssetsWithPolicy`, `createAssetHtmlTags`). Consult
+  before hand-assembling asset lists or `<link>`/`<script>` tags.
+- [packages/workers/AGENT.md](packages/workers/AGENT.md): manifest-governed
+  worker runtime — `WorkerManifest` validation + policy rules, the in-process
+  background queue with retry/dead-letter (`createBackgroundWorker`),
+  scheduled jobs, and the typed worker client/host postMessage protocol.
+  Consult before running any background or browser-worker task.
 
 ## Package AGENT.md (P1-re-layered packages; domain-agnostic APIs)
 
@@ -143,7 +153,7 @@ deliberately unlisted — consult `docs/` directly for history.
   demo's canvas chart renderer (demo-only presentation code). Consult as the
   reference for domain-layer presentation utilities.
 
-## Tooling AGENT.md (lifecycle scaffolder + MCP server)
+## Tooling AGENT.md (scaffolder, audits, dev/release tooling, MCP server)
 
 - [packages/mcp/AGENT.md](packages/mcp/AGENT.md): the dependency-free MCP
   stdio server exposing this framework's discovery (`query_registry`,
@@ -156,3 +166,56 @@ deliberately unlisted — consult `docs/` directly for history.
   `--type`, the generated layoutHint skeleton, and collision/`--force`
   behavior. Consult before hand-writing a fragment or UI component skeleton
   instead of scaffolding it.
+- [tools/_shared/AGENT.md](tools/_shared/AGENT.md): the shared source library
+  behind every `tools/*` audit/scaffolder (not a workspace package) — CLI
+  flag parsing, pass/warn/fail + exit-code math, the per-unit `budget.ts`
+  loader, similarity math, fs walking, and the comment/string-stripping code
+  heuristics. Consult before writing or modifying any audit tool.
+- [tools/bundle-budget-check/AGENT.md](tools/bundle-budget-check/AGENT.md):
+  the `pnpm audit:bundle` gate — page first-load JS (gzipped, from `.next`
+  manifests, failing loudly when unbuilt) and fragment client JS (minified
+  esbuild bundle, shared vendor external) vs each unit's `src/budget.ts`
+  ceilings, with explicit `unmeasured` rows. Consult before reasoning about
+  or fixing a JS budget failure.
+- [tools/component-similarity-check/AGENT.md](tools/component-similarity-check/AGENT.md):
+  the `pnpm audit:similarity` gate — fingerprints `packages/ui` + fragment
+  `.tsx` component sources and fails any pair scoring ≥ 0.82 on the weighted
+  name/props/tokens/JSX dimensions. Consult when the audit flags a
+  near-duplicate (reuse the flagged component instead).
+- [tools/css-budget-check/AGENT.md](tools/css-budget-check/AGENT.md): the
+  `pnpm audit:css` gate — per-unit `cssBytes` ceilings vs the unit's own
+  minified source CSS, plus global hygiene metrics (unused/duplicated rules,
+  global selectors, `!important`). Consult before reasoning about or fixing
+  a CSS budget failure.
+- [tools/dependency-audit/AGENT.md](tools/dependency-audit/AGENT.md): the
+  `pnpm audit:deps` gate — duplicated dependency versions, cross-page /
+  fragment→page imports, raw `fetch(` in business code, browser globals in
+  server-safe packages, client-only leakage, the packages→domains layering
+  rule, and the island orphan-bus rule (comment/string-stripped heuristics).
+  Consult before adding dependencies or unusual imports.
+- [tools/dev-harness/AGENT.md](tools/dev-harness/AGENT.md): the
+  `pnpm dev:component` single-fragment harness (not a workspace package) —
+  `describeMockWorld` (manifest → seed/mock/inject/observe spec) and the
+  `layoutHint`-sized themed preview page. Consult to run one fragment in
+  isolation with its contract-mocked world.
+- [tools/optimization-audit/AGENT.md](tools/optimization-audit/AGENT.md): the
+  `pnpm audit:optimizer` gate — feeds every page's mounted slots plus
+  `reports/traces/` snapshots to `@mvp/optimizer`'s rule engine and writes
+  `reports/optimization-findings.*`. Consult when investigating its findings
+  or wiring trace-based optimization rules.
+- [tools/release-tools/AGENT.md](tools/release-tools/AGENT.md): the pure
+  logic behind the release/DevX CLIs — the unit dependency graph
+  (`buildUnitGraph`/`queryRegistry`), graph-aware affected detection
+  (changed paths → deployables, narrow-vs-GLOBAL), compose smoke checks, and
+  mount-time layout advisories. Consult before touching blast-radius,
+  smoke, or graph-query tooling.
+- [tools/runtime-gate/AGENT.md](tools/runtime-gate/AGENT.md): the
+  `pnpm verify:runtime` evaluator (not a workspace package) — pure
+  `evaluateRuntime` turning browser observations into hydration / React-#418
+  / asset-404 / layout-void / overflow / interaction checks. Consult before
+  reasoning about the runtime/visual gate `pnpm verify` cannot see.
+- [tools/server-client-boundary-check/AGENT.md](tools/server-client-boundary-check/AGENT.md):
+  the `pnpm audit:boundary` gate — browser globals in server files,
+  server→client-module imports (with the Next local-island exception),
+  oversized client components, and `page/layout` `"use client"` warnings.
+  Consult before moving code across the server/client boundary.
