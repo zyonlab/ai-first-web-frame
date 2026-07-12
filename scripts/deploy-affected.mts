@@ -180,6 +180,18 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(String(error));
+  // Uniform failure envelope (audit contract M6) — one parseable JSON object
+  // on stdout instead of a raw stringified error on stderr.
+  console.log(
+    JSON.stringify(
+      {
+        tool: "deploy-affected",
+        status: "failed",
+        error: error instanceof Error ? error.message : String(error),
+      },
+      null,
+      2,
+    ),
+  );
   process.exitCode = 1;
 });

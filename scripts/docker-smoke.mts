@@ -99,10 +99,13 @@ async function main(): Promise<void> {
     intervalMs: args.intervalMs,
   });
 
+  // `status` is the uniform envelope field (audit contract M6); `ok` and the
+  // other keys are kept verbatim for existing consumers of this output.
   process.stdout.write(
     `${JSON.stringify(
       {
         tool: "docker-smoke",
+        status: suite.ok ? "ok" : "failed",
         ok: suite.ok,
         elapsedMs: suite.elapsedMs,
         timeoutMs: args.timeoutMs,
@@ -116,6 +119,18 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  process.stderr.write(`docker-smoke failed: ${error}\n`);
+  // Unexpected crash (not a failing check): same envelope shape, not raw text.
+  process.stdout.write(
+    `${JSON.stringify(
+      {
+        tool: "docker-smoke",
+        status: "failed",
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      null,
+      2,
+    )}\n`,
+  );
   process.exit(1);
 });

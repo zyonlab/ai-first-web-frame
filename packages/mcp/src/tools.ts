@@ -26,6 +26,7 @@ import {
   type RegistryQuery,
   type UnitKind,
 } from "../../../tools/release-tools/src/unit-graph";
+import { findSchemaViolation } from "./validate";
 
 export type ToolResult = { text: string; isError?: boolean };
 
@@ -270,7 +271,36 @@ const affectedUnitsTool: ToolDef = {
   },
 };
 
-/** All DevX MCP tools (discovery + lifecycle). */
+/**
+ * Wraps a tool handler with input validation against its own declared
+ * `inputSchema` (audit contract M5). Runs before anything side-effectful —
+ * for lifecycle tools that means before the subprocess spawn — so a
+ * wrong-typed argument (`page: 123`) is an explicit `isError: true` result
+ * naming the violation path and expected type, never a silently dropped CLI
+ * flag. The error text is the same `{status: "failed", error}` JSON envelope
+ * the underlying scripts print, so callers parse one shape for both.
+ */
+function withInputValidation(tool: ToolDef): ToolDef {
+  return {
+    ...tool,
+    handler: async (input, ctx) => {
+      const violation = findSchemaViolation(tool.inputSchema, input ?? {});
+      if (violation) {
+        return {
+          text: JSON.stringify({
+            status: "failed",
+            tool: tool.name,
+            error: `invalid arguments: ${violation}`,
+          }),
+          isError: true,
+        };
+      }
+      return tool.handler(input, ctx);
+    },
+  };
+}
+
+/** All DevX MCP tools (discovery + lifecycle), input-validated per schema. */
 export function devxTools(): ToolDef[] {
   const lifecycle: ToolDef[] = SCRIPT_TOOLS.map((tool) => ({
     name: tool.name,
@@ -279,5 +309,7 @@ export function devxTools(): ToolDef[] {
     handler: async (input, ctx) =>
       runPnpm(ctx.root, [...tool.command, ...tool.args(input)]),
   }));
-  return [queryRegistryTool, affectedUnitsTool, ...lifecycle];
+  return [queryRegistryTool, affectedUnitsTool, ...lifecycle].map(
+    withInputValidation,
+  );
 }

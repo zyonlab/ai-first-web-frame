@@ -11,6 +11,7 @@ import {
   booleanFlag,
   parseCliArgs,
   stringFlag,
+  unknownFlagError,
 } from "../packages/registry/src/cli";
 import { generateFragmentSlotsSource } from "../packages/registry/src/codegen";
 import { loadRegistryData } from "../packages/registry/src/mutations";
@@ -52,10 +53,40 @@ const USAGE =
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const registryPath = join(root, "registry/registry.data.json");
 
+/** Allowlist for `unknownFlagError` (L3): a typo'd flag fails, no writes. */
+const KNOWN_FLAGS = [
+  "page",
+  "slot",
+  "fragment",
+  "strategy",
+  "channel",
+  "timeout-ms",
+  "props",
+  "static-html",
+  "cache-policy",
+  "data-dependencies",
+  "depends-on",
+  "required",
+  "remove",
+  "check",
+  "allow-unregistered",
+] as const;
+
 async function run(argv: string[]): Promise<MountResult> {
   const args = parseCliArgs(argv);
   const page = stringFlag(args, "page") ?? "";
   const slotName = stringFlag(args, "slot") ?? "";
+  const flagError = unknownFlagError(args, KNOWN_FLAGS);
+  if (flagError) {
+    return {
+      status: "failed",
+      page,
+      slot: slotName,
+      files: [],
+      warnings: [],
+      error: flagError,
+    };
+  }
   const remove = booleanFlag(args, "remove");
   const fragment = stringFlag(args, "fragment") ?? "";
   const allowUnregistered = booleanFlag(args, "allow-unregistered");

@@ -159,6 +159,95 @@ describe("lifecycle arg mapping (pure)", () => {
   });
 });
 
+describe("input validation against declared inputSchema (M5)", () => {
+  const tool = (name: string) => {
+    const found = devxTools().find((t) => t.name === name);
+    if (!found) throw new Error(`no tool ${name}`);
+    return found;
+  };
+  const root = "/nonexistent-root-never-touched";
+
+  it("rejects a wrong-typed argument with its path and expected type, before spawning", async () => {
+    // A bogus root proves the handler short-circuits before any subprocess
+    // or filesystem access — a spawn against this root would fail loudly.
+    const result = await tool("mount_slot").handler({ page: 123 }, { root });
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.text);
+    expect(parsed.status).toBe("failed");
+    expect(parsed.tool).toBe("mount_slot");
+    expect(parsed.error).toBe(
+      "invalid arguments: arguments.page must be of type string (got number)",
+    );
+  });
+
+  it("rejects missing required properties", async () => {
+    const result = await tool("register_fragment").handler(
+      { name: "price-panel", version: "0.1.0" },
+      { root },
+    );
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(result.text).error).toBe(
+      'invalid arguments: arguments is missing required property "serviceUrl"',
+    );
+  });
+
+  it("rejects enum violations (register_fragment channel)", async () => {
+    const result = await tool("register_fragment").handler(
+      {
+        name: "price-panel",
+        version: "0.1.0",
+        serviceUrl: "http://localhost:4203",
+        channel: "prod",
+      },
+      { root },
+    );
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(result.text).error).toContain(
+      'arguments.channel must be one of: "canary", "stable"',
+    );
+  });
+
+  it("rejects non-string scaffold names instead of passing an empty positional", async () => {
+    const result = await tool("scaffold_component").handler(
+      { name: 42 },
+      { root },
+    );
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(result.text).error).toBe(
+      "invalid arguments: arguments.name must be of type string (got number)",
+    );
+  });
+
+  it("rejects a non-array / wrong-item-typed changed list on affected_units", async () => {
+    const notArray = await tool("affected_units").handler(
+      { changed: "order-book" },
+      { root },
+    );
+    expect(notArray.isError).toBe(true);
+    expect(JSON.parse(notArray.text).error).toBe(
+      "invalid arguments: arguments.changed must be of type array (got string)",
+    );
+
+    const wrongItem = await tool("affected_units").handler(
+      { changed: [1] },
+      { root },
+    );
+    expect(wrongItem.isError).toBe(true);
+    expect(JSON.parse(wrongItem.text).error).toBe(
+      "invalid arguments: arguments.changed[0] must be of type string (got number)",
+    );
+  });
+
+  it("allows extra keys (inputSchemas do not set additionalProperties: false)", async () => {
+    const result = await tool("query_registry").handler(
+      { kind: "component", somethingExtra: true },
+      { root: ROOT },
+    );
+    expect(result.isError).toBeFalsy();
+    expect(JSON.parse(result.text).status).toBe("ok");
+  });
+});
+
 describe("query_registry handler (in-process, real repo)", () => {
   it("returns the live unit graph and honors a dependents query", async () => {
     const tool = devxTools().find((t) => t.name === "query_registry");

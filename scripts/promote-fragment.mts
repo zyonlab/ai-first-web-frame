@@ -1,7 +1,11 @@
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isRetryableWriteError } from "../packages/registry/src/atomic-file";
-import { parseCliArgs, stringFlag } from "../packages/registry/src/cli";
+import {
+  parseCliArgs,
+  stringFlag,
+  unknownFlagError,
+} from "../packages/registry/src/cli";
 import {
   applyPromoteFragment,
   loadRegistryData,
@@ -24,9 +28,16 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const registryPath = join(root, "registry/registry.data.json");
 const releasesPath = join(root, "registry/releases.json");
 
+/** Allowlist for `unknownFlagError` (L3): a typo'd flag fails, no writes. */
+const KNOWN_FLAGS = ["name"] as const;
+
 function run(argv: string[]): PromoteResult {
   const args = parseCliArgs(argv);
   const name = stringFlag(args, "name") ?? args.positional[0] ?? "";
+  const flagError = unknownFlagError(args, KNOWN_FLAGS);
+  if (flagError) {
+    return { status: "failed", name, files: [], error: flagError };
+  }
   if (!name) {
     return {
       status: "failed",

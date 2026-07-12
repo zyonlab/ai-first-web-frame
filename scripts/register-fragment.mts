@@ -9,6 +9,7 @@ import {
   booleanFlag,
   parseCliArgs,
   stringFlag,
+  unknownFlagError,
 } from "../packages/registry/src/cli";
 import {
   addComposeService,
@@ -37,9 +38,25 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const registryPath = join(root, "registry/registry.data.json");
 const composePath = join(root, "infra/docker/docker-compose.yml");
 
+/** Allowlist for `unknownFlagError` (L3): a typo'd flag fails, no writes. */
+const KNOWN_FLAGS = [
+  "name",
+  "version",
+  "service-url",
+  "manifest-url",
+  "assets-url",
+  "channel",
+  "port",
+  "with-compose",
+] as const;
+
 function run(argv: string[]): RegisterResult {
   const args = parseCliArgs(argv);
   const name = stringFlag(args, "name") ?? "";
+  const flagError = unknownFlagError(args, KNOWN_FLAGS);
+  if (flagError) {
+    return { status: "failed", name, files: [], error: flagError };
+  }
   const version = stringFlag(args, "version") ?? "";
   const serviceUrl = stringFlag(args, "service-url") ?? "";
 
