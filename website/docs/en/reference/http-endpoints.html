@@ -1,9 +1,13 @@
+<p class="eyebrow">Reference</p>
 <h1 id="http-endpoints">HTTP endpoints</h1>
+<p class="lede">Two surfaces: the eight routes every fragment serves because they come from the shared host, and the gateway's own public origin.</p>
 <h2 id="fragment-service-8-routes">Fragment service — 8 routes</h2>
 <p>Every one of the 14 fragments serves exactly these, because they come from <code>@mvp/fragment-host</code> rather than from each service.</p>
 <div class="table-wrap"><table><thead><tr><th>Method</th><th>Path</th><th>Response</th></tr></thead><tbody><tr><td>GET</td><td><code>/</code></td><td>HTML index of the service's own endpoints plus one live sample render</td></tr><tr><td>GET</td><td><code>/health</code></td><td><code>{status:"ok", service, version, uptimeMs}</code></td></tr><tr><td>GET</td><td><code>/ready</code></td><td>identical payload to <code>/health</code></td></tr><tr><td>GET</td><td><code>/metrics</code></td><td>Prometheus text (<code>PROMETHEUS_CONTENT_TYPE</code>)</td></tr><tr><td>GET</td><td><code>/manifest</code></td><td>the fragment manifest, verbatim</td></tr><tr><td>GET</td><td><code>/assets</code></td><td><code>manifest.assets</code></td></tr><tr><td>GET</td><td><code>/budget</code></td><td>the unit's performance budget</td></tr><tr><td>POST</td><td><code>/render</code></td><td><code>{html, assets, cache, metadata}</code></td></tr></tbody></table></div>
 <p><code>version</code> in <code>/health</code> is the <strong>deployed manifest version</strong> — that is what lets a rollout assert which build answered before promoting a channel.</p>
-<p><code>/health</code> and <code>/ready</code> are the same handler. There is no distinction between liveness and readiness in this host; if you need one, that is a gap to close, not a subtlety to discover.</p>
+<div class="note warn">
+<p><code>/health</code> and <code>/ready</code> are the <b>same handler</b>. There is no distinction between liveness and readiness in this host; if you need one, that is a gap to close, not a subtlety to discover.</p>
+</div>
 <h3 id="post-render"><code>POST /render</code></h3>
 <p>Request <code>{ctx, props}</code>. Two-tier validation: strict <code>FragmentRenderRequestSchema</code>, then a lenient envelope with <code>ctx</code> partial and optional, then <code>400</code>:</p>
 <pre><code class="lang-json">{ "error": { "code": "invalid-render-request", "issues": [ … ] } }</code></pre>
@@ -17,5 +21,7 @@
 <p>A fragment may add routes via <code>extraRoutes</code>, but the eight above are fixed.</p>
 <h2 id="shell-gateway-the-public-origin">Shell gateway — the public origin</h2>
 <div class="table-wrap"><table><thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td>GET</td><td><code>/health</code></td><td>gateway liveness</td></tr><tr><td>GET</td><td><code>/metrics</code></td><td>Prometheus text</td></tr><tr><td>GET</td><td><code>/robots.txt</code></td><td>generated from the site origin</td></tr><tr><td>GET</td><td><code>/sitemap.xml</code></td><td>generated from the route registry</td></tr><tr><td>GET</td><td><code>/manifest/routes</code></td><td>the route registry, as JSON</td></tr><tr><td>GET</td><td><code>/manifest/fragments</code></td><td>the <strong>resolved</strong> fragment registry (env overrides applied)</td></tr><tr><td>GET</td><td><code>/_shell/theme</code></td><td>theme selection endpoint</td></tr><tr><td>GET</td><td><code>/_shell/locale</code></td><td>locale selection endpoint</td></tr><tr><td>ALL</td><td><code>/_fragment/&lt;fragment&gt;/&lt;target&gt;/*</code></td><td>fragment backend proxy</td></tr><tr><td>GET</td><td><code>/_next/*</code></td><td>Next.js asset passthrough</td></tr><tr><td>GET</td><td><code>/*</code></td><td>route resolution → proxy to the owning page app</td></tr></tbody></table></div>
-<p><code>/manifest/fragments</code> is the fastest way to see what a running gateway believes: it reflects <code>registry/registry.data.json</code> <strong>after</strong> <code>&lt;FRAGMENT&gt;_URL</code> overrides are applied, so it answers "which service will this slot actually call".</p>
+<div class="note good">
+<p><code>/manifest/fragments</code> is the fastest way to debug a misrouted slot: it reflects the registry <b>after</b> <code>&lt;FRAGMENT&gt;_URL</code> overrides are applied, so it answers "which service will this slot actually call".</p>
+</div>
 <p>Timeouts: <code>SHELL_PAGE_TIMEOUT_MS</code>, <code>SHELL_ASSET_TIMEOUT_MS</code>, <code>SHELL_FRAGMENT_PROXY_TIMEOUT_MS</code>. Required-slot failure → status: <code>SHELL_REQUIRED_FAILURE_STATUS</code> (<code>0</code> disables).</p>

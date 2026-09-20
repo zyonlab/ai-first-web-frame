@@ -1,5 +1,6 @@
+<p class="eyebrow">Guides</p>
 <h1 id="fragment-development">Fragment development</h1>
-<p>A fragment is a Fastify service with one job: answer <code>POST /render</code> with HTML for a given <code>{props, ctx}</code>.</p>
+<p class="lede">A fragment is a Fastify service with one job: answer <code>POST /render</code> with HTML for a given <code>{props, ctx}</code>.</p>
 <h2 id="anatomy">Anatomy</h2>
 <pre><code>fragments/&lt;name&gt;/
   src/server.ts        ~20-line adapter over @mvp/fragment-host — do not hand-roll
@@ -31,7 +32,9 @@ export function buildServer(options = {}) {
     ...options,
   });
 }</code></pre>
-<p>This is enforced, not merely recommended: <code>audit:deps</code> rule <code>fragment-server-not-hosted</code> fails the build on a fragment that builds its own Fastify instance.</p>
+<div class="note warn">
+<p>This is <b>enforced</b>, not merely recommended: <code>audit:deps</code> rule <code>fragment-server-not-hosted</code> fails the build on a fragment that builds its own Fastify instance.</p>
+</div>
 <p><code>render</code> receives <code>(request, { trace, now })</code>. Take the clock from <code>now</code> rather than <code>Date.now()</code> if your output contains time — that is what makes render output testable and is why the countdown in <code>market-header</code> is deterministic under test.</p>
 <h2 id="fallback-is-declared-not-improvised">Fallback is declared, not improvised</h2>
 <p><code>manifest.fallback</code> is an HTML string the composition layer substitutes when your service is slow, erroring, or skipped. Keep it self-describing and carry the same <code>data-fragment="&lt;name&gt;"</code> root plus <code>data-fallback="true"</code>:</p>

@@ -1,4 +1,6 @@
+<p class="eyebrow">Troubleshooting</p>
 <h1 id="troubleshooting-build">Troubleshooting: build</h1>
+<p class="lede">Almost everything here is Turborepo cache behaviour or a stale <code>dist/</code>. Both have a specific cause worth knowing rather than a workaround.</p>
 <h2 id="pnpm-build-is-slow"><code>pnpm build</code> is slow</h2>
 <p>It should not be, twice. <code>build</code> and <code>test</code> run through Turborepo (<code>turbo.json</code>); a warm tree takes <code>pnpm verify</code> from roughly 165s to 32s, and Turborepo restores deleted <code>dist/</code> and <code>.next/</code> directories from cache rather than rebuilding them.</p>
 <p>If everything rebuilds every time, something is invalidating the cache. The two rules:</p>

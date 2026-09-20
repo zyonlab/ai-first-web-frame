@@ -1,5 +1,6 @@
+<p class="eyebrow">Getting started</p>
 <h1 id="your-first-fragment">Your first fragment</h1>
-<p>The full loop: scaffold → implement → register → mount → verify → promote. Every command prints a JSON envelope with a <code>status</code> field, and none of them writes anything on failure.</p>
+<p class="lede">The full loop: scaffold → implement → register → mount → verify → promote. Every command prints a JSON envelope with a <code>status</code> field, and none of them writes anything on failure.</p>
 <figure class="figure">
 <!--@figure:user-journey-->
 <figcaption><b>Every stage has a machine-readable acceptance signal.</b> That is what makes this loop drivable by an agent rather than only by a person.</figcaption>
@@ -12,7 +13,9 @@ src/fixtures.ts      src/render.test.ts  tests/server.test.ts
 package.json         tsconfig.json       Dockerfile        README.md</code></pre>
 <p>Accept: <code>"status": "created"</code> and <code>files.length === 11</code>.</p>
 <p>The generated unit <strong>runs as scaffolded</strong>: <code>src/server.ts</code> is a ~20-line adapter over <code>@mvp/fragment-host</code>, the port is the first free value after 4201, and the Dockerfile really builds. Never hand-roll a fragment server — <code>audit:deps</code> rule <code>fragment-server-not-hosted</code> fails the build if you do.</p>
-<blockquote><code>--type ui</code> instead creates <code>packages/ui/src/&lt;Name&gt;/</code> with 8 files. Two shapes, one command.</blockquote>
+<div class="note">
+<p><code>--type ui</code> instead creates <code>packages/ui/src/&lt;Name&gt;/</code> with 8 files. Two shapes, one command.</p>
+</div>
 <h2 id="2-implement-test-first">2. Implement, test first</h2>
 <pre><code class="lang-sh">$EDITOR fragments/price-panel/src/render.test.ts   # extend first
 $EDITOR fragments/price-panel/src/render.ts
@@ -39,7 +42,9 @@ pnpm --filter @mvp/fragment-price-panel test</code></pre>
 <li>Mounting an unregistered fragment <strong>fails</strong> with <code>"status": "failed"</code> and no write. Register first, or pass <code>--allow-unregistered</code> to warn and proceed. <code>--remove</code> is unaffected.</li>
 </ul>
 <p>Accept: <code>"status": "mounted"</code> with empty <code>warnings</code>.</p>
-<p>A successful mount or unmount also regenerates <code>apps/&lt;page&gt;/src/fragmentSlots.gen.ts</code> from the manifest. Never hand-edit that file. <code>mount-slot --page &lt;page&gt; --check</code> writes nothing and verifies the generated file is still in sync; <code>pnpm verify:manifest-gen</code> does it for every page and is part of <code>pnpm verify</code>.</p>
+<div class="note warn">
+<p>A successful mount or unmount also regenerates <code>apps/&lt;page&gt;/src/fragmentSlots.gen.ts</code> from the manifest. <b>Never hand-edit that file.</b> <code>mount-slot --page &lt;page&gt; --check</code> writes nothing and verifies the generated file is still in sync; <code>pnpm verify:manifest-gen</code> does it for every page and is part of <code>pnpm verify</code>.</p>
+</div>
 <h2 id="5-verify">5. Verify</h2>
 <pre><code class="lang-sh">pnpm verify                            # 14 gates, whole repo
 pnpm verify:unit --name price-panel    # this unit builds, boots, and agrees on its version</code></pre>

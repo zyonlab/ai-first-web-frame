@@ -1,5 +1,6 @@
+<p class="eyebrow">Getting started</p>
 <h1 id="ai-setup">AI setup</h1>
-<p>This is the axis with no framework-level competitor, so it is worth being concrete about what exists rather than gesturing at "AI-friendly".</p>
+<p class="lede">This is the axis with no framework-level competitor, so it is worth being concrete about what exists rather than gesturing at "AI-friendly".</p>
 <h2 id="the-four-mechanisms">The four mechanisms</h2>
 <h3 id="1-one-operations-manual-at-the-repository-root">1. One operations manual at the repository root</h3>
 <p><code>CLAUDE.md</code> is the agent's entry point: hard rules, directory map, the fragment lifecycle with accept criteria per step, common commands, and a failure-recovery table keyed by the exact string a script prints. <code>AGENTS.md</code> is a <strong>symlink</strong> to it, so the two cannot drift.</p>
@@ -7,7 +8,9 @@
 <p>Every <code>packages/*</code> and <code>domains/*</code> directory ships an <code>AGENT.md</code> with an <em>Entry points</em> section, worked examples, and an <em>Accept</em> block. The fenced <code>ts</code>/<code>tsx</code> blocks are <strong>run</strong> by <code>pnpm docs:test</code>, which is one of the 14 <code>pnpm verify</code> gates.</p>
 <pre><code class="lang-sh">pnpm docs:test        # 36 AGENT.md files, 41 executable blocks, 7 marked no-run</code></pre>
 <p>A block that needs to be illustrative rather than runnable is marked <code> </code>`<code>ts no-run </code>, and the report counts those separately (<code>noRunBlocks</code>) — so "we skipped it" is visible rather than silent. An example that stops compiling or stops asserting is a red build.</p>
-<p>This is the mechanism that makes the rest trustworthy: documentation an agent reads is documentation CI proved still works.</p>
+<div class="note good">
+<p><b>This is the mechanism that makes the rest trustworthy:</b> documentation an agent reads is documentation CI just proved still works.</p>
+</div>
 <h3 id="3-eight-mcp-tools">3. Eight MCP tools</h3>
 <p><code>pnpm mcp</code> starts the server (<code>packages/mcp/src/server.ts</code>). Tools:</p>
 <div class="table-wrap"><table><thead><tr><th>Tool</th><th>Wraps</th></tr></thead><tbody><tr><td><code>scaffold_component</code></td><td><code>@mvp/create-component</code></td></tr><tr><td><code>register_fragment</code></td><td><code>scripts/register-fragment.mts</code></td></tr><tr><td><code>mount_slot</code></td><td><code>scripts/mount-slot.mts</code> (including <code>--remove</code> / <code>--check</code>)</td></tr><tr><td><code>promote_fragment</code></td><td><code>scripts/promote-fragment.mts</code></td></tr><tr><td><code>rollback_fragment</code></td><td><code>scripts/rollback-fragment.mts</code></td></tr><tr><td><code>affected</code></td><td>the affected-plan graph engine</td></tr><tr><td><code>query_registry</code></td><td>the unit dependency graph</td></tr><tr><td><code>affected_units</code></td><td>closure of units to re-verify given changed unit ids</td></tr></tbody></table></div>
@@ -27,6 +30,7 @@
 <li>For a fragment, also <code>pnpm verify:unit --name &lt;fragment&gt;</code>.</li>
 </ol>
 <h2 id="what-still-costs-an-agent-time">What still costs an agent time</h2>
+<div class="note bad">
 <p>Documented honestly, because these are the places an agent currently has to guess:</p>
 <ul>
 <li>Two flags exist only in code, not in the manual (<a href="../known-limitations.html#f4">F4</a>).</li>
@@ -34,3 +38,4 @@
 <li><code>reports/</code> at the repo root and <code>docs/reports/</code> are different things with similar names.</li>
 <li>Nothing compares a file count asserted in prose against what the scaffolder actually writes, so that class of drift recurs silently (<a href="../known-limitations.html#f12">F12</a>).</li>
 </ul>
+</div>

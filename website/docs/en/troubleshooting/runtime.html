@@ -1,4 +1,6 @@
+<p class="eyebrow">Troubleshooting</p>
 <h1 id="troubleshooting-runtime">Troubleshooting: runtime</h1>
+<p class="lede">Symptom first, then the thing to check. Most of what looks broken here is a declared degradation working as designed.</p>
 <h2 id="a-slot-renders-its-fallback">A slot renders its fallback</h2>
 <p>Read the slot result, which distinguishes the cases:</p>
 <div class="table-wrap"><table><thead><tr><th><code>status</code></th><th><code>source</code></th><th>Meaning</th></tr></thead><tbody><tr><td><code>fallback</code></td><td><code>fallback</code></td><td>the fragment's own render failed or timed out</td></tr><tr><td><code>skipped-dependency</code></td><td><code>fallback</code></td><td>something it depends on failed, so it was never attempted</td></tr><tr><td><code>ok</code></td><td><code>cache</code></td><td>served from the in-process cache, not the network</td></tr></tbody></table></div>
@@ -15,7 +17,9 @@
 curl -s localhost:4100/trade/BTC | grep -o 'data-failed-slots="[^"]*"'</code></pre>
 <p><code>SHELL_REQUIRED_FAILURE_STATUS=0</code> disables the translation if you need the upstream status back.</p>
 <h2 id="an-island-does-not-hydrate">An island does not hydrate</h2>
-<p>This is usually the handshake working, not a bug. Install a handler and read the reason:</p>
+<div class="note good">
+<p>This is <b>usually the handshake working</b>, not a bug. Install a handler and read the reason:</p>
+</div>
 <pre><code class="lang-ts">configureIslandRuntime({ onSnapshotMismatch: (info) =&gt; console.warn(info) });
 // {island, expected, actual, reason}</code></pre>
 <div class="table-wrap"><table><thead><tr><th>Reason</th><th>Fix</th></tr></thead><tbody><tr><td><code>version-mismatch</code></td><td>the deployed fragment version ≠ the version the page registered</td></tr><tr><td><code>contract-hash-mismatch</code></td><td>payload contract changed under the same version — bump the version</td></tr><tr><td><code>invalid-snapshot</code></td><td>the inline JSON does not satisfy <code>IslandSnapshotSchema</code></td></tr><tr><td><code>invalid-props</code></td><td>the snapshot's props fail the island's <code>propsSchema</code> — usually a newly required prop that older SSR output does not carry</td></tr></tbody></table></div>
@@ -34,9 +38,11 @@ curl -s localhost:4100/trade/BTC | grep -o 'data-failed-slots="[^"]*"'</code></p
 <h2 id="metrics">Metrics</h2>
 <p><code>GET /metrics</code> on the gateway and on every fragment, Prometheus text format. HTTP metrics come from <code>createHttpMetrics</code>; <code>recordWebVital</code> accepts client-reported vitals.</p>
 <h2 id="ordinary-things-that-look-like-bugs">Ordinary things that look like bugs</h2>
+<div class="note">
 <ul>
 <li><strong>A <code>&lt;meta&gt;</code> you rendered inside <code>&lt;body&gt;</code> appears in <code>&lt;head&gt;</code>.</strong> React 19 hoists document metadata. Intended.</li>
 <li><strong><code>reports/</code> changed after <code>pnpm verify</code>.</strong> It is machine output, rewritten every run. <code>docs/reports/</code> is the hand-written one.</li>
 <li><strong>e2e results are nonsense.</strong> Did <code>pnpm build</code> run while <code>pnpm dev</code> was serving? Restart the stack.</li>
 <li><strong><code>pnpm e2e</code> fails every browser spec with "Executable doesn't exist".</strong> <code>pnpm exec playwright install chromium</code>.</li>
 </ul>
+</div>

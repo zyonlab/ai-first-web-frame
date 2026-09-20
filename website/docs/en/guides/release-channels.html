@@ -1,5 +1,6 @@
+<p class="eyebrow">Guides</p>
 <h1 id="release-channels">Release channels</h1>
-<p><code>stable</code> | <code>canary</code> | <code>preview</code>. A slot names a channel; the registry resolves it to a version and a <code>serviceUrl</code> <strong>per request</strong>, so going live with a new fragment build needs no page rebuild.</p>
+<p class="lede"><code>stable</code> | <code>canary</code> | <code>preview</code>. A slot names a channel; the registry resolves it to a version and a <code>serviceUrl</code> <strong>per request</strong>, so going live with a new fragment build needs no page rebuild.</p>
 <figure class="figure">
 <!--@figure:release-channels-->
 <figcaption><b>Step three is the point of <code>/health</code> reporting the manifest version.</b> A rollout can confirm which build is answering <em>before</em> promoting the channel production reads.</figcaption>
@@ -17,7 +18,9 @@
   }
 }</code></pre>
 <p><code>versions</code> is the history that makes rollback possible. <code>registry/releases.json</code> is an append-only log of promotions.</p>
-<p>Never hand-edit either file. Use the CLIs — they write atomically behind an advisory lock with an optimistic content-hash check, and print <code>{"status":"conflict","retry":true}</code> instead of clobbering a concurrent change.</p>
+<div class="note warn">
+<p><b>Never hand-edit either file.</b> Use the CLIs — they write atomically behind an advisory lock with an optimistic content-hash check, and print <code>{"status":"conflict","retry":true}</code> instead of clobbering a concurrent change.</p>
+</div>
 <h2 id="the-rollout">The rollout</h2>
 <pre><code class="lang-sh"># 1. deploy the image (your platform's job)
 # 2. point canary at the new version
@@ -40,4 +43,7 @@ resolveFragment(registry, "order-book", "0.1.0");    // by exact version
 // -&gt; { version, serviceUrl, manifestUrl } | null</code></pre>
 <p><code>null</code> means not registered on that channel. A slot pointing at a channel the fragment does not have resolves to the slot's fallback — quietly. There is no build-time check that every slot's channel exists in the registry.</p>
 <h2 id="state-of-the-demo">State of the demo</h2>
-<p>Worth knowing before you take the lifecycle at face value: <strong>12 of the 14 fragments have only a <code>canary</code> entry.</strong> Only <code>promotion-banner</code> (stable + canary) and <code>recommendation-widget</code> (stable) carry <code>stable</code>, and every <code>page-trade</code>, <code>page-markets</code> and <code>page-portfolio</code> slot mounts <code>channel: "canary"</code>. The promote path is exercised on 2 of 14 units (<a href="../known-limitations.html#f6">F6</a>). <code>recommendation-widget</code> additionally has no <code>versions</code> history, so <code>rollback-fragment</code> correctly refuses it for lack of a recorded target.</p>
+<div class="note bad">
+<p>Worth knowing before you take the lifecycle at face value: <b>12 of the 14 fragments have only a <code>canary</code> entry.</b> Only <code>promotion-banner</code> (stable + canary) and <code>recommendation-widget</code> (stable) carry <code>stable</code>, and every <code>page-trade</code>, <code>page-markets</code> and <code>page-portfolio</code> slot mounts <code>channel: "canary"</code>. The promote path is exercised on 2 of 14 units (<a href="../known-limitations.html#f6">F6</a>).</p>
+<p><code>recommendation-widget</code> additionally has no <code>versions</code> history, so <code>rollback-fragment</code> correctly refuses it for lack of a recorded target.</p>
+</div>

@@ -1,6 +1,12 @@
+<p class="eyebrow">Known limitations</p>
 <h1 id="known-limitations">Known limitations</h1>
-<p>Everything here was found by reading the source tree and running the gates, not by reading the internal docs. Each entry names the file that proves it. Nothing in this list is a hypothetical.</p>
-<p>The list is ordered by what would hurt first, and each entry says who it hurts: <strong>AX</strong> an AI agent working in the repository, <strong>DX</strong> a human developer, <strong>OPS</strong> someone running it, <strong>DOCS</strong> a claim that is not true as stated.</p>
+<p class="lede">Everything here was found by reading the source tree and running the gates, not by reading the internal docs. Each entry names the file that proves it. Nothing in this list is a hypothetical.</p>
+<p>The list is ordered by what would hurt first, and each entry says who it hurts: <b>AX</b> an AI agent working in the repository, <b>DX</b> a human developer, <b>OPS</b> someone running it, <b>DOCS</b> a claim that is not true as stated.</p>
+<div class="facts">
+  <div class="fact"><b>15</b><span>verified findings</span></div>
+  <div class="fact"><b>2</b><span>already fixed</span></div>
+  <div class="fact"><b>3</b><span>would change a decision</span></div>
+</div>
 <hr />
 <h2 id="f1">F1 · The optimizer advises statically rendering the realtime order book — AX, high</h2>
 <p><code>reports/optimization-findings.json</code> currently contains 10 findings of the form:</p>
@@ -13,7 +19,9 @@
 <li><code>packages/optimizer/src/index.ts:470-474</code> — the surviving condition is <code>(slot.strategy ?? "dynamic-ssr") === "dynamic-ssr" &amp;&amp; (slot.dependsOn ?? []).length === 0</code>. <code>dependsOn</code> is <strong>inter-slot ordering</strong>. <code>book</code> has no <code>dependsOn</code> because no other slot waits on it, not because it is static.</li>
 </ol>
 <p>Underneath both is the same structural issue: the fragments <em>do</em> declare their data (<code>fragments/order-book/src/manifest.ts:30</code> → <code>dataDependencies: ["book.l2.&lt;symbol&gt;"]</code>), the optimizer reads the page side, and nothing reconciles the two.</p>
-<p><strong>Severity for an agent.</strong> These findings are <code>info</code>, so the gate passes and a human skims past them. An agent reading <code>reports/optimization-findings.json</code> sees a structured <code>recommendation</code> field on 10 of 19 slots and has no signal that it is wrong.</p>
+<div class="note bad">
+<p><b>Severity for an agent.</b> These findings are <code>info</code>, so the gate passes and a human skims past them. An agent reading <code>reports/optimization-findings.json</code> sees a structured <code>recommendation</code> field on 10 of 19 slots and <b>no signal at all that it is wrong</b>.</p>
+</div>
 <p><strong>Fix shape.</strong> Pass the fragment-declared dependencies into the audit input, and key the rule on declared freshness rather than on <code>dependsOn</code>.</p>
 <hr />
 <h2 id="f2">F2 · <code>&lt;FRAGMENT&gt;_URL</code> moves the service but not its island assets — OPS, medium</h2>
@@ -59,12 +67,12 @@
 <hr />
 <h2 id="f10">F10 · Four islands exceed the size guideline and nothing owns it — DX, low</h2>
 <p><code>reports/server-client-boundary-report.json</code> carries four open <code>large-client-component</code> issues at severity <code>warn</code>:</p>
-<ul>
-<li><code>apps/page-trade/src/hydrate.tsx</code></li>
-<li><code>fragments/chart-panel/src/island.tsx</code></li>
-<li><code>fragments/market-header/src/island.tsx</code></li>
-<li><code>fragments/order-form/src/island.tsx</code></li>
-</ul>
+<div class="chips">
+<span class="chip r">apps/page-trade/src/hydrate.tsx</span>
+<span class="chip r">fragments/chart-panel/src/island.tsx</span>
+<span class="chip r">fragments/market-header/src/island.tsx</span>
+<span class="chip r">fragments/order-form/src/island.tsx</span>
+</div>
 <p><code>warn</code> does not fail the gate, the guideline has no number in any <code>budget.ts</code>, and no unit owns the warning. It is a permanent yellow light: either give it a budget field so it can fail, or drop the rule.</p>
 <hr />
 <h2 id="f11">F11 · Five of eleven budget fields have no gate anywhere — DOCS, medium</h2>
@@ -72,7 +80,9 @@
 <div class="table-wrap"><table><thead><tr><th>Enforcement</th><th>Fields</th></tr></thead><tbody><tr><td>Gated by <code>pnpm verify</code></td><td><code>jsBytes</code>, <code>cssBytes</code></td></tr><tr><td>Gated only by <code>pnpm verify:runtime</code> (needs a live URL, <strong>not</strong> a verify gate)</td><td><code>maxTTFBMs</code>, <code>maxLCPMs</code>, <code>maxCLS</code></td></tr><tr><td>Runtime-only, acknowledged unmeasurable</td><td><code>rscPayloadBytes</code></td></tr><tr><td><strong>No gate anywhere</strong></td><td><code>maxNetworkRequests</code>, <code>maxINPMs</code>, <code>maxFragmentLatencyMs</code>, <code>maxRenderMs</code>, <code>maxMemoryMB</code></td></tr></tbody></table></div>
 <p>The blanket claim "performance budgets are hard gates: exceeding component/fragment/page budgets fails <code>pnpm verify</code>" is true of 2 fields out of 11.</p>
 <p>To be fair to the tooling: <code>audit:bundle</code> is explicit about its own scope — its report carries an <code>unmeasured</code> array with a <code>reason</code> per skip, and a <code>notes</code> entry stating that runtime-only metrics are not gated. The gap is between the schema and the gates, and between the gates and the summary prose.</p>
-<p>The sharpest instance: every one of the 14 fragments declares <code>maxFragmentLatencyMs</code> and <code>maxRenderMs</code> — the two most operationally meaningful numbers a fragment has — and nothing reads either. Also, every page declares <code>maxINPMs: 200</code> while the runtime gate implements LCP, CLS and TTFB checks and no INP check at all.</p>
+<div class="note bad">
+<p><b>The sharpest instance:</b> every one of the 14 fragments declares <code>maxFragmentLatencyMs</code> and <code>maxRenderMs</code> — the two most operationally meaningful numbers a fragment has — and <b>nothing reads either</b>. Likewise every page declares <code>maxINPMs: 200</code> while the runtime gate implements LCP, CLS and TTFB checks and no INP check at all.</p>
+</div>
 <hr />
 <h2 id="f12">F12 · <del>The scaffold file count is stated as 9 in three places and 11 in three others</del> — FIXED</h2>
 <p>The scaffolder writes <strong>11</strong> files (<code>tools/create-component/src/index.ts</code>, <code>createFragment</code>): <code>src/{server,render,manifest,budget,fixtures,render.test}.ts</code>, <code>tests/server.test.ts</code>, <code>package.json</code>, <code>tsconfig.json</code>, <code>Dockerfile</code>, <code>README.md</code>.</p>
@@ -90,8 +100,10 @@
 <p><code>parseFragmentRenderRequest</code> (<code>packages/contracts/src/index.ts</code>) tries the strict <code>FragmentRenderRequestSchema</code>, falls back to <code>FragmentRenderRequestEnvelopeSchema</code> (where <code>ctx</code> is <code>.partial().optional()</code>), and returns <code>strict: boolean</code> saying which tier matched. Only if both fail does it return <code>ok: false</code>.</p>
 <p>Verified live: <code>POST /render</code> with <code>{"ctx":{"locale":"en-US","tenant":"default"}}</code> — a context missing the required <code>traceId</code>, <code>requestId</code>, <code>featureFlags</code> and <code>timestamp</code> — answers <strong>200 with real HTML</strong>.</p>
 <p>The two-tier design is reasonable. The problem is that <strong>nothing reads <code>strict</code></strong>: a repository-wide search finds no consumer outside tests. <code>packages/fragment-host/src/index.ts:209</code> destructures the result, uses <code>parsed.ok</code> and <code>parsed.request</code>, and ignores <code>parsed.strict</code> — no log line, no response header, no metric label.</p>
-<p>Consequence: in production you cannot tell whether your pages are sending valid contexts or silently degrading to the lenient tier — which means a page that quietly stopped propagating <code>traceId</code> looks identical to one that works, while every downstream trace loses its parent.</p>
+<div class="note bad">
+<p><b>Consequence:</b> in production you cannot tell whether your pages are sending valid contexts or silently degrading to the lenient tier. A page that quietly stopped propagating <code>traceId</code> looks identical to one that works, while every downstream trace loses its parent.</p>
 <p>One counter label would fix it.</p>
+</div>
 <hr />
 <h2 id="f15">F15 · A declared interaction channel is invisible to the dependency graph — DX, low</h2>
 <p><code>tradeSliceContracts</code> declares 7 channels. <code>pnpm graph</code> reports <strong>6</strong> slice units. The missing one is <code>trade.book-grouping</code>.</p>
@@ -100,6 +112,7 @@
 <hr />
 <h2 id="things-that-look-like-limitations-and-are-not">Things that look like limitations and are not</h2>
 <p>Worth stating, because each one gets reported as a bug:</p>
+<div class="note good">
 <ul>
 <li><strong>An island silently not hydrating.</strong> That is the version handshake working. Four distinct reasons are reported to <code>onSnapshotMismatch</code>; the SSR markup is deliberately left intact.</li>
 <li><strong>No runtime version negotiation.</strong> A deliberate scope choice, and the main axis on which Module Federation is stronger. We detect and decline; we never load a different remote.</li>
@@ -108,6 +121,7 @@
 <li><strong>The page-health signal is a hidden <code>&lt;div&gt;</code>, not a <code>&lt;meta&gt;</code>.</strong> Deliberate: it is a gateway signal, not document metadata. React 19 <em>would</em> hoist a <code>&lt;meta&gt;</code> into <code>&lt;head&gt;</code>, which is exactly where a degradation marker should not be.</li>
 <li><strong><code>reports/</code> keeps changing.</strong> Machine output, rewritten by every <code>pnpm verify</code>. The hand-written reports are in <code>docs/reports/</code>.</li>
 </ul>
+</div>
 <h2 id="how-to-use-this-page">How to use this page</h2>
 <p>If you are evaluating: F1, F11 and F14 are the ones that would change a decision — one advisory tool that is wrong, one claim broader than its implementation, one observability hole at the main boundary. None of them is a design dead end; all three are a day of work each.</p>
 <p>If you are an agent working here: read F1 before acting on any optimizer recommendation, and F4 before concluding a flag does not exist.</p>

@@ -1,5 +1,6 @@
+<p class="eyebrow">Guides</p>
 <h1 id="fallbacks-and-page-health">Fallbacks and page health</h1>
-<p>Partial degradation is a designed feature. The question this guide answers is: <em>when does degradation change the HTTP status code?</em></p>
+<p class="lede">Partial degradation is a designed feature. The question this guide answers is: <em>when does degradation change the HTTP status code?</em></p>
 <figure class="figure">
 <!--@figure:health-decision-->
 <figcaption><b>Only one path changes the status code.</b> The <code>503</code> branch still returns the page body unchanged — the two are not a trade-off.</figcaption>
@@ -19,7 +20,9 @@
 <p><code>SHELL_REQUIRED_FAILURE_STATUS=0</code> disables the translation and keeps the upstream status.</p>
 <h3 id="why-a-hidden-div-and-not-a-meta">Why a hidden <code>div</code> and not a <code>&lt;meta&gt;</code></h3>
 <p>Because it is an internal signal for the gateway, not metadata about the document. React 19 <em>would</em> hoist a <code>&lt;meta&gt;</code> rendered from a page component into <code>&lt;head&gt;</code> — verified by SSR probe — and <code>&lt;head&gt;</code> is the document's public metadata surface, read by crawlers and third-party tools. A degradation signal does not belong there.</p>
-<p>(Under React 18 the same <code>&lt;meta&gt;</code> stayed in <code>&lt;body&gt;</code>, which is invalid HTML. The repository is on React 19 now, so the constraint is gone and the choice is deliberate rather than forced.)</p>
+<div class="note">
+<p>Under React 18 the same <code>&lt;meta&gt;</code> stayed in <code>&lt;body&gt;</code>, which is <em>invalid HTML</em>. The repository is on React 19 now, so the constraint is gone and the hidden <code>div</code> is a deliberate choice rather than a forced workaround.</p>
+</div>
 <h2 id="streaming-pages">Streaming pages</h2>
 <p>Use <code>PageHealthMetaStream</code>, which takes the aggregate promise and emits the marker once the rollup is known. The marker necessarily appears late in the body — which is fine, because the gateway buffers the page body to translate the status anyway.</p>
 <h2 id="designing-a-good-fallback">Designing a good fallback</h2>

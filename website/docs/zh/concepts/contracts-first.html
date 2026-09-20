@@ -46,7 +46,9 @@ toJsonSchema(SomeSchema, "SomeSchema");   // draft-07，可选 $ref 包装</code
 
 const parsed = parseFragmentRenderRequest(body);
 // { ok: true, request, strict: boolean } | { ok: false, issues }</code></pre>
-<p><code>parseFragmentRenderRequest</code> 是刻意<strong>两层</strong>的：先严格 schema，再一个 <code>ctx</code> 为 <code>.partial().optional()</code> 的信封，两者都失败才 <code>400</code>。<code>strict</code> 告诉调用方命中了哪一层 —— 而这个信号目前在<em>任何地方都被生产出来又被丢弃</em>（<a href="../known-limitations.html#f14">F14</a>）。</p>
+<div class="note bad">
+<p><code>parseFragmentRenderRequest</code> 是刻意<b>两层</b>的：先严格 schema，再一个 <code>ctx</code> 为 <code>.partial().optional()</code> 的信封，两者都失败才 <code>400</code>。<code>strict</code> 告诉调用方命中了哪一层 —— 而这个信号目前在<em>任何地方都被生产出来又被丢弃</em>（<a href="../known-limitations.html#f14">F14</a>）。</p>
+</div>
 
 <h2 id="预算也是契约">预算也是契约</h2>
 <pre><code>import { loadDefaultBudget, mergeBudget, assertBudget, createBudgetReport } from "@mvp/contracts";</code></pre>
