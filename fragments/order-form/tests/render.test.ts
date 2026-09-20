@@ -89,6 +89,25 @@ describe("order-form render — first paint", () => {
       symbol: "BTC",
       draft: { side: "buy", type: "market", leverage: 1, reduceOnly: false },
       account: { equity: 1, used: 0, free: 1, maintenance: 0 },
+      constraints: {
+        symbol: "BTC",
+        tickSize: 0.5,
+        lotSize: 0.001,
+        priceDecimals: 2,
+        sizeDecimals: 3,
+        maxLeverage: 50,
+      },
+      ladder: {
+        symbol: "BTC",
+        tiers: [
+          {
+            maxLeverage: 50,
+            maxNotional: 50_000,
+            maintenanceMarginRate: 0.005,
+          },
+        ],
+      },
+      markPrice: 63_000,
     };
     const snapshot = buildIslandSnapshot(props);
     expect(snapshot).not.toContain("<");

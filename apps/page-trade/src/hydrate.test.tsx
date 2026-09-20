@@ -39,7 +39,8 @@ function makeBus(): InteractionBus {
 /**
  * The order-form island's SSR mount node, matching the frozen C2 markup the
  * `order-form` fragment emits (`data-island="orderForm"` + inline JSON snapshot
- * of `{ symbol, draft, account }`).
+ * of `{ symbol, draft, account, constraints, ladder, markPrice }` — the instrument
+ * limits are part of the snapshot because the island enforces them before submit).
  */
 function buildOrderFormNode(): HTMLDivElement {
   const el = document.createElement("div");
@@ -58,6 +59,31 @@ function buildOrderFormNode(): HTMLDivElement {
         reduceOnly: false,
       },
       account: { equity: 12480.2, used: 4200, free: 8110, maintenance: 300 },
+      constraints: {
+        symbol: "BTC",
+        tickSize: 0.1,
+        lotSize: 0.001,
+        priceDecimals: 1,
+        sizeDecimals: 3,
+        maxLeverage: 50,
+        minOrderSize: 0.001,
+      },
+      ladder: {
+        symbol: "BTC",
+        tiers: [
+          {
+            maxLeverage: 50,
+            maxNotional: 50_000,
+            maintenanceMarginRate: 0.005,
+          },
+          {
+            maxLeverage: 20,
+            maxNotional: 250_000,
+            maintenanceMarginRate: 0.01,
+          },
+        ],
+      },
+      markPrice: 64_000,
     },
     slice: TRADE_ORDER_DRAFT,
   });

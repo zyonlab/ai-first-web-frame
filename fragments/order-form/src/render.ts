@@ -2,10 +2,18 @@ import type { RequestContext } from "@mvp/contracts";
 import type { DataCacheEntry } from "@mvp/data";
 import type { RequestTrace } from "@mvp/observability";
 import { createRequestContext } from "@mvp/request-context";
-import { TRADE_ORDER_DRAFT } from "@mvp/trade-contracts";
+import {
+  type LeverageLadder,
+  type SymbolConstraints,
+  TRADE_ORDER_DRAFT,
+} from "@mvp/trade-contracts";
 import { AccountMarginSchema } from "@mvp/trade-data";
 import { z } from "zod";
-import { type AccountMargin, loadAccountMargin } from "./data";
+import {
+  type AccountMargin,
+  loadAccountMargin,
+  loadSymbolConstraints,
+} from "./data";
 import { createDefaultDraft, type OrderFormDraft } from "./islandLogic";
 import { orderFormManifest } from "./manifest";
 import { orderFormCss } from "./styles";
@@ -36,6 +44,16 @@ export type OrderFormIslandProps = {
   symbol: string;
   draft: OrderFormDraft;
   account: AccountMargin;
+  /**
+   * The instrument's published limits, carried in the snapshot so the island's
+   * submit guard can reject an off-grid or over-levered order on the FIRST
+   * interaction. Fetching them after hydration would leave a window in which
+   * the form accepts an order it must refuse.
+   */
+  constraints: SymbolConstraints;
+  ladder: LeverageLadder;
+  /** Mark price, so a MARKET order's notional and tier rules can be evaluated. */
+  markPrice: number;
 };
 
 /**
@@ -60,6 +78,26 @@ export const OrderFormIslandPropsSchema = z
       type: z.enum(["market", "limit"]),
     }),
     account: AccountMarginSchema,
+    constraints: z.object({
+      symbol: z.string(),
+      tickSize: z.number(),
+      lotSize: z.number(),
+      priceDecimals: z.number(),
+      sizeDecimals: z.number(),
+      maxLeverage: z.number(),
+      minOrderSize: z.number().optional(),
+    }),
+    ladder: z.object({
+      symbol: z.string(),
+      tiers: z.array(
+        z.object({
+          maxLeverage: z.number(),
+          maxNotional: z.number(),
+          maintenanceMarginRate: z.number(),
+        }),
+      ),
+    }),
+    markPrice: z.number(),
   })
   .describe("OrderFormIslandPropsSchema");
 
@@ -100,11 +138,23 @@ export async function renderOrderForm(
     const symbol = (request.props.symbol ?? "BTC").toUpperCase();
     const cache = options.cache ?? sharedCache;
 
-    // Request-time account/margin read (contract C4 -> C5 sourceIds.account).
-    const account = await loadAccountMargin(ctx, cache);
+    // Request-time account/margin read (contract C4 -> C5 sourceIds.account)
+    // in parallel with the slow-tier instrument limits — they share the
+    // per-request cache, and neither blocks the other.
+    const [account, limits] = await Promise.all([
+      loadAccountMargin(ctx, cache),
+      loadSymbolConstraints(ctx, cache, symbol),
+    ]);
 
     const draft = createDefaultDraft();
-    const islandProps: OrderFormIslandProps = { symbol, draft, account };
+    const islandProps: OrderFormIslandProps = {
+      symbol,
+      draft,
+      account,
+      constraints: limits.meta,
+      ladder: limits.tiers,
+      markPrice: limits.markPrice,
+    };
 
     const html = renderOrderFormHtml(symbol, draft, account, islandProps);
 

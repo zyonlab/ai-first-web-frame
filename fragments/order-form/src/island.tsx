@@ -5,6 +5,7 @@ import {
   type ActiveSymbolPayload,
   createMockMatchingEngine,
   type HoveredPricePayload,
+  OrderConstraintError,
   type OrderDraftPricePayload,
   TRADE_ACTIVE_SYMBOL,
   TRADE_HOVERED_PRICE,
@@ -99,6 +100,9 @@ export function OrderFormIsland({
   symbol,
   draft: initialDraft,
   account,
+  constraints,
+  ladder,
+  markPrice,
   deps,
 }: OrderFormIslandComponentProps) {
   const { store, userId } = deps;
@@ -162,12 +166,29 @@ export function OrderFormIsland({
     event.preventDefault();
     if (!isDraftSubmittable(draft)) return;
     const input = toPlaceOrderInput(activeSymbol, draft);
-    const outcome = await submitOrder(input, {
-      mutate: engine.place,
-      userId,
-      invalidate: deps.invalidate ?? (() => {}),
-    });
-    setAck(`${outcome.result.status} (${outcome.result.orderId})`);
+    try {
+      const outcome = await submitOrder(input, {
+        mutate: engine.place,
+        userId,
+        invalidate: deps.invalidate ?? (() => {}),
+        // Instrument limits ride in the snapshot, so the very first submit is
+        // already guarded — see OrderFormIslandProps.constraints.
+        constraints,
+        ladder,
+        referencePrice: markPrice,
+      });
+      setAck(`${outcome.result.status} (${outcome.result.orderId})`);
+    } catch (error) {
+      if (error instanceof OrderConstraintError) {
+        // Every violation at once: a trader fixing a rejected order should not
+        // have to resubmit to discover the next problem.
+        setAck(
+          `rejected — ${error.violations.map((v) => v.message).join("; ")}`,
+        );
+        return;
+      }
+      throw error;
+    }
   }
 
   const submittable = isDraftSubmittable(draft);
