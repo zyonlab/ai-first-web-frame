@@ -177,6 +177,7 @@ A fragment is the smallest unit that ships on its own, and that is an executable
 - `pnpm typecheck` | `pnpm lint` | `pnpm check` | `pnpm build`
 - `pnpm verify:unit --name <fragment>` (single-unit build + boot + version contract)
 - `pnpm reports [--port n] [--open]` (serve `docs/reports/` — zero-dependency read-only static server)
+- `pnpm docs:serve [--port n] [--open]` (serve `website/docs/` — the outward-facing docs, Markdown rendered on request)
 - `docker compose -f infra/docker/docker-compose.yml config` (validate compose after registration)
 
 ## Failure recovery

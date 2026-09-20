@@ -35,6 +35,16 @@ Counts below are from the repository, not from a roadmap:
 - Evaluating it: [How it compares](introduction/how-it-compares.md) and
   [Known limitations](known-limitations.md) — read both.
 
+## Reading these docs locally
+
+```sh
+pnpm docs:serve           # http://localhost:4301
+pnpm docs:serve --open    # and open a browser
+```
+
+Zero dependencies and no build step: one script renders the Markdown on request.
+URLs mirror the file paths, so every relative link in the source works unchanged.
+
 ## A note on these docs
 
 Every factual claim here was checked against the source tree, and paths are cited so you

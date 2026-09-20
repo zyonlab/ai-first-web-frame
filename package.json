@@ -27,6 +27,7 @@
     "verify:runtime": "tsx scripts/verify-runtime.mts",
     "verify:unit": "tsx scripts/verify-unit.mts",
     "reports": "tsx scripts/serve-reports.mts",
+    "docs:serve": "tsx scripts/serve-docs.mts",
     "affected:graph": "tsx scripts/affected-graph.mts",
     "deploy:affected": "tsx scripts/deploy-affected.mts",
     "mcp": "pnpm --filter @mvp/mcp start",
