@@ -110,7 +110,7 @@ store.bus;                 // the underlying InteractionBus (bridge/injection us
 
 Goal B2/B3 (`docs/ARCHITECTURE_REFACTOR_PLAN.md` §0): framework packages
 (`packages/**`) contain **zero** domain vocabulary; the dependency-audit rule
-`domain-code-in-framework-package` (`tools/dependency-audit/src/index.ts`)
+`layer-constraint-violation` (declarative `tags`/`depConstraints` in `dependency-audit.json`; formerly the hard-coded `domain-code-in-framework-package` check, still the fallback when no config is present — `tools/dependency-audit/src/index.ts`)
 fails the build if domain code re-enters a framework package.
 
 The trade demo's contracts live in `domains/trade-contracts/src/`:

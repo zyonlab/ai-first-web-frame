@@ -1,3 +1,4 @@
+import { createPageMetadata } from "@mvp/runtime/seo";
 import type { Metadata } from "next";
 
 export const referralsSeoCopy = {
@@ -6,7 +7,8 @@ export const referralsSeoCopy = {
     "Invite traders and earn a share of their fees. Share your referral code, climb the tier ladder as referred volume grows, and track your rebate rate. Fully server-rendered and readable without client JavaScript.",
 } as const;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: referralsSeoCopy.title,
   description: referralsSeoCopy.description,
-};
+  path: "/referrals",
+});

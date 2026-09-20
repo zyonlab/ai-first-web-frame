@@ -1,4 +1,5 @@
 import { FragmentSlotStream } from "@mvp/runtime/react";
+import { createPageMetadata, isDiagnosticsEnabled } from "@mvp/runtime/seo";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Image from "next/image";
@@ -39,10 +40,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const product = getProduct(id);
-  return {
+  // Per-product canonical against the PUBLIC origin: this document is reachable
+  // both through the shell (:4100) and directly on the page app (:4102), so the
+  // canonical is what collapses them into one indexable URL.
+  return createPageMetadata({
     title: `${product.title} | MVP Storefront`,
     description: product.description,
-  };
+    path: `/product/${id}`,
+    type: "article",
+  });
 }
 
 /**
@@ -173,9 +179,20 @@ export default async function ProductPage({
       <aside data-fragment="price-panel" data-reserved="true">
         {product.price}
       </aside>
-      <Suspense fallback={null}>
-        <ProductDiagnostics aggregate={stream.aggregate} />
-      </Suspense>
+      {/*
+        Internal diagnostics (scheduler health, per-slot strategy/source, the
+        request-trace dependency graph) are DEV/E2E affordances, not page
+        content: they used to render unconditionally, putting internal timings
+        and topology into every production response as visible <h2> sections.
+        `isDiagnosticsEnabled()` keeps them on outside production and requires
+        an explicit MVP_DIAGNOSTICS=on in production — which the compose stack
+        sets, so the e2e and runtime-gate assertions still see them.
+      */}
+      {isDiagnosticsEnabled() && (
+        <Suspense fallback={null}>
+          <ProductDiagnostics aggregate={stream.aggregate} />
+        </Suspense>
+      )}
       <Suspense fallback={STATIC_PROOF_FALLBACK}>
         <FragmentSlotStream
           slotPromise={stream.slotPromises.staticProof}

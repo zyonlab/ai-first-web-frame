@@ -41,6 +41,7 @@ import {
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildWorkspaceAliases } from "./workspaceAliases.mts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ROOTS = ["apps", "domains", "fragments", "packages", "tools"];
@@ -98,76 +99,13 @@ function extractFencedBlocks(markdown: string): FencedBlock[] {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Build a `@mvp/*` -> src file alias map from every workspace package's
-//    package.json#exports, so bare-specifier imports in doc snippets resolve
-//    without requiring a prior `pnpm build`.
+// 3. The `@mvp/*` -> src alias map, shared with `vitest.config.ts`
+//    (scripts/workspaceAliases.mts) so doc snippets and tests resolve
+//    identically and there is only one implementation to keep correct.
 // ---------------------------------------------------------------------------
 
-function firstExisting(candidates: string[]): string | null {
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate;
-  }
-  return null;
-}
-
 function buildAliasMap(): Record<string, string> {
-  const aliases: Record<string, string> = {};
-
-  for (const groupRoot of ROOTS) {
-    const groupDir = join(root, groupRoot);
-    if (!existsSync(groupDir)) continue;
-    for (const name of readdirSync(groupDir)) {
-      const pkgDir = join(groupDir, name);
-      const pkgJsonPath = join(pkgDir, "package.json");
-      if (!existsSync(pkgJsonPath)) continue;
-      let pkgJson: { name?: string; exports?: unknown };
-      try {
-        pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
-      } catch {
-        continue;
-      }
-      const pkgName = pkgJson.name;
-      if (!pkgName?.startsWith("@mvp/")) continue;
-
-      // Root entry point: "@mvp/<name>" -> src/index.ts(x)
-      const rootSrc = firstExisting([
-        join(pkgDir, "src/index.ts"),
-        join(pkgDir, "src/index.tsx"),
-      ]);
-      if (rootSrc) aliases[pkgName] = rootSrc;
-
-      // Subpath entry points, derived from package.json#exports keys.
-      const exportsField = pkgJson.exports;
-      if (exportsField && typeof exportsField === "object") {
-        for (const key of Object.keys(
-          exportsField as Record<string, unknown>,
-        )) {
-          if (key === ".") continue;
-          if (!key.startsWith("./")) continue;
-          const subpath = key.slice(2); // drop "./"
-          const candidateSrc = firstExisting([
-            join(pkgDir, `src/${subpath}.ts`),
-            join(pkgDir, `src/${subpath}.tsx`),
-            join(pkgDir, `src/${subpath}/index.ts`),
-            join(pkgDir, `src/${subpath}/index.tsx`),
-          ]);
-          if (candidateSrc) aliases[`${pkgName}/${subpath}`] = candidateSrc;
-        }
-      }
-    }
-  }
-
-  // Vite's object-form `resolve.alias` prefix-matches string keys (an id
-  // matching `"<key>/..."` gets rewritten too, not just an exact `id ===
-  // key`), so a shorter key like "@mvp/ui" must not be checked before a
-  // longer, more specific one like "@mvp/ui/AppNav" — otherwise the shorter
-  // alias wins and the resolved path gets a bogus "/AppNav" suffix appended.
-  // Re-insert keys longest-first so specific subpaths always win.
-  const ordered: Record<string, string> = {};
-  for (const key of Object.keys(aliases).sort((a, b) => b.length - a.length)) {
-    ordered[key] = aliases[key];
-  }
-  return ordered;
+  return buildWorkspaceAliases(root);
 }
 
 // ---------------------------------------------------------------------------

@@ -240,6 +240,67 @@ const promotion = applyPromoteFragment(mutation.registry, "price-panel");
 console.log(promotion.release?.rollbackTo); // previous stable version, if any
 ```
 
+### Executable example (pure layer, no file I/O)
+
+The example above is `no-run` because it writes real registry files. The
+mutation layer underneath it is pure, so the same register → gate → promote
+sequence is verifiable without touching disk — this block is executed by
+`pnpm docs:test`:
+
+```ts
+import {
+  applyPromoteFragment,
+  applyRegisterFragment,
+  checkFragmentRegistered,
+  generateFragmentSlotsSource,
+} from "@mvp/registry";
+
+// Start from an empty registry: every mutation below is a pure value.
+const registered = applyRegisterFragment(
+  { fragments: {} },
+  {
+    name: "price-panel",
+    version: "0.1.0",
+    serviceUrl: "http://localhost:4203",
+    channel: "canary",
+  },
+);
+if (!registered.changed) throw new Error("first registration must change");
+if (registered.registry.fragments["price-panel"]?.canary?.version !== "0.1.0") {
+  throw new Error("canary version not recorded");
+}
+
+// Idempotency: the identical mutation reports no change.
+const again = applyRegisterFragment(registered.registry, {
+  name: "price-panel",
+  version: "0.1.0",
+  serviceUrl: "http://localhost:4203",
+  channel: "canary",
+});
+if (again.changed) throw new Error("re-registering must be a no-op");
+
+// The mount gate refuses an unregistered fragment unless explicitly allowed.
+if (checkFragmentRegistered(registered.registry, "price-panel", false).ok !== true) {
+  throw new Error("registered fragment must pass the mount gate");
+}
+if (checkFragmentRegistered(registered.registry, "ghost-panel", false).ok !== false) {
+  throw new Error("unregistered fragment must fail the mount gate");
+}
+
+// Promote canary -> stable; `rollbackTo` records the version to fall back to.
+const promoted = applyPromoteFragment(registered.registry, "price-panel");
+if (promoted.registry.fragments["price-panel"]?.stable?.version !== "0.1.0") {
+  throw new Error("promote did not move canary to stable");
+}
+
+// Codegen is a pure manifest -> runtime-array transform.
+const generated = generateFragmentSlotsSource("page-home", [
+  { name: "pricePanel", fragment: "price-panel", strategy: "dynamic-ssr" },
+]);
+if (!generated.includes("pricePanel")) throw new Error("slot name missing");
+if (!generated.includes("GENERATED FILE")) throw new Error("header missing");
+```
+
 ## Accept
 
 ```

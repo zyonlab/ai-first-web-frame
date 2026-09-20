@@ -1,0 +1,99 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ai-first-web-frame 报告</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #e9edf1; --paper: #ffffff; --paper-2: #f3f6f9;
+    --ink: #16202b; --ink-2: #3d4d5c; --muted: #6b7a89;
+    --rule: #ccd6de; --rule-soft: #e0e7ec; --accent: #0d6a85;
+    --shadow: 0 1px 2px rgba(22,32,43,.06), 0 10px 26px -18px rgba(22,32,43,.3);
+    --sans: "IBM Plex Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1319; --paper: #161d25; --paper-2: #1b232c;
+      --ink: #dfe6ed; --ink-2: #b3c0cc; --muted: #8496a5;
+      --rule: #2b3642; --rule-soft: #222b35; --accent: #62bcd4;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px -20px rgba(0,0,0,.85);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1319; --paper: #161d25; --paper-2: #1b232c;
+    --ink: #dfe6ed; --ink-2: #b3c0cc; --muted: #8496a5;
+    --rule: #2b3642; --rule-soft: #222b35; --accent: #62bcd4;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px -20px rgba(0,0,0,.85);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 860px; margin: 0 auto; padding-inline: 20px; padding-block: 56px 72px; }
+  .eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: .13em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-size: clamp(27px, 5vw, 38px); line-height: 1.15; margin: 12px 0 0; letter-spacing: -.01em; font-weight: 600; text-wrap: balance; }
+  .lede { color: var(--ink-2); max-width: 62ch; margin-top: 14px; }
+  .list { display: grid; gap: 12px; margin-top: 34px; }
+  a.card { display: block; text-decoration: none; color: inherit; background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--accent); padding: 18px 20px; box-shadow: var(--shadow); transition: transform .12s ease, border-color .12s ease; }
+  a.card:hover { transform: translateY(-1px); border-color: var(--accent); }
+  a.card .t { font-size: 17px; font-weight: 600; }
+  a.card .d { font-size: 13.5px; color: var(--ink-2); margin-top: 5px; }
+  a.card .m { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 9px; }
+  h2 { font-size: 17px; font-weight: 600; margin: 38px 0 10px; }
+  p { max-width: 68ch; margin: 0 0 12px; }
+  code { font-family: var(--mono); font-size: .87em; background: var(--paper-2); border: 1px solid var(--rule-soft); border-radius: 3px; padding: .5px 4px; }
+  .cmd { font-family: var(--mono); font-size: 12.5px; background: var(--paper-2); border: 1px solid var(--rule-soft); border-left: 2.5px solid var(--accent); padding: 10px 12px; overflow-x: auto; white-space: pre; margin: 8px 0 16px; }
+  footer { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 12.5px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">ai-first-web-frame · docs/reports</div>
+  <h1>框架报告</h1>
+  <p class="lede">
+    对这个仓库的两份长报告。两份都以<strong>代码为第一事实</strong>——结论来自读源码并实跑仓库自己的门禁，
+    而不是复述 <code>docs/</code> 里的说明。
+  </p>
+
+  <div class="list" id="list">
+    <a class="card" href="./architecture-map.html">
+      <div class="t">架构地图</div>
+      <div class="d">定位、请求拓扑、三层模块划分、四条生命周期（请求 / 片段交付 / island / 变更交付）与六条核心价值。</div>
+      <div class="m">architecture-map.html</div>
+    </a>
+    <a class="card" href="./cost-assessment.html">
+      <div class="t">成本与风险评估</div>
+      <div class="d">架构、设计模式、组件分级、SEO、人力与 AI 接手成本、线上运维成本的逐项评分；17 条发现各带证据、修复状态与证明。</div>
+      <div class="m">cost-assessment.html</div>
+    </a>
+    <a class="card" href="./competitive-analysis.html">
+      <div class="t">竞品对位分析</div>
+      <div class="d">把系统拆成 8 条能力轴，逐轴对位开源竞品（Podium / OpenComponents / Module Federation 2.0 / Nx / Astro Server Islands / 已归档的 Tailor）：谁做得更好、差在哪、可借鉴什么、自研成本多少。竞品事实来自一手资料当日抓取。</div>
+      <div class="m">competitive-analysis.html</div>
+    </a>
+    <a class="card" href="./trading-domain-capabilities.html">
+      <div class="t">合约交易场景能力对照</div>
+      <div class="d">以合约交易页为场景：React 水合/流式特性支持度、数据按实时性分区（七档新鲜度 × 四档隐私）、跨层与跨微组件共享的两条通道、不同创建时机的编排、设计系统的四层交接边界，以及三个缺口。</div>
+      <div class="m">trading-domain-capabilities.html</div>
+    </a>
+  </div>
+
+  <h2>怎么看</h2>
+  <div class="cmd">pnpm reports              # 起本地服务并打印地址
+pnpm reports --port 4310  # 换端口
+pnpm reports --open       # 顺便用默认浏览器打开</div>
+  <p>
+    也可以直接双击 <code>docs/reports/*.html</code> —— 每份都带 <code>&lt;meta charset&gt;</code>，
+    <code>file://</code> 下中文不会乱码。
+  </p>
+
+  <h2>为什么放在 docs/ 下</h2>
+  <p>
+    仓库根的 <code>reports/</code> 是<strong>机器生成</strong>的审计产物（<code>verify-report.json</code>、
+    <code>bundle-report.md</code> 等），每次 <code>pnpm verify</code> 都会重写；这里放的是<strong>手写的长文报告</strong>，
+    两者不该混在一个目录。放在 <code>docs/</code> 下还有一个实际好处：affected 引擎的 <code>IGNORED</code> 正则包含
+    <code>docs/</code>，所以改报告<strong>永远不会触发任何单元重建</strong>。
+  </p>
+
+  <footer>
+    这些 HTML 同时是 claude.ai Artifact 的页面源码：文件体本身就是可发布的内容，顶部两行 meta 只是为了本地直接打开也正确。
+    更新方式见 <code>docs/reports/README.md</code>。
+  </footer>
+</div>

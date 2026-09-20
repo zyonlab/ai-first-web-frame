@@ -64,7 +64,15 @@ deliberately unlisted — consult `docs/` directly for history.
   budgets). Consult to validate or construct any cross-boundary object.
 - [packages/runtime/AGENT.md](packages/runtime/AGENT.md): page-side fragment
   slot composition/scheduling engine (`executeFragmentSlots`). Consult when
-  composing a page from fragment slots and data dependencies.
+  composing a page from fragment slots and data dependencies. Also exports
+  `@mvp/runtime/seo` (`createPageMetadata` for canonical/hreflang/OG,
+  `isDiagnosticsEnabled` for the production diagnostics gate).
+- [packages/fragment-host/AGENT.md](packages/fragment-host/AGENT.md): the one
+  HTTP host every SSR fragment service runs on — `GET /` · `/health` · `/ready`
+  · `/metrics` · `/manifest` · `/assets` · `/budget` · `POST /render`, metrics
+  and trace export. Consult before touching any `fragments/*/src/server.ts`;
+  those files are ~20-line adapters and hand-rolling one fails
+  `audit:deps`' `fragment-server-not-hosted` rule.
 - [packages/request/AGENT.md](packages/request/AGENT.md): the only
   policy-gated HTTP client for business code (`createRequestClient`).
   Consult before making any outbound API call.

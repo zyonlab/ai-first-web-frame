@@ -1,0 +1,693 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ai-first-web-frame 架构地图</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #e9edf1;
+    --paper: #ffffff;
+    --paper-2: #f3f6f9;
+    --ink: #16202b;
+    --ink-2: #3d4d5c;
+    --muted: #6b7a89;
+    --rule: #ccd6de;
+    --rule-soft: #e0e7ec;
+    --teal: #0d6a85;
+    --teal-soft: #dceef3;
+    --indigo: #464a9e;
+    --indigo-soft: #e4e4f5;
+    --rust: #9c5220;
+    --rust-soft: #f6e6da;
+    --pass: #2f6f4a;
+    --pass-soft: #dfeee5;
+    --warn: #8a6415;
+    --warn-soft: #f6ecd4;
+    --shadow: 0 1px 2px rgba(22, 32, 43, .06), 0 8px 24px -16px rgba(22, 32, 43, .28);
+    --display: "IBM Plex Sans Condensed", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --body: "IBM Plex Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1319;
+      --paper: #161d25;
+      --paper-2: #1b232c;
+      --ink: #dfe6ed;
+      --ink-2: #b3c0cc;
+      --muted: #8496a5;
+      --rule: #2b3642;
+      --rule-soft: #222b35;
+      --teal: #62bcd4;
+      --teal-soft: #14313b;
+      --indigo: #9b9ee8;
+      --indigo-soft: #23243f;
+      --rust: #dc9161;
+      --rust-soft: #33220f;
+      --pass: #74c397;
+      --pass-soft: #162b1f;
+      --warn: #d9b25f;
+      --warn-soft: #2d2411;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px -18px rgba(0, 0, 0, .8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1319;
+    --paper: #161d25;
+    --paper-2: #1b232c;
+    --ink: #dfe6ed;
+    --ink-2: #b3c0cc;
+    --muted: #8496a5;
+    --rule: #2b3642;
+    --rule-soft: #222b35;
+    --teal: #62bcd4;
+    --teal-soft: #14313b;
+    --indigo: #9b9ee8;
+    --indigo-soft: #23243f;
+    --rust: #dc9161;
+    --rust-soft: #33220f;
+    --pass: #74c397;
+    --pass-soft: #162b1f;
+    --warn: #d9b25f;
+    --warn-soft: #2d2411;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px -18px rgba(0, 0, 0, .8);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.68;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1020px; margin: 0 auto; padding-inline: 20px; padding-block: 0 72px; }
+
+  /* ── header ─────────────────────────────── */
+  .topbar {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .topbar-in {
+    max-width: 1020px; margin: 0 auto; padding-inline: 20px;
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    min-height: 46px;
+  }
+  .topbar strong { font-family: var(--mono); font-size: 12.5px; font-weight: 600; letter-spacing: .01em; }
+  .topnav { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; }
+  .topnav a {
+    font-family: var(--display); font-size: 13px; font-weight: 500;
+    color: var(--muted); text-decoration: none; padding: 4px 0;
+    border-bottom: 1.5px solid transparent;
+  }
+  .topnav a:hover { color: var(--teal); border-bottom-color: var(--teal); }
+
+  header.hero { padding-block: 52px 34px; border-bottom: 1px solid var(--rule); }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--teal);
+  }
+  h1 {
+    font-family: var(--display); font-weight: 700; font-size: clamp(30px, 5.4vw, 46px);
+    line-height: 1.1; letter-spacing: -.01em; margin: 12px 0 0; text-wrap: balance;
+  }
+  .lede { font-size: 17px; color: var(--ink-2); max-width: 64ch; margin-top: 16px; }
+
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(126px, 1fr)); gap: 1px; margin-top: 34px; background: var(--rule-soft); border: 1px solid var(--rule-soft); }
+  .fact { background: var(--paper); padding: 13px 15px; }
+  .fact b { display: block; font-family: var(--display); font-size: 25px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .fact span { display: block; font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+
+  /* ── sections ───────────────────────────── */
+  section { padding-block: 44px 0; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin-bottom: 22px; }
+  .sec-num { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--teal); }
+  h2 { font-family: var(--display); font-weight: 600; font-size: clamp(21px, 3.2vw, 27px); margin: 0; letter-spacing: -.005em; }
+  h3 { font-family: var(--display); font-weight: 600; font-size: 17px; margin: 30px 0 10px; }
+  h4 { font-family: var(--display); font-weight: 600; font-size: 14.5px; margin: 0 0 8px; }
+  p { margin: 0 0 14px; max-width: 74ch; }
+  ul, ol { margin: 0 0 14px; padding-left: 1.25em; max-width: 74ch; }
+  li { margin-bottom: 6px; }
+  code { font-family: var(--mono); font-size: .875em; background: var(--paper-2); border: 1px solid var(--rule-soft); border-radius: 3px; padding: .5px 4px; word-break: break-word; }
+  strong { font-weight: 600; }
+  em { font-style: normal; color: var(--teal); font-weight: 600; }
+
+  /* ── topology plate ─────────────────────── */
+  .plate { background: var(--paper); border: 1px solid var(--rule); box-shadow: var(--shadow); padding: 22px; margin: 6px 0 24px; }
+  .plate-cap { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+  .tier { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
+  .node {
+    flex: 1 1 150px; min-width: 0; padding: 11px 13px;
+    border: 1px solid var(--rule); background: var(--paper-2);
+  }
+  .node .nm { font-family: var(--display); font-weight: 600; font-size: 14px; }
+  .node .po { font-family: var(--mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .node .dt { font-size: 12px; color: var(--ink-2); margin-top: 5px; line-height: 1.5; }
+  .node.gw { border-left: 3px solid var(--teal); }
+  .node.reg { border-left: 3px solid var(--warn); background: var(--warn-soft); }
+  .node.pg { border-left: 3px solid var(--indigo); }
+  .node.fr { border-left: 3px solid var(--rust); }
+  .flowarrow { text-align: center; color: var(--muted); font-family: var(--mono); font-size: 12px; padding: 7px 0; letter-spacing: .1em; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { font-family: var(--mono); font-size: 11px; padding: 3px 7px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .chip.i { border-left: 2.5px solid var(--indigo); }
+  .chip.r { border-left: 2.5px solid var(--rust); }
+
+  /* ── layer stack ────────────────────────── */
+  .stack { display: grid; gap: 8px; }
+  .layer { display: grid; grid-template-columns: 148px 1fr; gap: 16px; border: 1px solid var(--rule); background: var(--paper); padding: 13px 15px; }
+  .layer .lt { font-family: var(--display); font-weight: 600; font-size: 14px; }
+  .layer .lt code { background: none; border: none; padding: 0; font-size: 12.5px; color: var(--muted); display: block; font-weight: 400; }
+  .layer .lb { font-size: 13.5px; color: var(--ink-2); }
+  .layer.l1 { border-left: 3px solid var(--indigo); }
+  .layer.l2 { border-left: 3px solid var(--rust); }
+  .layer.l3 { border-left: 3px solid var(--teal); }
+  .rulenote { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: center; padding: 4px 0; }
+
+  /* ── package groups ─────────────────────── */
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); gap: 14px; }
+  .pgroup { border: 1px solid var(--rule); background: var(--paper); padding: 15px 16px; }
+  .pgroup h4 { color: var(--teal); }
+  .pgroup dl { margin: 0; display: grid; gap: 7px; }
+  .pgroup dt { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+  .pgroup dd { margin: 0 0 2px; font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+
+  /* ── lifecycle rail ─────────────────────── */
+  .rail { display: grid; gap: 0; counter-reset: step; }
+  .step { display: grid; grid-template-columns: 34px 1fr; gap: 14px; padding: 14px 0; border-top: 1px solid var(--rule-soft); }
+  .step:first-child { border-top: 0; }
+  .step .n { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--teal); padding-top: 2px; font-variant-numeric: tabular-nums; }
+  .step .sb h4 { margin-bottom: 4px; }
+  .step .sb p { margin: 0 0 6px; font-size: 13.5px; color: var(--ink-2); }
+  .cmd { font-family: var(--mono); font-size: 12px; background: var(--paper-2); border: 1px solid var(--rule-soft); border-left: 2.5px solid var(--teal); padding: 7px 10px; overflow-x: auto; white-space: pre; margin: 6px 0; }
+  .accept { font-family: var(--mono); font-size: 11.5px; color: var(--pass); }
+
+  /* ── tables ─────────────────────────────── */
+  .tw { overflow-x: auto; border: 1px solid var(--rule); background: var(--paper); margin-bottom: 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 520px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  th { font-family: var(--display); font-weight: 600; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: var(--paper-2); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td code { font-size: 12px; }
+  .st { font-family: var(--mono); font-size: 11px; padding: 2px 6px; white-space: nowrap; }
+  .st.ok { background: var(--pass-soft); color: var(--pass); }
+  .st.wip { background: var(--warn-soft); color: var(--warn); }
+
+  /* ── gates ──────────────────────────────── */
+  .gates { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 8px; }
+  .gate { border: 1px solid var(--rule); background: var(--paper); padding: 10px 12px; border-top: 2.5px solid var(--pass); }
+  .gate .gn { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .gate .gt { font-family: var(--mono); font-size: 12.5px; font-weight: 500; margin-top: 2px; word-break: break-all; }
+  .gate .gd { font-size: 11.5px; color: var(--ink-2); margin-top: 4px; line-height: 1.45; }
+
+  /* ── value callouts ─────────────────────── */
+  .val { border: 1px solid var(--rule); background: var(--paper); padding: 16px 18px; margin-bottom: 12px; border-left: 3px solid var(--teal); }
+  .val h4 { font-size: 15.5px; }
+  .val p { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+  .val .proof { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 8px; display: block; }
+
+  .honest { border: 1px solid var(--rule); background: var(--paper); padding: 4px 0; }
+  .honest .row { display: grid; grid-template-columns: 1fr; gap: 3px; padding: 11px 16px; border-bottom: 1px solid var(--rule-soft); }
+  .honest .row:last-child { border-bottom: 0; }
+  .honest .rt { font-family: var(--display); font-weight: 600; font-size: 14px; }
+  .honest .rd { font-size: 13px; color: var(--ink-2); }
+
+  footer { margin-top: 52px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 12.5px; color: var(--muted); }
+
+  @media (max-width: 620px) {
+    .layer { grid-template-columns: 1fr; gap: 6px; }
+    .facts { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <strong>ai-first-web-frame</strong>
+    <nav class="topnav">
+      <a href="#what">定位</a>
+      <a href="#topo">拓扑</a>
+      <a href="#layer">分层</a>
+      <a href="#life">生命周期</a>
+      <a href="#value">核心价值</a>
+      <a href="#edge">边界</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">架构梳理 · 2026-09-19 · 分支 fix/framework-hardening（基线 420f043 + 本轮加固）</div>
+  <h1>一个把「组合、契约、交付」全部变成可调用接口的微前端控制平面</h1>
+  <p class="lede">
+    这不是一个普通的 monorepo 模板。它把微前端的<strong>组合关系</strong>（页面挂哪个片段）、<strong>跨边界契约</strong>（谁校验什么）、
+    <strong>交付动作</strong>（注册 / 挂载 / 灰度 / 回滚）三件事全部从「人读的约定」变成了<strong>机器可查询、可调用、可门禁的声明</strong>——
+    并且它的第一类消费者被明确设计为 AI agent，而不是读文档的人。
+  </p>
+  <div class="facts">
+    <div class="fact"><b>22</b><span>可独立部署单元<br>1 网关 + 7 页面 + 14 片段</span></div>
+    <div class="fact"><b>20</b><span><code>@mvp/*</code> 框架包</span></div>
+    <div class="fact"><b>14</b><span><code>pnpm verify</code> 门禁</span></div>
+    <div class="fact"><b>36</b><span>AGENT.md<br>（38 个代码块被真实执行，0 豁免）</span></div>
+    <div class="fact"><b>131</b><span>测试文件 / 1326 用例</span></div>
+    <div class="fact"><b>≈65k</b><span>行 TS / TSX / MTS</span></div>
+  </div>
+</header>
+
+<!-- ─────────── 1 ─────────── -->
+<section id="what">
+  <div class="sec-head"><span class="sec-num">01</span><h2>这个仓库在做什么</h2></div>
+
+  <p>
+    表面上：一个 pnpm monorepo，里面有 1 个 shell 网关、7 个 Next.js 页面应用、14 个 Fastify SSR 片段服务，
+    外加一个用来演示的加密交易前端（trade / markets / portfolio / vaults / referrals）。
+    页面在服务端通过 <code>POST /render</code> 把片段的 HTML 拉回来拼装，片段挂了就降级成 fallback，页面照常 200。
+  </p>
+  <p>
+    但真正的产品面不是那个交易 demo，而是<strong>框架本身外露的那套接口</strong>。它同时解决两类问题：
+  </p>
+  <ul>
+    <li><strong>组织问题</strong>——让 22 个单元能各自独立开发、独立构建、独立上线，而不互相把对方搞挂。
+      片段升级一个版本只重建<em>它自己和挂载它的页面</em>，其他 20 个单元完全不动。</li>
+    <li><strong>协作介质问题</strong>——让「多个 agent 并行改同一个仓库」这件事是安全的。
+      每个动作有 CLI、有 JSON 信封、有原子写 + 冲突重试、有 MCP 工具；每条约定背后有一道会 fail 的门禁，
+      而不是 CLAUDE.md 里的一句劝告。</li>
+  </ul>
+  <p>
+    <code>llms.txt</code> 把这个意图写得很直白：<em>“Consumers are AI agents operating the lifecycle CLIs, not humans reading prose.”</em>
+    所以所有文档都偏向精确签名、JSON 信封和可复制的 <code>Accept:</code> 判据。
+  </p>
+</section>
+
+<!-- ─────────── 2 ─────────── -->
+<section id="topo">
+  <div class="sec-head"><span class="sec-num">02</span><h2>请求拓扑：一次请求怎么穿过系统</h2></div>
+
+  <div class="plate">
+    <div class="plate-cap">Request path · 每一跳都是一个可独立部署、可独立失败的进程</div>
+
+    <div class="tier">
+      <div class="node gw">
+        <div class="nm">shell-gateway</div><div class="po">:4100</div>
+        <div class="dt">建请求上下文（tenant / locale / theme / device / flags / traceId）、解析路由、转发 trace 头、兜底、<strong>独占全局安全头</strong>。
+          它是唯一公开源，因此也提供由路由注册表派生的 <code>/robots.txt</code> 与 <code>/sitemap.xml</code>（带参路由是模板不是 URL，被排除）。
+          两处上游代理都带 abort signal（<code>SHELL_PAGE_TIMEOUT_MS</code> / <code>SHELL_ASSET_TIMEOUT_MS</code>）。</div>
+      </div>
+    </div>
+    <div class="flowarrow">↓ 用 <code>@mvp/routes</code> 的路由注册表（<code>matchRoute</code>）把路径解析到页面服务</div>
+
+    <div class="tier">
+      <div class="node pg">
+        <div class="nm">7 个 Next.js 页面应用</div><div class="po">:4101 – :4107</div>
+        <div class="dt">拥有 SEO 内容与 metadata、页面 manifest（<code>src/manifest.slots.json</code>）、槽位组合与流式输出</div>
+        <div class="chips">
+          <span class="chip i">home 4101</span><span class="chip i">product 4102</span><span class="chip i">trade 4103</span>
+          <span class="chip i">markets 4104</span><span class="chip i">portfolio 4105</span><span class="chip i">vaults 4106</span><span class="chip i">referrals 4107</span>
+        </div>
+      </div>
+    </div>
+    <div class="flowarrow">↓ 用 <code>@mvp/registry</code> 按 channel（stable / canary / preview）解析出片段版本与 serviceUrl</div>
+
+    <div class="tier">
+      <div class="node reg">
+        <div class="nm">片段注册表（运行时状态，非包源码）</div>
+        <div class="dt"><code>registry/registry.data.json</code> 每次加载都过 <code>FragmentRegistrySchema</code>；发布历史 append-only 记在 <code>registry/releases.json</code>。
+        环境变量 <code>&lt;FRAGMENT&gt;_URL</code> 可在运行时改写 serviceUrl，且<strong>不进入 affected 计算</strong>。</div>
+      </div>
+    </div>
+    <div class="flowarrow">↓ <code>POST /render</code>（带 ctx + props），默认 200ms 超时</div>
+
+    <div class="tier">
+      <div class="node fr">
+        <div class="nm">14 个 SSR 片段服务</div><div class="po">:4201 – :4214</div>
+        <div class="dt">每个都是 Fastify + 独立 Dockerfile，统一暴露
+          <code>/health</code> <code>/ready</code> <code>/metrics</code> <code>/manifest</code> <code>/assets</code> <code>/budget</code> <code>POST /render</code>
+          —— 这整套 HTTP 面只有<strong>一份实现</strong>（<code>@mvp/fragment-host</code>），各片段的 <code>src/server.ts</code> 是约 40 行的适配器。
+          <code>/health</code> 与 <code>/ready</code> 会报告 manifest <strong>version</strong>，这是灰度能确认「哪个 build 在应答」的依据。
+          <strong>不拥有</strong>全局 CSS、字体、主题、locale、安全策略。</div>
+        <div class="chips">
+          <span class="chip r">promotion-banner 4201</span><span class="chip r">recommendation-widget 4202</span><span class="chip r">market-header 4203</span>
+          <span class="chip r">order-book 4204</span><span class="chip r">order-form 4205</span><span class="chip r">trades-feed 4206</span>
+          <span class="chip r">account-bar 4207</span><span class="chip r">positions-table 4208</span><span class="chip r">open-orders 4209</span>
+          <span class="chip r">funding-bar 4210</span><span class="chip r">chart-panel 4211</span><span class="chip r">markets-table 4212</span>
+          <span class="chip r">portfolio-summary 4213</span><span class="chip r">pnl-chart 4214</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    关键设计不在这张图的形状，而在<strong>职责的切法</strong>：上下文、主题、资产策略、安全头是框架默认拥有的（framework-owned by default），
+    片段只收 <code>ctx</code> 和 <code>props</code>。这样一个片段团队想改主题也改不动别人，而页面也不需要为每个片段单独配一遍 locale。
+  </p>
+</section>
+
+<!-- ─────────── 3 ─────────── -->
+<section id="layer">
+  <div class="sec-head"><span class="sec-num">03</span><h2>代码怎么分层、怎么分模块</h2></div>
+
+  <h3>三层导入规则：只能向下</h3>
+  <div class="stack">
+    <div class="layer l1">
+      <div class="lt">可部署单元<code>apps/ · fragments/</code></div>
+      <div class="lb">8 个 app（网关 + 7 页面）与 14 个片段服务。每个有自己的 Dockerfile、budget、health。可以 import domains 和 packages。</div>
+    </div>
+    <div class="rulenote">↓ 允许</div>
+    <div class="layer l2">
+      <div class="lt">领域层<code>domains/</code></div>
+      <div class="lb">交易 demo 的业务词汇：<code>trade-contracts</code>（slice 频道 id、mutation、纯 reducer）、<code>trade-data</code>（数据源注册 + 确定性 mock 实时流）、<code>trade-prefs</code>、<code>trade-theme</code>、<code>trade-chart</code>。只能 import packages。</div>
+    </div>
+    <div class="rulenote">↓ 允许（反向 import 会被 <code>audit:deps</code> 的 <code>domain-code-in-framework-package</code> 规则打回）</div>
+    <div class="layer l3">
+      <div class="lt">框架层<code>packages/</code></div>
+      <div class="lb">19 个 <code>@mvp/*</code> 包，<strong>零业务词汇</strong>。永不向上 import。</div>
+    </div>
+  </div>
+  <p style="margin-top:14px">
+    这条规则的价值在于它是<em>被审计工具执行的</em>，不是 review 时靠眼睛看的：把 “buy/sell” 这种词写进 <code>packages/ui</code> 会让构建失败。
+    <code>domains/</code> 因此成了「加一个新业务领域」的参照实现，而框架包始终保持可复用。
+  </p>
+
+  <h3>框架层的模块划分</h3>
+  <div class="grid2">
+    <div class="pgroup">
+      <h4>契约与组合</h4>
+      <dl>
+        <dt>@mvp/contracts</dt><dd>所有跨边界对象的 Zod schema（片段/页面 manifest、注册表、<code>/render</code> 请求响应、请求上下文、预算），并能 <code>toJsonSchema()</code> 导出给非 TS agent</dd>
+        <dt>@mvp/runtime</dt><dd>页面侧的槽位调度引擎：DAG 排序、4 种渲染策略、超时+取消、fallback 隔离、有界缓存与按 tag 失效、流式句柄、<code>&lt;FragmentSlot&gt;</code>；子路径 <code>@mvp/runtime/seo</code> 提供 canonical/hreflang/OG 元数据与生产诊断开关</dd>
+        <dt>@mvp/registry</dt><dd>注册表数据模型 + 原子写/锁/冲突、register/promote/rollback 变更逻辑、槽位挂载与 manifest→运行时 codegen</dd>
+        <dt>@mvp/fragment-host</dt><dd>14 个片段服务共用的唯一 HTTP 宿主：全部路由、指标注册表、trace 导出管线。片段自己只声明名字、manifest、budget、render 和 demo 请求</dd>
+        <dt>@mvp/routes</dt><dd>网关侧静态路由注册表与 <code>matchRoute</code></dd>
+        <dt>@mvp/request-context</dt><dd>从 headers 构造并序列化 <code>RequestContext</code></dd>
+      </dl>
+    </div>
+    <div class="pgroup">
+      <h4>数据与交互</h4>
+      <dl>
+        <dt>@mvp/request</dt><dd>业务代码唯一允许的 HTTP 出口（策略门控）；裸 <code>fetch(</code> 会被审计拦住</dd>
+        <dt>@mvp/data</dt><dd>带缓存/去重/新鲜度语义的数据客户端；<code>defineDataSource</code> 在定义期就执行「用户私有数据不能 static」这类不变式</dd>
+        <dt>@mvp/interaction</dt><dd>契约优先的 pub/sub 总线（publisher / subscribers ACL + payload 校验）、mutation tag 失效、跨 tab 桥</dd>
+        <dt>@mvp/store</dt><dd>建在总线之上的 SSR 安全 slice store，slice 名即频道名</dd>
+        <dt>@mvp/islands</dt><dd>客户端 island 挂载运行时 + 快照版本握手</dd>
+        <dt>@mvp/storage / workers</dt><dd>隐私分区存储门面；manifest 治理的后台/浏览器 worker 运行时</dd>
+      </dl>
+    </div>
+    <div class="pgroup">
+      <h4>表现层</h4>
+      <dl>
+        <dt>@mvp/ui</dt><dd>server-safe React 组件库（相似度审计会阻止你再加一个近重复组件）</dd>
+        <dt>@mvp/design-tokens</dt><dd>原始 token 值与 CSS 自定义属性生成</dd>
+        <dt>@mvp/design-system</dt><dd>主题变量/reset/Tailwind preset</dd>
+        <dt>@mvp/assets</dt><dd>带 CSP/SRI 字段的资产清单模型：收集、按策略合并去重、渲染成标签描述符</dd>
+      </dl>
+    </div>
+    <div class="pgroup">
+      <h4>可观测与平台</h4>
+      <dl>
+        <dt>@mvp/observability</dt><dd><code>createRequestTrace()</code> 记录 scheduler / slot / network / cache / static / fallback span，可导出依赖图日志；<code>/metrics</code> 指标注册表</dd>
+        <dt>@mvp/optimizer</dt><dd>把 trace 快照变成可执行的 <code>OptimizationFinding</code>（重复调用、瀑布、缓存命中率低、可静态化）</dd>
+        <dt>@mvp/mcp</dt><dd>零依赖 MCP stdio server，把发现（<code>query_registry</code>、<code>affected_units</code>）与全套生命周期动作暴露为 agent 可调用工具</dd>
+      </dl>
+    </div>
+  </div>
+
+  <h3>不是包、但同样重要的四个目录</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>目录</th><th>是什么</th><th>为什么单独分出来</th></tr></thead>
+      <tbody>
+        <tr><td><code>registry/</code></td><td>两个 JSON：片段注册表运行时状态 + append-only 发布历史</td><td>它是<strong>状态</strong>不是源码。因此它的 diff 被内容解析、只牵连变更的那个片段，否则每次 promote 都会重建全世界</td></tr>
+        <tr><td><code>scripts/*.mts</code></td><td>20 个仓库级 CLI（生命周期 4 个 + verify + verify:unit + affected + 部署 + 冒烟 + codegen 校验 + 冷启动前置构建）</td><td>这是给 agent 的<strong>动作面</strong>：统一 JSON 信封、<code>process.exitCode</code>、失败不落盘</td></tr>
+        <tr><td><code>tools/</code></td><td>6 个审计门禁 + 脚手架 + 单片段开发沙盒 + 运行时门禁求值器</td><td>把「代码规矩」变成会 fail 的程序。部分（<code>_shared</code>、<code>dev-harness</code>、<code>runtime-gate</code>）是源码库而非 workspace 包</td></tr>
+        <tr><td><code>e2e/</code> · <code>infra/</code></td><td>Playwright 规格（含 no-js、hydration）；docker compose、22 单元的 k8s 清单、Argo Rollouts 骨架</td><td>降级是<strong>特性</strong>，所以 e2e 分宽松/严格两档去断言它</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ─────────── 4 ─────────── -->
+<section id="life">
+  <div class="sec-head"><span class="sec-num">04</span><h2>四条生命周期</h2></div>
+  <p>
+    这个仓库里「生命周期」不是一个词，而是四条正交的链路：一次请求的、一个片段交付的、一个 island 在浏览器里的、一次变更走到生产的。
+    四条各自都有独立的失败语义和门禁。
+  </p>
+
+  <h3>A · 请求生命周期（毫秒级）</h3>
+  <div class="plate">
+    <div class="plate-cap">manifest.slots.json → DAG → 并行取片段 → 流式吐出</div>
+    <ol style="margin:0">
+      <li><strong>声明</strong>：页面的 <code>manifest.slots.json</code> 是唯一真相——槽位名、片段、channel、策略、超时、props、cachePolicy、<code>dependsOn</code>、<code>dataDependencies</code>、<code>required</code>。手工编辑被禁止，只能由 <code>mount-slot</code> 写。</li>
+      <li><strong>建计划</strong>：<code>createSlotDataExecutionPlan</code> 用 <code>slot:&lt;name&gt;</code> 和 <code>data:&lt;id&gt;</code> 建节点做拓扑分层，每层 <code>Promise.all</code>。重名、指向不存在节点的边、环，<strong>在建计划时就 throw</strong>。</li>
+      <li><strong>取数</strong>：每槽位 <code>slot.timeoutMs ?? 200ms</code> 竞速；响应必须过 <code>parseFragmentRenderResponse</code>，schema 不合法的响应直接降级并把违规记进 trace span 的 <code>error</code>——不会被静默 cast。</li>
+      <li><strong>降级隔离</strong>：慢 / 挂 / 未注册的槽位退化成 <code>createFallbackResponse</code>（TTL 5s，标记 <code>metadata.fallback</code>），<strong>永不 reject、永不打断页面</strong>。失败的 <em>data 节点</em> 或失败的 <em>required 槽位</em> 会把下游置为 <code>skipped-dependency</code>；非 required 只拖累自己。超时同时<strong>触发 abort</strong> 取消上游请求，兜底标记一律用片段<strong>名</strong>（不是内部 serviceUrl），reason 做 HTML 转义。</li>
+      <li><strong>健康度</strong>：聚合出 <code>ok</code> / <code>degraded</code> / <code>unhealthy</code>，并额外吐出调度建议（长串行链、无谓 barrier、重复数据解析）。</li>
+      <li><strong>流式</strong>：<code>streamFragmentSlots</code> 立刻返回——每个槽位一个 promise，谁先好谁先 flush（<code>&lt;FragmentSlotStream&gt;</code> + <code>&lt;Suspense&gt;</code>）。</li>
+    </ol>
+    <div class="tw" style="margin:16px 0 0">
+      <table>
+        <thead><tr><th>渲染策略</th><th>行为</th><th>典型用法</th></tr></thead>
+        <tbody>
+          <tr><td><code>static</code></td><td>零网络，直接吐 <code>staticHtml</code>，TTL 一年</td><td>page-home 编辑区块</td></tr>
+          <tr><td><code>ttl-cache</code></td><td>取一次按 TTL 缓存；<strong>fallback 响应永不入缓存</strong></td><td>product 促销 300s、portfolio 盈亏图 60s</td></tr>
+          <tr><td><code>cached-ssr</code></td><td>同一缓存路径，惯例用于短 TTL 准实时</td><td>markets 表 5s、行情头 5s</td></tr>
+          <tr><td><code>dynamic-ssr</code></td><td>每请求都取（默认策略）</td><td>用户私有数据（portfolio 汇总 <code>ttl:0</code>）、盘口、成交流</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin:12px 0 0; font-size:13px; color:var(--muted)">
+      缓存键由片段名 + 解析出的版本 + 策略 + <code>vary</code> 维度（默认 tenant / locale / experiment / props，device 需显式开启）组成。
+      缓存本身是<strong>有界</strong>的（默认 500 条，写入时先扫过期再按插入序淘汰最老的），并支持 <code>invalidateFragmentCacheByTag()</code> —— 槽位声明的 <code>cachePolicy.tags</code> 由此成为可用的失效依据而不是装饰。
+      注：旧的 <code>isr</code> 别名因为和 Next.js 的<em>页面级</em> ISR 同名不同义，已被彻底从枚举里删掉——现在写 <code>isr</code> 会直接校验失败。
+    </p>
+  </div>
+
+  <h3>B · 片段交付生命周期（7 步，全部有 JSON 信封）</h3>
+  <div class="plate">
+    <div class="plate-cap">每一步：一个 JSON 对象到 stdout + 一条 Accept 判据 + 失败不落盘</div>
+    <div class="rail">
+      <div class="step"><div class="n">01</div><div class="sb">
+        <h4>Scaffold</h4><p>生成 <code>fragments/&lt;kebab&gt;/</code> <strong>11 个文件</strong>，且<strong>开箱即跑</strong>：<code>server.ts</code> 是 host 适配器，端口从 4201 起自动取第一个空闲值，Dockerfile 真能构建，<code>tsconfig.json</code> 让新单元进入 <code>pnpm typecheck</code> 的发现范围。不碰注册表。</p>
+        <div class="cmd">pnpm --filter @mvp/create-component start -- PricePanel --type fragment</div>
+        <div class="accept">Accept: "status": "created" · files.length === 11</div>
+      </div></div>
+      <div class="step"><div class="n">02</div><div class="sb">
+        <h4>Implement + Test（TDD）</h4><p>先扩 <code>render.test.ts</code> 再改 <code>render.ts</code>。脚手架已经给了 200 与降级两条路径的断言。唯一机器信号是退出码。</p>
+        <div class="cmd">pnpm --filter @mvp/fragment-price-panel test</div>
+      </div></div>
+      <div class="step"><div class="n">03</div><div class="sb">
+        <h4>Register</h4><p>写注册表条目，可选同时补 docker-compose 服务（从 4201 起扫下一个空闲端口）。<strong>版本 append-only</strong>：同 name+version 换 URL 重注册会 throw，而不是悄悄改历史。</p>
+        <div class="cmd">pnpm exec tsx scripts/register-fragment.mts --name price-panel --version 0.1.0 \
+  --service-url http://localhost:4203 --channel canary --with-compose</div>
+        <div class="accept">Accept: "status": "registered" · 重跑得到 "action": "unchanged"（幂等）</div>
+      </div></div>
+      <div class="step"><div class="n">04</div><div class="sb">
+        <h4>Mount</h4><p>往页面 manifest 加槽位，<strong>并顺手重生成 <code>fragmentSlots.gen.ts</code></strong>。挂载未注册的片段会失败（除非 <code>--allow-unregistered</code>）。<code>--check</code> 只比对不写盘。</p>
+        <div class="cmd">pnpm exec tsx scripts/mount-slot.mts --page page-home --slot pricePanel \
+  --fragment price-panel --strategy dynamic-ssr --channel canary --timeout-ms 200</div>
+        <div class="accept">Accept: "status": "mounted" · warnings: []</div>
+      </div></div>
+      <div class="step"><div class="n">05</div><div class="sb">
+        <h4>Verify</h4><p>14 道门禁全过，报告落 <code>reports/verify-report.json</code>（每步含 stdout/stderr 尾部 6000 字符，便于 agent 定位）。</p>
+        <div class="cmd">pnpm verify</div>
+        <div class="accept">Accept: exit 0 · results 里没有 "status": "failed"</div>
+      </div></div>
+      <div class="step"><div class="n">06</div><div class="sb">
+        <h4>Promote（canary → stable）</h4><p>把前一个 stable 版本记进条目的 <code>versions</code> 历史，并向 <code>releases.json</code> 追加一条。这条历史就是回滚目标。</p>
+        <div class="cmd">pnpm exec tsx scripts/promote-fragment.mts --name price-panel</div>
+        <div class="accept">Accept: "status": "promoted" · from/to 符合预期</div>
+      </div></div>
+      <div class="step"><div class="n">07</div><div class="sb">
+        <h4>Rollback</h4><p>回到 promote 时记录的版本，或显式 <code>--to</code>。没有可回滚目标时<strong>干净地失败</strong>（<code>unchanged</code>），而不是瞎猜。</p>
+        <div class="cmd">pnpm exec tsx scripts/rollback-fragment.mts --name price-panel [--to 0.1.0]</div>
+        <div class="accept">Accept: "status": "rolled-back" · to 等于目标版本</div>
+      </div></div>
+      <div class="step"><div class="n">08</div><div class="sb">
+        <h4>Verify unit（最小部署单位自检）</h4><p>把「一个片段能独立交付」变成一条命令：只构建该单元的依赖闭包 → 启动构建产物 → 断言 <code>/health</code>、<code>/ready</code>、<code>/manifest</code> 报同一个 manifest 版本、<code>GET /</code> 带版本标记 → 报告各 channel 当前指向的版本。</p>
+        <div class="cmd">pnpm verify:unit --name price-panel [--port 4399] [--skip-build]</div>
+        <div class="accept">Accept: "status": "ok" · version 等于将要注册的版本</div>
+      </div></div>
+    </div>
+    <p style="margin:16px 0 0; font-size:13px">
+      横切保证：<strong>未知 flag 直接拒绝</strong>（<code>--chanel</code> 会得到 “did you mean --channel?”，不写任何文件）；
+      写入是<strong>原子的</strong>（临时文件 + rename，外加 <code>&lt;file&gt;.lock</code> 建议锁和乐观内容哈希校验）；
+      并发冲突返回 <code>{"status":"conflict","retry":true}</code> —— 原样重跑即可。这三条合起来，才让「多 agent 并行操作同一份注册表」成立。
+    </p>
+  </div>
+
+  <h3>C · Island 生命周期（浏览器侧，两级独立性模型）</h3>
+  <p>
+    片段分两档。<strong>Tier 1（纯 SSR）</strong>：HTML 每次请求都从片段服务现取，部署完 <code>promote</code> 一下就上线，<em>页面重建次数 0</em>，版本错位根本不可能发生。
+    <strong>Tier 2（带 React island）</strong>：SSR HTML 同样即时生效，但 island 的客户端 JS 在构建期被静态 import 进页面 bundle，所以<em>行为</em>变更仍需页面重建。
+  </p>
+  <p>关键是第二档的错位<strong>被检测而不是静默</strong>：</p>
+  <ol>
+    <li>片段在 SSR HTML 里内联一个 <code>&lt;script type="application/json" data-island-props&gt;</code> 快照，盖上 <code>{fragment, version, contractHash}</code>。</li>
+    <li>页面 bundle 用 <code>registerIsland(name, comp, { expectedVersion, expectedContractHash, propsSchema })</code> 声明它的期望。</li>
+    <li><code>mountIsland</code> 依次校验：快照 schema → 版本/契约哈希握手 → （若声明了）有效 props 的 <code>propsSchema</code>。</li>
+    <li>任一不通过就<strong>完全跳过 hydration</strong>——不创建 React root，SSR HTML 就是最终静态态，同时 <code>console.warn</code> 并回调 <code>onSnapshotMismatch</code>。没有 <code>version</code> 的老快照正常 hydrate（向后兼容）。</li>
+  </ol>
+  <p>
+    Island 之间的联动走 <code>@mvp/interaction</code> 的契约总线：每个频道声明<strong>唯一 publisher</strong> 和 subscriber 白名单，payload 逐次校验。
+    这里有一个被写成审计规则的著名坑——<strong>孤儿总线</strong>：island 自己 <code>createInteractionBus()</code> 时一切看起来都通，
+    但它和页面共享的总线完全隔离，跨 island 事件永远到不了，且<em>没有任何报错</em>。
+    修法是 <code>props.bus ?? 自建 fallback</code>，而 <code>audit:deps</code> 的 <code>island-bus-without-escape-hatch</code> 规则会 fail 掉任何没留逃生口的 <code>island.tsx</code>。
+  </p>
+
+  <h3>D · 变更交付生命周期（diff → 生产）</h3>
+  <div class="plate">
+    <div class="plate-cap">一份 diff，一个答案</div>
+    <ol style="margin:0 0 14px">
+      <li><strong>算受影响集</strong>：仓库只有<em>一个</em> affected 引擎（图引擎，老的路径启发式引擎已删）。单元依赖图不靠单独声明，而是直接读已有产物：片段 manifest、页面 <code>manifest.slots.json</code>、各 <code>package.json</code>、路由注册表、注册表数据。然后沿<strong>反向边</strong>做传递闭包。</li>
+      <li><strong>收窄 vs GLOBAL</strong>：<code>docs/</code>、<code>*.md</code>、<code>infra/</code>、<code>e2e/</code>、<code>tools/</code>、CI 配置 → 什么都不触发；片段 / 页面 / 包 / domain 目录 → 收窄到该单元及其依赖者；注册表<strong>数据</strong> JSON → 内容 diff 后只 seed 变更的片段；而 <code>packages/registry</code>/<code>routes</code> 的<strong>代码</strong>、根配置、任何无法识别的路径 → <strong>保守走 GLOBAL</strong>。</li>
+      <li><strong>门禁</strong>：<code>pnpm verify</code> 14 关（见下），再加 <code>pnpm verify:runtime</code> —— 用真 Chromium 跑组合后的页面，断言 verify 看不见的那一层：控制台/页面错误（含 React #418 hydration）、声明的静态资产是否真送到（没有 404）、有没有「内容悬在一大片空洞上方」、有没有页面溢出、招牌交互（点盘口某档 → 订单表单价格变化）还灵不灵。</li>
+      <li><strong>出包与上线</strong>：CI 按受影响单元跑 docker 构建矩阵，打 <code>&lt;unit&gt;:&lt;git-sha&gt;</code> + <code>:latest</code>；compose 冒烟检查<strong>从注册表推导</strong>（注册一个片段就自动扩展冒烟范围）；k8s 覆盖全部 22 单元，服务间用显式 env 连线且 URL 在启动时就被 <code>z.string().url()</code> 校验。</li>
+    </ol>
+    <div class="gates">
+      <div class="gate"><div class="gn">01</div><div class="gt">pnpm typecheck</div><div class="gd">tsgo，按 project tsconfig</div></div>
+      <div class="gate"><div class="gn">02</div><div class="gt">pnpm lint</div><div class="gd">oxlint</div></div>
+      <div class="gate"><div class="gn">03</div><div class="gt">pnpm check</div><div class="gd">biome 格式与 lint</div></div>
+      <div class="gate"><div class="gn">04</div><div class="gt">verify:manifest-gen</div><div class="gd">每个页面的 gen 文件与 manifest 无漂移</div></div>
+      <div class="gate"><div class="gn">05</div><div class="gt">verify:demos</div><div class="gd">DEMOS.md 能力表与页面 manifest 一致</div></div>
+      <div class="gate"><div class="gn">06</div><div class="gt">docs:test</div><div class="gd">每个 AGENT.md 代码块被真实<strong>执行</strong></div></div>
+      <div class="gate"><div class="gn">07</div><div class="gt">pnpm test</div><div class="gd">全部 Vitest（含各页 manifestSync）</div></div>
+      <div class="gate"><div class="gn">08</div><div class="gt">pnpm build</div><div class="gd">tsdown / next build</div></div>
+      <div class="gate"><div class="gn">09</div><div class="gt">audit:similarity</div><div class="gd">相似度 ≥ 0.82 的近重复组件即失败</div></div>
+      <div class="gate"><div class="gn">10</div><div class="gt">audit:bundle</div><div class="gd">页面首屏 JS / 片段客户端 JS 预算</div></div>
+      <div class="gate"><div class="gn">11</div><div class="gt">audit:css</div><div class="gd">单元 CSS 字节上限 + 全局卫生</div></div>
+      <div class="gate"><div class="gn">12</div><div class="gt">audit:deps</div><div class="gd">13 条规则：裸 fetch、跨页 import、分层、孤儿总线、网关无超时 fetch、片段自建服务</div></div>
+      <div class="gate"><div class="gn">13</div><div class="gt">audit:optimizer</div><div class="gd">trace 快照喂规则引擎出优化发现</div></div>
+      <div class="gate"><div class="gn">14</div><div class="gt">audit:boundary</div><div class="gd">server 文件里的浏览器全局、server→client import</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── 5 ─────────── -->
+<section id="value">
+  <div class="sec-head"><span class="sec-num">05</span><h2>最重要的价值：六条</h2></div>
+  <p>
+    如果只能从这个仓库带走六个想法，是下面这些。它们的共同点是：<strong>把「本来靠纪律维持的东西」改造成结构上不可能违反的东西</strong>。
+  </p>
+
+  <div class="val">
+    <h4>1 · 漂移不是被检测，而是结构上不可能</h4>
+    <p>
+      页面槽位有两份表达（声明式 manifest 和运行时数组），这是经典的双写漂移源。这里的解法是 codegen：
+      <code>mount-slot</code> 每次成功写 manifest 后重生成 <code>fragmentSlots.gen.ts</code>，手写的 <code>fragmentSlots.ts</code> 退化成薄壳，
+      只留 static manifest 表达不了的每请求胶水（timeout 覆盖、<code>resolveData</code>、page-trade 的每请求 <code>props.symbol</code> 合并）。
+      <code>--check</code> 纯比对、<code>verify:manifest-gen</code> 对每个页面跑一遍并入 verify。旧的 <code>manifestSync.test.ts</code> 保留为双保险。
+    </p>
+    <span class="proof">packages/registry/src/codegen.ts · scripts/verify-manifest-gen.mts · verify 门禁 #4</span>
+  </div>
+
+  <div class="val">
+    <h4>2 · 契约在边界真的 <code>.parse()</code>，且诚实标注哪些没有</h4>
+    <p>
+      <code>@mvp/contracts</code> 不是类型体操：<code>docs/CONTRACTS.md</code> 逐个 schema 标出真实的运行时 call site，
+      没有生产调用点的就明确写 <strong>type-level only</strong>。请求上下文每请求 parse、注册表每次加载 parse、
+      <code>/render</code> 请求在片段侧「严格→宽松→结构化 ZodIssue」两级解析、<code>/render</code> 响应在消费侧解析失败即降级、
+      数据源声明在定义期就跑 <code>superRefine</code>（用户私有数据不能 static、realtime 不能 TTL 缓存）。
+      同时 <code>toJsonSchema()</code> 把这些 schema 导给非 TS 的 agent。
+    </p>
+    <span class="proof">packages/contracts/src/index.ts · docs/CONTRACTS.md（含手工维护的新鲜度免责声明）</span>
+  </div>
+
+  <div class="val">
+    <h4>3 · 独立上线是分档的，而错位是被观测的</h4>
+    <p>
+      不粉饰「万物独立部署」。Tier 1 片段真正做到 0 页面重建上线；Tier 2 的 island JS 是构建冻结的，
+      于是它配了版本握手 + 跳过 hydration 的降级路径，把「静默错位」换成「明确退化成静态 SSR + warn + 回调」。
+      通往完全独立的 import-map 方案（<code>assetsUrl</code> + 运行时 <code>import()</code>）在 <code>order-form</code> 上端到端验证过，
+      但本周期<strong>明确判定 no-go</strong> 并记录了重启触发条件——这种「验证过、暂不铺开、写下原因」的决策记录本身就是价值。
+    </p>
+    <p style="margin-top:10px">
+      这条现在是<strong>可执行的</strong>：<code>pnpm verify:unit --name &lt;fragment&gt;</code> 只构建该单元的依赖闭包、启动构建产物、断言
+      <code>/health</code>·<code>/ready</code>·<code>/manifest</code> 报同一个 manifest 版本。配合 <code>/health</code> 上报版本，
+      灰度可以先确认「是哪个 build 在应答」，再 <code>promote-fragment</code> 切 channel —— 页面每请求解析注册表，全程<strong>零页面重建</strong>。
+    </p>
+    <span class="proof">docs/COMPOSITION.md §6 · packages/islands/src/index.ts · scripts/verify-unit.mts · packages/fragment-host/src/index.ts</span>
+  </div>
+
+  <div class="val">
+    <h4>4 · 降级是产品特性，所以它有两档断言</h4>
+    <p>
+      片段不可达时页面仍返回 200，带 <code>data-fallback="true"</code> 的降级标记。
+      因此 e2e 分两档：默认宽松（live 或 fallback 都算过——部分降级是<em>正确行为</em>），
+      <code>E2E_STRICT=1</code> 严格（只有 live 算过，任何 fallback 即失败）。
+      同一套规格既能验「优雅降级成立」，又能验「全栈健康时组合是真的活的」。
+    </p>
+    <span class="proof">e2e/support/expect-fragment-content.ts · docs/DELIVERY.md §3.4</span>
+  </div>
+
+  <div class="val">
+    <h4>5 · AI agent 是一等消费者，而且这件事是被门禁保障的</h4>
+    <p>
+      入口是 <code>llms.txt</code>（curated，不是罗列）；36 个 <code>AGENT.md</code> 提供精确签名和错误分类学；
+      每个动作有统一 JSON 信封 CLI，再由 <code>@mvp/mcp</code> 零依赖 stdio server 包成可调用工具（含 <code>query_registry</code> / <code>affected_units</code> 的图查询）。
+      最关键的一步是 <code>docs:test</code>：<strong>AGENT.md 里的 TS 代码块会被真实执行</strong>（当前 38 个可执行块、<strong>0 个豁免</strong>），
+      把示例改成跑不通的样子会像测试失败一样挂掉 CI。文档因此不能腐烂。
+    </p>
+    <span class="proof">llms.txt · scripts/docs-test.mts · packages/mcp/src/tools.ts · verify 门禁 #6</span>
+  </div>
+
+  <div class="val">
+    <h4>6 · 「静默少构建」被当成头号敌人</h4>
+    <p>
+      affected 引擎的显式立场是：<strong>绝不产出空 seed 集</strong>。无法识别的路径、解析不了的 JSON、图里认不出的片段名，
+      全部保守 fallback 到 GLOBAL 全量重建。<code>domains/**</code> 曾经匹配不上任何 seeding 分支、静默漏构建过，
+      这个 bug 被修掉后连注释一起写进了 <code>load-graph.ts</code>。
+      同理，受影响页面推不出 URL 时，运行时门禁是<strong>失败</strong>而不是 skip——新页面不能悄悄从门禁里溜走。
+    </p>
+    <span class="proof">tools/release-tools/src/affected-graph.ts · scripts/deploy-affected.mts</span>
+  </div>
+</section>
+
+<!-- ─────────── 6 ─────────── -->
+<section id="edge">
+  <div class="sec-head"><span class="sec-num">06</span><h2>边界与现状</h2></div>
+  <p>
+    这个仓库有个难得的习惯：把未完成的部分写成清单而不是藏起来。下表分两类——<strong>仍存在</strong>的，和本轮加固中<strong>已修复</strong>的（后者保留在这里，是因为「原来是什么样」本身解释了这些机制为什么长成现在的样子）。
+    运维配置类（镜像结构、k8s、指标、CDN）本轮明确不在范围内。
+  </p>
+  <div class="honest">
+    <div class="row"><span class="rt">镜像是单阶段、无多阶段构建 <span class="st wip">仍存在</span></span><span class="rd">22 份 Dockerfile 全部 <code>COPY . .</code> 在 <code>pnpm install</code> 之前，依赖层缓存必然失效；最终镜像带全部 devDependencies 和整仓库源码。本轮明确不在范围内（各家有自己的部署体系），但它是镜像体积与 CI 时长的主因。</span></div>
+    <div class="row"><span class="rt">页面应用没有 <code>/metrics</code>，灰度链路是断的 <span class="st wip">仍存在</span></span><span class="rd">网关和 14 个片段都有 <code>/metrics</code>，7 个 Next 页面没有，所以 Argo 的 <code>success-rate</code>/<code>latency-p95</code> AnalysisTemplate 查不到它的灰度目标 <code>page-product</code>。k8s 侧同样仍缺 HPA / PDB / Ingress / NetworkPolicy / ServiceMonitor。</span></div>
+    <div class="row"><span class="rt">覆盖率门禁未开 <span class="st wip">仍存在</span></span><span class="rd">阈值配了、<code>@vitest/coverage-v8</code> 装了，但默认 <code>pnpm test</code> 路径不生成覆盖率报告（本地 coverage 模式反复卡死）。README 把「90% 覆盖率」列为生产前的第一个后续门禁。</span></div>
+    <div class="row"><span class="rt">CONTRACTS.md 仍是手工维护 <span class="st wip">仍存在</span></span><span class="rd">文档自己标了新鲜度免责声明：目标状态是生成式索引，在那之前 schema 变更后应先看 <code>packages/contracts/src/index.ts</code>。</span></div>
+    <div class="row"><span class="rt">总线频道是裸 <code>string</code> <span class="st wip">仍存在 · A2 gap</span></span><span class="rd">拼错频道名在<strong>运行时</strong>才炸（<code>InteractionContractError</code>），不在 typecheck。缓解办法是永远从领域常量 import（如 <code>TRADE_ACTIVE_SYMBOL</code>），不写字面量。</span></div>
+    <div class="row"><span class="rt">片段宿主样板已抽走 <span class="st ok">已修复</span></span><span class="rd">14 份各 130–188 行、约 90% 雷同的 <code>server.ts</code> 加 14 份 <code>observability.ts</code>（合计 2,718 行）收敛为 <code>@mvp/fragment-host</code> 285 行 + 14 份约 40 行适配器。防回归靠 <code>audit:deps</code> 的 <code>fragment-server-not-hosted</code> 规则，不是相似度阈值。</span></div>
+    <div class="row"><span class="rt">脚手架产物可运行 <span class="st ok">已修复</span></span><span class="rd">旧模板的 <code>server.ts</code> 只有两行 re-export、Dockerfile 没有 COPY/install/build、fixtures 的空 <code>ctx</code> 过不了 schema —— 而验收判据会通过。现在生成 11 个文件、端口自动分配，且实测 scaffold → build → boot → <code>/render</code> 全链路通。</span></div>
+    <div class="row"><span class="rt">入口超时与请求取消 <span class="st ok">已修复</span></span><span class="rd">网关两处裸 <code>fetch</code> 原本无超时无 abort（Node fetch 无默认超时，Fastify 也不加）；运行时的 <code>withTimeout</code> 只 race 不 abort。现在三处都带取消，并新增 <code>fetch-without-timeout</code> 审计规则覆盖此前被作用域正则静默豁免的网关。</span></div>
+    <div class="row"><span class="rt">降级 HTML 不再泄漏内部地址 <span class="st ok">已修复</span></span><span class="rd">网络失败路径原本把 <code>serviceUrl</code>（内部 DNS 名+端口）当片段名写进公开 HTML，且与另两条降级路径的 <code>data-fragment</code> 身份不一致。现在统一用片段名并对 reason 做 HTML 转义。</span></div>
+    <div class="row"><span class="rt">片段缓存有界、tags 可用 <span class="st ok">已修复</span></span><span class="rd">原本是只增不减的模块级 <code>Map</code>（无上限、无清扫、过期条目永不删），而槽位声明的 <code>cachePolicy.tags</code> 没有任何失效实现。现在写入时清扫+淘汰，并提供按 tag 失效。</span></div>
+    <div class="row"><span class="rt">冷克隆不再红 <span class="st ok">已修复</span></span><span class="rd">删光 dist 后 <code>pnpm test</code> 曾在 <code>packages/mcp</code> 挂掉（子进程的 <code>ERR_MODULE_NOT_FOUND</code> 被 <code>JSON.parse</code>），<code>verify:manifest-gen</code> 直接失败 —— 前置构建只写在伞命令里。现在四处共用 <code>ensure-workspace-build</code>，按需构建、无事静默，已实测删光 25 个 dist 后 exit 0。</span></div>
+    <div class="row"><span class="rt">SEO 门面补齐 <span class="st ok">已修复</span></span><span class="rd">新增网关侧 <code>/robots.txt</code> + <code>/sitemap.xml</code>（路由注册表派生、排除带参路由、认 <code>x-forwarded-*</code>）；七个页面补 canonical + hreflang + OG + Twitter + robots；<code>page-home</code>/<code>page-product</code> 的 <code>lang</code> 由硬编码 <code>en</code> 改为按 cookie 解析；诊断区块生产默认关闭（<code>MVP_DIAGNOSTICS</code>）。</span></div>
+    <div class="row"><span class="rt">page-trade 故意不流式 <span class="st ok">有意为之</span></span><span class="rd">流式在这里原型过又回退了：纯 <code>react-dom/server</code> 跑不了 Next 真 RSC 运行时之外的 async Server Component，而它的 <code>trade-nav.test.tsx</code> 正是这么渲染页面的。所以它留在 barrier 版 <code>executeFragmentSlots</code> 上——两个 API 共享同一套调度实现，行为等价。</span></div>
+    <div class="row"><span class="rt">page-vaults / page-referrals 没声明能力 <span class="st ok">诚实留空</span></span><span class="rd">能力索引把它们如实记为 “(none declared)”，而不是编一个出来。</span></div>
+  </div>
+
+  <h3>上手最短路径</h3>
+  <div class="cmd">pnpm install
+pnpm verify                        # 14 道门禁，报告落 reports/（约 165s）
+pnpm dev                           # 并行起所有 app 与片段服务
+pnpm verify:unit --name order-book # 单个片段：构建 → 启动 → 版本契约
+pnpm graph                         # 查单元依赖图（query_registry 的 CLI 版）
+pnpm affected:graph --json         # 看这份 diff 到底影响哪些可部署单元
+pnpm dev:component                 # 单个片段 + 契约 mock 世界，隔离开发</div>
+  <p style="font-size:13px; color:var(--muted); margin-top:10px">
+    浏览器入口：<code>:4100/</code> 组合后的首页（带 shell 标记）、<code>:4101/</code> 不带 shell 的独立页面、<code>:4201/</code> 片段服务自带的 demo 与端点清单。
+    硬规矩：只用 pnpm；业务代码禁用裸 <code>fetch</code>；注册表与页面 manifest 禁止手改，一律走脚本。
+  </p>
+</section>
+
+<footer>
+  报告基于对仓库源码与 <code>docs/</code> 的通读整理，初版基线 <code>main @ 420f043</code>（2026-09-19），
+  本次更新到分支 <code>fix/framework-hardening</code>（同日的框架加固：片段宿主抽取、脚手架重写、超时与取消、降级身份、有界缓存、冷启动前置、SEO 门面、门禁自身修复）。
+  统计口径：TS/TSX/MTS 行数与文件数排除 <code>node_modules</code>、<code>dist</code>、<code>.next</code>。
+  当前状态：<code>pnpm verify</code> 14/14 通过（164.6s），1326 个测试用例全过。
+  文中每条机制均指向了具体源文件或文档位置，便于回查。
+</footer>
+
+</div>

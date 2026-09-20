@@ -1,4 +1,5 @@
-import { FragmentSlot } from "@mvp/runtime/react";
+import { FragmentSlot, PageHealthMeta } from "@mvp/runtime/react";
+import { isDiagnosticsEnabled } from "@mvp/runtime/seo";
 import { readThemePreference, resolveLocalePreference } from "@mvp/trade-prefs";
 import { AppNav } from "@mvp/ui/AppNav";
 import { headers } from "next/headers";
@@ -260,14 +261,25 @@ export default async function TradePage({ params }: TradePageProps) {
           src/hydrateSpike.tsx + src/spikeImportMap.ts (build via the manual
           `build:spike-vendor` script) for when the reopen trigger fires. */}
 
+        {/* Aggregate health as a hidden marker the shell gateway reads: a failed
+            REQUIRED slot (marketHeader) makes the composed route answer 503
+            rather than a 200 full of degraded markup. */}
+        <PageHealthMeta execution={fragmentHtml.execution} />
+
         {/* Framework-observability drawer: the request trace as a bottom-docked
             waterfall (spans on a shared time axis) plus scheduler hints. Pure
-            SSR + native <details>, so it opens with no client JS. */}
-        <TraceDrawer
-          snapshot={fragmentHtml.traceSnapshot}
-          health={fragmentHtml.scheduler.health}
-          hints={fragmentHtml.scheduler.hints}
-        />
+            SSR + native <details>, so it opens with no client JS.
+
+            Gated like every other page's diagnostics: it exposes internal span
+            names and timings, which are a dev/e2e affordance rather than page
+            content (MVP_DIAGNOSTICS=on re-enables it in production). */}
+        {isDiagnosticsEnabled() && (
+          <TraceDrawer
+            snapshot={fragmentHtml.traceSnapshot}
+            health={fragmentHtml.scheduler.health}
+            hints={fragmentHtml.scheduler.hints}
+          />
+        )}
       </main>
     </>
   );

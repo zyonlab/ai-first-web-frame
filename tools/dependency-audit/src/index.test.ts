@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { runDependencyAudit } from "./index";
+import { fetchCallsWithoutSignal, runDependencyAudit } from "./index";
 
 function tempRoot(name: string): string {
   const root = join(
@@ -477,5 +477,280 @@ describe("dependency-audit", () => {
       ),
     ).toBe(false);
     rmSync(root, { recursive: true, force: true });
+  });
+
+  it("flags gateway fetch calls that pass no abort signal", () => {
+    const root = tempRoot("gateway-fetch");
+    write(
+      join(root, "apps/shell-gateway/package.json"),
+      JSON.stringify({ name: "@mvp/shell-gateway", dependencies: {} }),
+    );
+    write(
+      join(root, "apps/shell-gateway/src/server.ts"),
+      [
+        "export async function proxy(url: string) {",
+        "  const response = await fetch(url, { headers: {} });",
+        "  return response.text();",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    const issue = report.issues.find(
+      (item) => item.code === "fetch-without-timeout",
+    );
+    expect(issue?.severity).toBe("fail");
+    expect(issue?.file).toBe("apps/shell-gateway/src/server.ts");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("accepts a gateway fetch that carries an abort signal", () => {
+    const root = tempRoot("gateway-fetch-ok");
+    write(
+      join(root, "apps/shell-gateway/package.json"),
+      JSON.stringify({ name: "@mvp/shell-gateway", dependencies: {} }),
+    );
+    write(
+      join(root, "apps/shell-gateway/src/server.ts"),
+      [
+        "export async function proxy(url: string) {",
+        "  const response = await fetch(url, {",
+        "    headers: {},",
+        "    signal: AbortSignal.timeout(5000),",
+        "  });",
+        "  return response.text();",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    expect(
+      report.issues.some((item) => item.code === "fetch-without-timeout"),
+    ).toBe(false);
+    rmSync(root, { recursive: true, force: true });
+  });
+});
+
+describe("auditDeclarativeLayering (tags + depConstraints)", () => {
+  const CONFIG = {
+    tags: {
+      "packages/*": ["layer:framework"],
+      "domains/*": ["layer:domain"],
+      "apps/*": ["layer:product"],
+    },
+    depConstraints: [
+      {
+        sourceTag: "layer:framework",
+        onlyDependOnLibsWithTags: ["layer:framework"],
+      },
+      {
+        sourceTag: "layer:domain",
+        onlyDependOnLibsWithTags: ["layer:domain", "layer:framework"],
+      },
+      { sourceTag: "layer:product", onlyDependOnLibsWithTags: ["*"] },
+    ],
+  };
+
+  function layeredRoot(name: string): string {
+    const root = tempRoot(name);
+    write(join(root, "dependency-audit.json"), JSON.stringify(CONFIG, null, 2));
+    write(
+      join(root, "packages/runtime/package.json"),
+      JSON.stringify({ name: "@mvp/runtime", dependencies: {} }),
+    );
+    write(
+      join(root, "domains/trade-data/package.json"),
+      JSON.stringify({ name: "@mvp/trade-data", dependencies: {} }),
+    );
+    write(
+      join(root, "apps/page-home/package.json"),
+      JSON.stringify({ name: "@mvp/page-home", dependencies: {} }),
+    );
+    return root;
+  }
+
+  const run = (root: string) =>
+    runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+
+  it("fails a framework package that imports the domain layer", () => {
+    const root = layeredRoot("layer-down");
+    write(
+      join(root, "packages/runtime/src/index.ts"),
+      'import { tradeSources } from "@mvp/trade-data";\nexport const x = tradeSources;\n',
+    );
+    const issue = run(root).issues.find(
+      (item) => item.code === "layer-constraint-violation",
+    );
+    expect(issue?.severity).toBe("fail");
+    expect(issue?.file).toBe("packages/runtime/src/index.ts");
+    // The message names both sides' tags, like Nx's does.
+    expect(issue?.detail).toContain("layer:framework");
+    expect(issue?.detail).toContain("layer:domain");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("allows the domain layer to import the framework layer", () => {
+    const root = layeredRoot("layer-up-ok");
+    write(
+      join(root, "domains/trade-data/src/index.ts"),
+      'import { createDataClient } from "@mvp/runtime";\nexport const x = createDataClient;\n',
+    );
+    expect(
+      run(root).issues.some(
+        (item) => item.code === "layer-constraint-violation",
+      ),
+    ).toBe(false);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("leaves a `*` constrained layer unrestricted", () => {
+    const root = layeredRoot("layer-star");
+    write(
+      join(root, "apps/page-home/src/index.ts"),
+      'import { a } from "@mvp/trade-data";\nimport { b } from "@mvp/runtime";\nexport const x = [a, b];\n',
+    );
+    expect(
+      run(root).issues.some(
+        (item) => item.code === "layer-constraint-violation",
+      ),
+    ).toBe(false);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("matches a relative import that crosses a layer", () => {
+    const root = layeredRoot("layer-relative");
+    write(
+      join(root, "packages/runtime/src/index.ts"),
+      'import { x } from "../../../domains/trade-data/src/index";\nexport const y = x;\n',
+    );
+    write(
+      join(root, "domains/trade-data/src/index.ts"),
+      "export const x = 1;\n",
+    );
+    expect(
+      run(root).issues.some(
+        (item) => item.code === "layer-constraint-violation",
+      ),
+    ).toBe(true);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("falls back to the hard-coded three-layer check with no config", () => {
+    const root = tempRoot("layer-no-config");
+    write(
+      join(root, "packages/runtime/package.json"),
+      JSON.stringify({ name: "@mvp/runtime", dependencies: {} }),
+    );
+    write(
+      join(root, "domains/trade-data/package.json"),
+      JSON.stringify({ name: "@mvp/trade-data", dependencies: {} }),
+    );
+    write(
+      join(root, "packages/runtime/src/index.ts"),
+      'import { x } from "@mvp/trade-data";\nexport const y = x;\n',
+    );
+    const codes = run(root).issues.map((item) => item.code);
+    expect(codes).toContain("domain-code-in-framework-package");
+    expect(codes).not.toContain("layer-constraint-violation");
+    rmSync(root, { recursive: true, force: true });
+  });
+});
+
+describe("auditFragmentServerHost", () => {
+  it("fails a fragment that hand-rolls its own server", () => {
+    const root = tempRoot("hand-rolled-server");
+    write(
+      join(root, "fragments/rogue/package.json"),
+      JSON.stringify({ name: "@mvp/fragment-rogue", dependencies: {} }),
+    );
+    write(
+      join(root, "fragments/rogue/src/server.ts"),
+      [
+        'import Fastify from "fastify";',
+        "export function buildServer() {",
+        "  const server = Fastify({ logger: false });",
+        '  server.get("/health", async () => ({ status: "ok" }));',
+        "  return server;",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    const issue = report.issues.find(
+      (item) => item.code === "fragment-server-not-hosted",
+    );
+    expect(issue?.severity).toBe("fail");
+    expect(issue?.file).toBe("fragments/rogue/src/server.ts");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("accepts a fragment server that delegates to the shared host", () => {
+    const root = tempRoot("hosted-server");
+    write(
+      join(root, "fragments/tidy/package.json"),
+      JSON.stringify({ name: "@mvp/fragment-tidy", dependencies: {} }),
+    );
+    write(
+      join(root, "fragments/tidy/src/server.ts"),
+      [
+        'import { createFragmentServer } from "@mvp/fragment-host";',
+        "export function buildServer() {",
+        "  return createFragmentServer({});",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    expect(
+      report.issues.some((item) => item.code === "fragment-server-not-hosted"),
+    ).toBe(false);
+    rmSync(root, { recursive: true, force: true });
+  });
+});
+
+describe("fetchCallsWithoutSignal", () => {
+  it("counts only real calls that omit a signal", () => {
+    expect(fetchCallsWithoutSignal("await fetch(url)")).toBe(1);
+    expect(
+      fetchCallsWithoutSignal("await fetch(url, { signal: ac.signal })"),
+    ).toBe(0);
+    expect(
+      fetchCallsWithoutSignal(
+        "await fetch(url, {\n  headers: h,\n  signal: AbortSignal.timeout(5),\n})",
+      ),
+    ).toBe(0);
+    // A commented-out or quoted call is not a network call.
+    expect(fetchCallsWithoutSignal("// await fetch(url)")).toBe(0);
+    expect(fetchCallsWithoutSignal('const s = "fetch(url)";')).toBe(0);
   });
 });

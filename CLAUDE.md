@@ -22,11 +22,17 @@ which fetch SSR fragments (14 services, 4201-4214) via `@mvp/registry`.
 - `domains/` — trade demo domain layer (trade-contracts, trade-data, trade-prefs, trade-theme,
   trade-chart); import rule is three-layer: apps/fragments → domains → packages, never upward
 - `packages/` — `@mvp/*` libraries (contracts, runtime, data, request, ui, observability, optimizer, registry,
-  routes, ...); `@mvp/registry` (fragment registry) and `@mvp/routes` (route registry) are real workspace packages
+  routes, ...); `@mvp/registry` (fragment registry) and `@mvp/routes` (route registry) are real workspace packages.
+  `@mvp/fragment-host` is the one HTTP host all 14 fragment services run on — routes, metrics and trace
+  export live there, not in each `fragments/*/src/server.ts`
 - `registry/` — fragment/route registry runtime state, not package source: `registry/registry.data.json` and
   release history `registry/releases.json`, loaded by `@mvp/registry` via an explicit repo-root-relative path
 - `tools/` — audits + `create-component` scaffolder; `scripts/` — repo-level CLIs (tsx); `infra/docker/` — compose;
-  `e2e/` — Playwright specs (shell/product/fragments/no-js/trade-hydration)
+  `e2e/` — Playwright specs (shell/product/fragments/no-js/trade-hydration) + `e2e/unit/` for repo-level
+  logic with no owning package
+- `docs/reports/` — hand-written long-form HTML reports on the repo itself (architecture map, cost/risk
+  assessment) + their index. Read them with `pnpm reports`. Distinct from the repo-root `reports/`, which is
+  machine-generated audit output rewritten by every `pnpm verify`
 
 Every `packages/*` and `domains/*` package ships an `AGENT.md` whose fenced ts/tsx snippets are
 EXECUTED by `docs:test` inside `pnpm verify` — editing an AGENT.md example into something that
@@ -34,10 +40,15 @@ doesn't run fails CI.
 
 ## Fragment lifecycle (end to end)
 
-1. **Scaffold** (PascalCase name; creates `fragments/<kebab-name>/` with 9 files):
+1. **Scaffold** (PascalCase name; creates `fragments/<kebab-name>/` with 11 files):
    `pnpm --filter @mvp/create-component start -- PricePanel --type fragment`
-   Accept: JSON output has `"status": "created"`.
-2. **Implement + test (TDD)**: edit `fragments/price-panel/src/render.tsx`, extend `render.test.tsx` first.
+   Accept: JSON output has `"status": "created"` and `files.length === 11`.
+   The generated unit **runs as scaffolded**: `src/server.ts` is a ~20-line adapter over
+   `@mvp/fragment-host` (which owns `GET /` · `/health` · `/ready` · `/metrics` · `/manifest` ·
+   `/assets` · `/budget` · `POST /render`), the port is allocated from the first free value
+   after 4201, and the Dockerfile actually builds. Never hand-roll a fragment server —
+   `audit:deps`' `fragment-server-not-hosted` rule fails the build.
+2. **Implement + test (TDD)**: edit `fragments/price-panel/src/render.ts`, extend `render.test.ts` first.
    `pnpm --filter @mvp/fragment-price-panel test`
    Accept: all tests green.
 3. **Register** into the fragment registry (and optionally docker-compose; fragment host ports start at 4201,
@@ -82,11 +93,48 @@ Writes are atomic (temp file + rename) behind a `<file>.lock` advisory lock with
 check: if another agent changed the file since load, the script prints `{"status": "conflict", "retry": true}`
 and exits 1 without writing — just rerun the same command.
 
+## Fragment backend proxy + page health
+
+- A fragment declares `proxy: { <target>: "<absolute backend url>" }` in its
+  `src/manifest.ts`; the shell gateway mounts it at `/_fragment/<fragment>/<target>/*`
+  on the public origin. That is the channel a hydrated island uses to reach its own
+  backend — same origin, no CORS, and the fragment's `serviceUrl` never reaches the
+  browser. Pure resolution logic in `packages/runtime/src/fragmentProxy.ts`; the
+  declared base is the boundary (a remainder that would escape it is rejected).
+- Composed pages render `<PageHealthMeta>` / `<PageHealthMetaStream>` from
+  `@mvp/runtime/react`. The gateway maps a `health: "unhealthy"` marker (a **required**
+  slot failed) to `503` + `Retry-After` while still returning the body unchanged;
+  `degraded` stays `200`. `SHELL_REQUIRED_FAILURE_STATUS=0` disables it.
+- Custom request-context dimensions go through `createRequestContext({ extensions })`
+  (`ctx.extensions`, propagated as `x-mvp-ctx-<name>`), NOT by widening
+  `RequestContextSchema` — that keeps business vocabulary out of the framework package.
+
+## Minimum deployable unit
+
+A fragment is the smallest unit that ships on its own, and that is an executable claim:
+
+- `pnpm verify:unit --name <fragment>` builds only that unit's closure
+  (`pnpm --filter @mvp/fragment-<name>... build` → `dist/server.js`), boots the artifact,
+  and asserts `/health` + `/ready` + `/manifest` all report the same manifest **version**
+  and that `POST /render`-backed output carries it. JSON envelope, exit 0 only when every
+  step passed.
+- One Dockerfile per fragment (`fragments/<name>/Dockerfile`, `EXPOSE <port>`), so any
+  image registry / orchestrator can build and run it — deployment itself is deliberately
+  not implemented here.
+- **Going live with a new version** needs no page rebuild: deploy the image, then
+  `register-fragment` the new version on `canary` and `promote-fragment` it to `stable`.
+  Pages resolve `serviceUrl`/version from `registry/registry.data.json` per request, and
+  `<FRAGMENT_NAME>_URL` overrides the target at runtime without a registry write.
+  Because `/health` reports the deployed version, a rollout can verify WHICH build answered
+  before promoting it, and `rollback-fragment` restores the previously promoted version.
+
 ## Common commands
 
 - `pnpm test` (all) | `pnpm --filter @mvp/page-home test` (one package)
 - `pnpm exec vitest run packages/registry` (registry + lifecycle helper tests)
 - `pnpm typecheck` | `pnpm lint` | `pnpm check` | `pnpm build`
+- `pnpm verify:unit --name <fragment>` (single-unit build + boot + version contract)
+- `pnpm reports [--port n] [--open]` (serve `docs/reports/` — zero-dependency read-only static server)
 - `docker compose -f infra/docker/docker-compose.yml config` (validate compose after registration)
 
 ## Failure recovery
@@ -99,4 +147,7 @@ and exits 1 without writing — just rerun the same command.
 - Duplicate compose service/port: the script refuses used ports; pass an explicit free `--port`.
 - Budget failure in verify: shrink JS/CSS or split the fragment; budgets are in each unit's `budget.ts`.
 - Similarity audit failure: reuse the flagged existing component instead of adding a near-duplicate.
+- `layer-constraint-violation`: layering is declarative in `dependency-audit.json`
+  (`tags` + `depConstraints`, modelled on `@nx/enforce-module-boundaries`). Fix the import,
+  or change the constraint deliberately — do not add a tag to dodge it.
 - Typecheck fails in an unrelated package: fix only your own files; report pre-existing failures instead of patching other packages.

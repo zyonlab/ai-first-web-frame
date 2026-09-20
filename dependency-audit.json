@@ -1,0 +1,22 @@
+{
+  "tags": {
+    "packages/*": ["layer:framework"],
+    "domains/*": ["layer:domain"],
+    "apps/*": ["layer:product"],
+    "fragments/*": ["layer:product"]
+  },
+  "depConstraints": [
+    {
+      "sourceTag": "layer:framework",
+      "onlyDependOnLibsWithTags": ["layer:framework"]
+    },
+    {
+      "sourceTag": "layer:domain",
+      "onlyDependOnLibsWithTags": ["layer:domain", "layer:framework"]
+    },
+    {
+      "sourceTag": "layer:product",
+      "onlyDependOnLibsWithTags": ["*"]
+    }
+  ]
+}

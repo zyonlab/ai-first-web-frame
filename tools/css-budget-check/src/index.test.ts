@@ -166,7 +166,7 @@ describe("css-budget-check", () => {
       expect(row?.actual).toBeGreaterThan(10);
     });
 
-    it("passes a fragment within its ceiling and reports css-less units explicitly", async () => {
+    it("passes a measured fragment and marks a css-less unit UNMEASURED, not pass", async () => {
       root = mkdtempSync(join(FIXTURE_PARENT, ".css-fixture-ok-"));
       mkdirSync(join(root, "fragments", "slim", "assets"), {
         recursive: true,
@@ -196,9 +196,14 @@ describe("css-budget-check", () => {
       const slim = report.checks.find((check) => check.unit === "slim");
       expect(slim?.status).toBe("pass");
       expect(slim?.actual).toBeGreaterThan(0);
+      // A unit with no .css file on disk was never compared against its
+      // ceiling, so reporting it as `pass` claimed a gate that did not run.
+      // `unmeasured` says so without failing the build (those units inject
+      // their styles as strings at request time, which is not statically
+      // measurable).
       const bare = report.checks.find((check) => check.unit === "bare");
-      expect(bare).toMatchObject({ actual: 0, status: "pass" });
-      expect(bare?.note).toContain("not counted");
+      expect(bare).toMatchObject({ actual: 0, status: "unmeasured" });
+      expect(bare?.note).toContain("UNMEASURED");
     });
   });
 });

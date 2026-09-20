@@ -1,7 +1,12 @@
 import type { RequestTrace, RequestTraceSnapshot } from "@mvp/observability";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createShellMetrics } from "../src/observability";
-import { buildServer } from "../src/server";
+import {
+  buildServer,
+  clearFragmentProxyCache,
+  crawlableRoutes,
+  primeFragmentProxyCache,
+} from "../src/server";
 
 const originalFetch = globalThis.fetch;
 
@@ -409,5 +414,315 @@ describe("shell-gateway observability", () => {
     // nonce never leaks into the HTML body; the body is the upstream verbatim.
     expect(response.body).toBe(upstream);
     expect(response.body).not.toContain("marker-nonce");
+  });
+
+  it("passes an abort signal on the page proxy and degrades when it fires", async () => {
+    let observed: AbortSignal | undefined;
+    globalThis.fetch = vi.fn(
+      (_url: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          observed = init?.signal ?? undefined;
+          observed?.addEventListener("abort", () =>
+            reject(new Error("The operation was aborted")),
+          );
+        }),
+    ) as typeof fetch;
+    const server = buildServer({ pageTimeoutMs: 10 });
+    const response = await server.inject({ method: "GET", url: "/" });
+    // A hung page must not hold the gateway request open: it degrades to the
+    // shell fallback instead.
+    expect(response.statusCode).toBe(502);
+    expect(observed?.aborted).toBe(true);
+  });
+
+  it("passes an abort signal on the asset proxy", async () => {
+    let observed: AbortSignal | undefined;
+    globalThis.fetch = vi.fn(
+      (_url: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          observed = init?.signal ?? undefined;
+          observed?.addEventListener("abort", () =>
+            reject(new Error("The operation was aborted")),
+          );
+        }),
+    ) as typeof fetch;
+    const server = buildServer({ assetTimeoutMs: 10 });
+    const response = await server.inject({
+      method: "GET",
+      url: "/_next/static/chunk.js",
+      headers: { referer: "http://localhost:4100/" },
+    });
+    expect(response.statusCode).toBe(502);
+    expect(observed?.aborted).toBe(true);
+  });
+
+  it("serves robots.txt pointing at the sitemap on the public origin", async () => {
+    const server = buildServer();
+    const response = await server.inject({
+      method: "GET",
+      url: "/robots.txt",
+      headers: { host: "perps.example" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("text/plain");
+    expect(response.body).toContain("User-agent: *");
+    expect(response.body).toContain(
+      "Sitemap: http://perps.example/sitemap.xml",
+    );
+    // Operator surfaces stay out of the index.
+    expect(response.body).toContain("Disallow: /manifest/");
+    expect(response.body).toContain("Disallow: /_shell/");
+  });
+
+  it("serves a sitemap of the static routes only, from the route registry", async () => {
+    const server = buildServer();
+    const response = await server.inject({
+      method: "GET",
+      url: "/sitemap.xml",
+      headers: { host: "perps.example" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("application/xml");
+    expect(response.body).toContain("<loc>http://perps.example/</loc>");
+    expect(response.body).toContain("<loc>http://perps.example/markets</loc>");
+    // Parameterized templates are not URLs and must never be published.
+    expect(response.body).not.toContain(":id");
+    expect(response.body).not.toContain(":symbol");
+  });
+
+  it("honors x-forwarded-proto/host so the sitemap is right behind a CDN", async () => {
+    const server = buildServer();
+    const response = await server.inject({
+      method: "GET",
+      url: "/sitemap.xml",
+      headers: {
+        host: "internal:4100",
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": "perps.example",
+      },
+    });
+    expect(response.body).toContain("<loc>https://perps.example/</loc>");
+  });
+
+  it("crawlableRoutes excludes every parameterized route", () => {
+    const routes = crawlableRoutes();
+    expect(routes).toContain("/");
+    expect(routes.some((path) => path.includes(":"))).toBe(false);
+  });
+
+  it("answers 503 + Retry-After when a page reports a failed required slot", async () => {
+    // Tailor's `primary` semantic: a page whose REQUIRED slot is down must not
+    // be served as 200, or crawlers index degraded markup as real content.
+    const upstream =
+      '<!doctype html><html><body><div hidden data-mvp-page-health="unhealthy" data-failed-slots="promotion"></div><main data-page="home">degraded</main></body></html>';
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(upstream, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+    ) as typeof fetch;
+    const response = await buildServer().inject({ method: "GET", url: "/" });
+    expect(response.statusCode).toBe(503);
+    expect(response.headers["retry-after"]).toBe("5");
+    expect(response.headers["x-mvp-page-health"]).toContain("promotion");
+    // The body is still returned byte-for-byte — a reader sees what did render.
+    expect(response.body).toBe(upstream);
+  });
+
+  it("leaves a degraded (optional-slot) page at 200", async () => {
+    const upstream =
+      '<!doctype html><html><body><div hidden data-mvp-page-health="degraded" data-failed-slots=""></div>ok</body></html>';
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(upstream, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+    ) as typeof fetch;
+    const response = await buildServer().inject({ method: "GET", url: "/" });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["retry-after"]).toBeUndefined();
+  });
+
+  it("leaves a page without the marker untouched (pages opt in)", async () => {
+    const upstream = "<!doctype html><html><body>no marker</body></html>";
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(upstream, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+    ) as typeof fetch;
+    const response = await buildServer().inject({ method: "GET", url: "/" });
+    expect(response.statusCode).toBe(200);
+  });
+
+  it("can be disabled so a stabilizing deployment keeps the upstream status", async () => {
+    const upstream =
+      '<!doctype html><html><body><div hidden data-mvp-page-health="unhealthy"></div>x</body></html>';
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(upstream, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+    ) as typeof fetch;
+    const response = await buildServer({ requiredFailureStatus: 0 }).inject({
+      method: "GET",
+      url: "/",
+    });
+    expect(response.statusCode).toBe(200);
+  });
+
+  it("proxies a fragment-declared backend target on the public origin", async () => {
+    // The channel a hydrated island uses to reach its own backend: same-origin,
+    // no CORS, and the fragment's service address never reaches the browser.
+    clearFragmentProxyCache();
+    const calls: string[] = [];
+    globalThis.fetch = vi.fn(async (url, init) => {
+      calls.push(String(url));
+      if (String(url).endsWith("/manifest")) {
+        return new Response(
+          JSON.stringify({
+            name: "promotion-banner",
+            version: "0.1.0",
+            proxy: { campaigns: "https://campaigns.internal/v1" },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      // Assert the context headers rode along with the proxied call.
+      const headers = new Headers(init?.headers as HeadersInit);
+      expect(headers.get("x-tenant")).toBeTruthy();
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const server = buildServer();
+    await primeFragmentProxyCache();
+    const response = await server.inject({
+      method: "GET",
+      url: "/_fragment/promotion-banner/campaigns/summer?limit=3",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ok: true });
+    expect(calls).toContain("https://campaigns.internal/v1/summer?limit=3");
+    // Per-request data must never be cached at the gateway.
+    expect(response.headers["cache-control"]).toBe("no-store");
+  });
+
+  it("forwards a non-JSON body and its content-type unmangled", async () => {
+    // The first version JSON.stringify'd every body, which corrupts text/form
+    // payloads and mislabels them as application/json.
+    clearFragmentProxyCache();
+    let seenBody: unknown;
+    let seenType: string | null = null;
+    globalThis.fetch = vi.fn(async (url, init) => {
+      if (String(url).endsWith("/manifest")) {
+        return new Response(
+          JSON.stringify({ proxy: { notes: "https://notes.internal/v1" } }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      seenBody = init?.body;
+      seenType = new Headers(init?.headers as HeadersInit).get("content-type");
+      return new Response("stored", { status: 201 });
+    }) as typeof fetch;
+
+    const server = buildServer();
+    await primeFragmentProxyCache();
+    const response = await server.inject({
+      method: "POST",
+      url: "/_fragment/promotion-banner/notes",
+      headers: { "content-type": "text/plain" },
+      payload: "a plain text note",
+    });
+    expect(response.statusCode).toBe(201);
+    expect(seenBody).toBe("a plain text note");
+    expect(seenType).toBe("text/plain");
+  });
+
+  it("re-serializes a parsed JSON body", async () => {
+    clearFragmentProxyCache();
+    let seenBody: unknown;
+    globalThis.fetch = vi.fn(async (url, init) => {
+      if (String(url).endsWith("/manifest")) {
+        return new Response(
+          JSON.stringify({ proxy: { notes: "https://notes.internal/v1" } }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      seenBody = init?.body;
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+
+    const server = buildServer();
+    await primeFragmentProxyCache();
+    await server.inject({
+      method: "POST",
+      url: "/_fragment/promotion-banner/notes",
+      headers: { "content-type": "application/json" },
+      payload: { size: 3 },
+    });
+    expect(seenBody).toBe('{"size":3}');
+  });
+
+  it("404s an unknown fragment or an undeclared target, with the reason", async () => {
+    clearFragmentProxyCache();
+    globalThis.fetch = vi.fn(async (url) =>
+      String(url).endsWith("/manifest")
+        ? new Response(JSON.stringify({ proxy: {} }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          })
+        : new Response("should not be called", { status: 500 }),
+    ) as typeof fetch;
+    const server = buildServer();
+    await primeFragmentProxyCache();
+
+    const unknownFragment = await server.inject({
+      method: "GET",
+      url: "/_fragment/ghost-fragment/anything",
+    });
+    expect(unknownFragment.statusCode).toBe(404);
+    expect(unknownFragment.json().error.reason).toBe("unknown-fragment");
+
+    const unknownTarget = await server.inject({
+      method: "GET",
+      url: "/_fragment/promotion-banner/not-declared",
+    });
+    expect(unknownTarget.statusCode).toBe(404);
+    expect(unknownTarget.json().error.reason).toBe("unknown-target");
+  });
+
+  it("502s when the fragment backend fails, and carries an abort signal", async () => {
+    clearFragmentProxyCache();
+    let observed: AbortSignal | undefined;
+    globalThis.fetch = vi.fn((url, init) => {
+      if (String(url).endsWith("/manifest")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ proxy: { slow: "https://slow.internal/v1" } }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+        );
+      }
+      return new Promise<Response>((_resolve, reject) => {
+        observed = (init as RequestInit | undefined)?.signal ?? undefined;
+        observed?.addEventListener("abort", () => reject(new Error("aborted")));
+      });
+    }) as typeof fetch;
+    const server = buildServer({ fragmentProxyTimeoutMs: 10 });
+    await primeFragmentProxyCache();
+    const response = await server.inject({
+      method: "GET",
+      url: "/_fragment/promotion-banner/slow/x",
+    });
+    expect(response.statusCode).toBe(502);
+    expect(response.json().error.code).toBe("fragment-proxy-failed");
+    expect(observed?.aborted).toBe(true);
   });
 });

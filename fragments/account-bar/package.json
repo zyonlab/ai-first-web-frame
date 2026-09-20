@@ -18,6 +18,7 @@
   "dependencies": {
     "@mvp/contracts": "workspace:*",
     "@mvp/data": "workspace:*",
+    "@mvp/fragment-host": "workspace:*",
     "@mvp/interaction": "workspace:*",
     "@mvp/observability": "workspace:*",
     "@mvp/request-context": "workspace:*",

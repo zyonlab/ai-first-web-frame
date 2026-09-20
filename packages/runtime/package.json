@@ -13,6 +13,10 @@
     "./react": {
       "types": "./dist/react.d.ts",
       "import": "./dist/react.js"
+    },
+    "./seo": {
+      "types": "./dist/seo.d.ts",
+      "import": "./dist/seo.js"
     }
   },
   "files": [
@@ -30,7 +34,7 @@
   "scripts": {
     "test": "pnpm -w exec vitest run packages/runtime/src",
     "test:watch": "pnpm -w exec vitest packages/runtime/src",
-    "build": "tsdown src/index.ts src/react.tsx --format esm --dts",
+    "build": "tsdown src/index.ts src/react.tsx src/seo.ts --format esm --dts",
     "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
   },
   "dependencies": {

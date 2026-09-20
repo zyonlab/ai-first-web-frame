@@ -1,10 +1,8 @@
-import {
-  type FragmentRegistry,
-  loadDefaultBudget,
-  type PageManifest,
-  type ReleaseChannel,
-  type RequestContext,
-  type RouteManifest,
+import type {
+  FragmentRegistry,
+  ReleaseChannel,
+  RequestContext,
+  RouteManifest,
 } from "@mvp/contracts";
 import { createRequestTrace } from "@mvp/observability";
 import { describe, expect, it, vi } from "vitest";
@@ -12,8 +10,8 @@ import {
   applySlotRequestOverrides,
   clearFragmentCache,
   collectSlotDiagnostics,
-  composePage,
   createFallbackResponse,
+  createFragmentCache,
   createFragmentCacheKey,
   createFragmentHeaders,
   createFragmentSlotExecutionPlan,
@@ -23,11 +21,17 @@ import {
   type FragmentSlotDefinition,
   type FragmentSlotResult,
   type FragmentSlotsExecution,
+  failedRequiredSlotNames,
   fetchFragment,
   fetchFragmentSlots,
+  invalidateFragmentCacheByTag,
   isFallbackResponse,
   mergeAssets,
+  PAGE_HEALTH_ATTR,
+  PAGE_HEALTH_FAILED_ATTR,
+  pruneFragmentCache,
   type RuntimeTrace,
+  readPageHealthFromHtml,
   resolveFragment,
   resolveFragmentStream,
   resolveRoute,
@@ -44,6 +48,7 @@ const ctx: RequestContext = {
   tenant: "default",
   featureFlags: { canary: true },
   experiment: {},
+  extensions: {},
   theme: "system",
   device: "desktop",
   userAgent: "vitest",
@@ -368,6 +373,7 @@ describe("@mvp/runtime", () => {
         "key",
         {
           expiresAt: Date.now() + 1000,
+          tags: [],
           response: {
             html: "",
             assets: { js: [], css: [] },
@@ -503,36 +509,6 @@ describe("@mvp/runtime", () => {
     } finally {
       warn.mockRestore();
     }
-  });
-
-  it("composes page with SEO and fragment fallback isolation", () => {
-    const page: PageManifest = {
-      name: "home",
-      route: "/",
-      renderMode: "ssr",
-      seo: { title: "首页标题", description: "首页描述" },
-      budget: loadDefaultBudget("page", "home"),
-      slots: [
-        { name: "promo", fragment: "promotion-banner", required: false },
-        { name: "bad", fragment: "recommendation-widget", required: false },
-      ],
-    };
-    const html = composePage(
-      page,
-      {
-        promo: {
-          html: "<section>fragment HTML</section>",
-          assets: { js: [], css: [] },
-          cache: { ttl: 60, tags: [] },
-          metadata: { name: "promotion-banner", version: "0.1.0" },
-        },
-        bad: new Error("down"),
-      },
-      ctx,
-    );
-    expect(html).toContain("首页标题");
-    expect(html).toContain("fragment HTML");
-    expect(html).toContain("recommendation-widget");
   });
 
   describe("scheduler semantics", () => {
@@ -1436,6 +1412,211 @@ describe("page wrapper helpers", () => {
       // The aggregate passes through with its page-specific type intact.
       expect(resolved.aggregate).toBe(aggregate);
       expect(resolved.execution).toBe(execution);
+    });
+  });
+});
+
+describe("degradation identity and cache bounds", () => {
+  const ctx: RequestContext = {
+    traceId: "trace-degrade",
+    requestId: "req-degrade",
+    locale: "en-US",
+    tenant: "default",
+    featureFlags: {},
+    experiment: {},
+    extensions: {},
+    theme: "system",
+    device: "desktop",
+    userAgent: "vitest",
+    timestamp: new Date("2026-01-01T00:00:00.000Z").toISOString(),
+  };
+  const registry: FragmentRegistry = {
+    fragments: {
+      "promotion-banner": {
+        stable: {
+          version: "0.1.0",
+          serviceUrl: "http://promotion-banner.internal:4201",
+          manifestUrl: "http://promotion-banner.internal:4201/manifest",
+        },
+      },
+    },
+  };
+
+  it("names a network-failure fallback by fragment name, never by serviceUrl", async () => {
+    const execution = await executeFragmentSlots({
+      slots: [
+        {
+          name: "promo",
+          fragment: "promotion-banner",
+          strategy: "dynamic-ssr",
+        },
+      ],
+      registry,
+      ctx,
+      timeoutMs: 5,
+      cache: createFragmentCache(),
+      fetchImpl: vi.fn(async () => {
+        throw new Error("upstream down");
+      }) as unknown as typeof fetch,
+    });
+    const html = execution.slots.promo.response.html;
+    expect(html).toContain('data-fragment="promotion-banner"');
+    // The internal DNS name and port must never reach the public HTML.
+    expect(html).not.toContain("promotion-banner.internal");
+    expect(html).not.toContain("4201");
+  });
+
+  it("escapes markup in the fallback reason", () => {
+    const html = createFallbackResponse(
+      "promotion-banner",
+      "0.1.0",
+      '<script>alert("x")</script>',
+    ).html;
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("aborts the upstream request when the slot timeout fires", async () => {
+    let observed: AbortSignal | undefined;
+    const fetchImpl = vi.fn(
+      (_url: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          observed = init?.signal ?? undefined;
+          observed?.addEventListener("abort", () =>
+            reject(new Error("aborted")),
+          );
+        }),
+    ) as unknown as typeof fetch;
+    const response = await fetchFragment(
+      {
+        serviceUrl: "http://slow.internal:4201",
+        version: "0.1.0",
+        name: "promotion-banner",
+      },
+      { ctx, props: {} },
+      { fetchImpl, timeoutMs: 5 },
+    );
+    expect(isFallbackResponse(response)).toBe(true);
+    expect(observed?.aborted).toBe(true);
+  });
+
+  it("prunes expired entries and evicts oldest writes past the ceiling", () => {
+    const cache = createFragmentCache();
+    const entry = (expiresAt: number, tags: string[] = []) => ({
+      expiresAt,
+      tags,
+      response: createFallbackResponse("x"),
+    });
+    cache.set("expired", entry(10));
+    cache.set("a", entry(1_000));
+    cache.set("b", entry(1_000));
+    cache.set("c", entry(1_000));
+    const removed = pruneFragmentCache(cache, 100, 2);
+    expect(removed).toBe(2); // one expired + one oldest-write eviction
+    expect(cache.has("expired")).toBe(false);
+    expect(cache.has("a")).toBe(false);
+    expect([...cache.keys()]).toEqual(["b", "c"]);
+  });
+
+  it("invalidates cached responses by declared cache tag", () => {
+    const cache = createFragmentCache();
+    const entry = (tags: string[]) => ({
+      expiresAt: Number.MAX_SAFE_INTEGER,
+      tags,
+      response: createFallbackResponse("x"),
+    });
+    cache.set("k1", entry(["ticker", "trade"]));
+    cache.set("k2", entry(["funding"]));
+    expect(invalidateFragmentCacheByTag("ticker", cache)).toBe(1);
+    expect([...cache.keys()]).toEqual(["k2"]);
+    expect(invalidateFragmentCacheByTag("nope", cache)).toBe(0);
+  });
+
+  it("stores the slot's declared cache tags with the cached response", async () => {
+    const cache = createFragmentCache();
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            html: "<section>live</section>",
+            assets: { js: [], css: [] },
+            cache: { ttl: 60, tags: ["from-response"] },
+            metadata: { name: "promotion-banner", version: "0.1.0" },
+          }),
+        ),
+    ) as unknown as typeof fetch;
+    await executeFragmentSlots({
+      slots: [
+        {
+          name: "promo",
+          fragment: "promotion-banner",
+          strategy: "cached-ssr",
+          cachePolicy: { ttl: 60, tags: ["home", "promo"] },
+        },
+      ],
+      registry,
+      ctx,
+      cache,
+      fetchImpl,
+      now: () => 0,
+    });
+    expect([...cache.values()][0].tags).toEqual(["home", "promo"]);
+    expect(invalidateFragmentCacheByTag("promo", cache)).toBe(1);
+  });
+});
+
+describe("page health signalling (Tailor's primary semantic)", () => {
+  const slotResult = (
+    name: string,
+    required: boolean,
+    status: "ok" | "fallback",
+  ) => ({
+    slot: { name, fragment: `${name}-fragment`, required },
+    strategy: "dynamic-ssr" as const,
+    source: status === "ok" ? ("network" as const) : ("fallback" as const),
+    status,
+    response: createFallbackResponse(name),
+  });
+
+  it("lists only the required slots that failed, sorted", () => {
+    const execution = {
+      slots: {
+        a: slotResult("a", true, "fallback"),
+        b: slotResult("b", false, "fallback"),
+        c: slotResult("c", true, "ok"),
+        d: slotResult("d", true, "fallback"),
+      },
+      data: {},
+      health: "unhealthy" as const,
+      hints: [],
+    };
+    expect(failedRequiredSlotNames(execution)).toEqual(["a", "d"]);
+  });
+
+  it("reads the health marker back out of composed HTML", () => {
+    const html = `<!doctype html><html><body><div hidden ${PAGE_HEALTH_ATTR}="unhealthy" ${PAGE_HEALTH_FAILED_ATTR}="promotion,hero"></div></body></html>`;
+    expect(readPageHealthFromHtml(html)).toEqual({
+      health: "unhealthy",
+      failedSlots: ["promotion", "hero"],
+    });
+  });
+
+  it("treats a page with no marker as having no opinion", () => {
+    expect(
+      readPageHealthFromHtml("<html><body>plain</body></html>"),
+    ).toBeNull();
+  });
+
+  it("ignores a marker carrying a value outside the health enum", () => {
+    const html = `<div hidden ${PAGE_HEALTH_ATTR}="probably-fine"></div>`;
+    expect(readPageHealthFromHtml(html)).toBeNull();
+  });
+
+  it("handles an empty failed-slot list", () => {
+    const html = `<div hidden ${PAGE_HEALTH_ATTR}="degraded" ${PAGE_HEALTH_FAILED_ATTR}=""></div>`;
+    expect(readPageHealthFromHtml(html)).toEqual({
+      health: "degraded",
+      failedSlots: [],
     });
   });
 });

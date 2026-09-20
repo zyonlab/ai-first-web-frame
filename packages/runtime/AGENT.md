@@ -198,6 +198,93 @@ const FALLBACK = (
 </Suspense>;
 ```
 
+## Fragment backend proxy + page health
+
+Two page-side contracts beyond slot composition.
+
+**`FragmentManifest.proxy` → `/_fragment/<fragment>/<target>/*`** — the channel a
+hydrated island uses to reach its own backend. The gateway mounts it; this package
+owns the pure resolution (path parse, URL join, escape check). Modelled on
+`@podium/proxy`.
+
+**`PAGE_HEALTH_ATTR`** — a composed page stamps its aggregate health into a hidden
+marker element (`<PageHealthMeta>` / `<PageHealthMetaStream>` from
+`@mvp/runtime/react`; a hidden `div`, not a `<meta>`, because this is an internal
+gateway signal rather than document metadata — React 19 would hoist a `<meta>`
+into `<head>`, which is exactly where it does not belong),
+and the gateway maps `unhealthy` (a **required** slot failed) to `503`. This is
+Tailor's `primary` semantic; before it, a page with a dead required slot answered
+`200` and crawlers indexed the degraded markup.
+
+```ts
+import {
+  buildFragmentProxyUrl,
+  failedRequiredSlotNames,
+  FRAGMENT_PROXY_PREFIX,
+  PAGE_HEALTH_ATTR,
+  PAGE_HEALTH_FAILED_ATTR,
+  parseFragmentProxyPath,
+  readPageHealthFromHtml,
+  resolveFragmentProxy,
+} from "@mvp/runtime";
+
+// A declared target resolves to an upstream URL…
+const resolved = resolveFragmentProxy({
+  pathname: `${FRAGMENT_PROXY_PREFIX}/order-form/quotes/BTC`,
+  search: "?depth=10",
+  proxyTargets: (fragment) =>
+    fragment === "order-form" ? { quotes: "https://quotes.internal/v1" } : null,
+});
+if (!resolved.ok) throw new Error(`unexpected: ${resolved.reason}`);
+if (resolved.url !== "https://quotes.internal/v1/BTC?depth=10") {
+  throw new Error("proxy url wrong");
+}
+
+// …and the declared base is the boundary: the path after it comes from the
+// browser, so a remainder that would escape is refused.
+if (buildFragmentProxyUrl("https://quotes.internal/v1", "../admin") !== null) {
+  throw new Error("escape not refused");
+}
+if (parseFragmentProxyPath("/markets") !== null) {
+  throw new Error("non-proxy path must not parse");
+}
+
+// Page health: only REQUIRED slots count toward `unhealthy`.
+const unhealthyExecution = {
+  slots: {
+    hero: {
+      slot: { name: "hero", fragment: "hero", required: true },
+      strategy: "dynamic-ssr" as const,
+      source: "fallback" as const,
+      status: "fallback" as const,
+      response: {
+        html: "",
+        assets: { js: [], css: [] },
+        cache: { ttl: 5, tags: [] },
+        metadata: { name: "hero", version: "0", fallback: true },
+      },
+    },
+  },
+  data: {},
+  health: "unhealthy" as const,
+  hints: [],
+};
+if (failedRequiredSlotNames(unhealthyExecution)[0] !== "hero") {
+  throw new Error("failed required slot not reported");
+}
+
+// What the gateway reads back out of the composed HTML.
+const healthHtml = `<div hidden ${PAGE_HEALTH_ATTR}="unhealthy" ${PAGE_HEALTH_FAILED_ATTR}="hero"></div>`;
+const marker = readPageHealthFromHtml(healthHtml);
+if (marker?.health !== "unhealthy" || marker.failedSlots[0] !== "hero") {
+  throw new Error("health marker not round-tripped");
+}
+// A page that does not stamp the marker has NO opinion — never "unhealthy".
+if (readPageHealthFromHtml("<html></html>") !== null) {
+  throw new Error("absent marker must be null");
+}
+```
+
 ## Accept
 
 ```

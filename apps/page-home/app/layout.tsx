@@ -3,6 +3,8 @@ import {
   collectAssets,
   createAssetHtmlTags,
 } from "@mvp/assets";
+import { readThemePreference, resolveLocalePreference } from "@mvp/trade-prefs";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import { metadata } from "../src/metadata";
 
@@ -35,9 +37,26 @@ const assetTags = createAssetHtmlTags(
   }),
 );
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+/** BCP-47 `<html lang>` tags for each short locale (the page owns this). */
+const LOCALE_LANG = { en: "en-US", zh: "zh-CN" } as const;
+
+export default async function RootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  // The lang attribute must reflect the locale this response is rendered in.
+  // It was hard-coded to "en" while this layout injected zh-CN copy through the
+  // asset plane — a self-contradicting language signal on the site's most
+  // important routes. The other five pages already resolved it from the cookie;
+  // this brings these two in line.
+  const cookieHeader = (await headers()).get("cookie") ?? "";
+  const theme = readThemePreference(cookieHeader);
+  const locale = resolveLocalePreference({ cookieHeader });
+  const resolvedTheme = theme === "light" ? "light" : "dark";
+
   return (
-    <html lang="en" data-theme="system">
+    <html lang={LOCALE_LANG[locale]} data-theme={resolvedTheme}>
       <head>
         {assetTags.map((tag) => (
           <AssetTag key={assetTagKey(tag)} tag={tag} />

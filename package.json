@@ -25,6 +25,8 @@
     "graph": "tsx scripts/query-registry.mts",
     "dev:component": "tsx scripts/dev-component.mts",
     "verify:runtime": "tsx scripts/verify-runtime.mts",
+    "verify:unit": "tsx scripts/verify-unit.mts",
+    "reports": "tsx scripts/serve-reports.mts",
     "affected:graph": "tsx scripts/affected-graph.mts",
     "deploy:affected": "tsx scripts/deploy-affected.mts",
     "mcp": "pnpm --filter @mvp/mcp start",

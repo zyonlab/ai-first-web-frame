@@ -33,6 +33,17 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: corepack enable
+      # Turbo's task cache across CI runs. Without this every job is cold and
+      # `build`/`test` re-run in full; with it an unrelated change restores both
+      # from cache. The key is content-addressed by turbo itself, so a stale
+      # restore cannot produce a false pass — a changed input simply misses.
+      - name: Restore turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
 

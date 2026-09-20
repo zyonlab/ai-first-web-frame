@@ -14,6 +14,7 @@
   "dependencies": {
     "@mvp/assets": "workspace:*",
     "@mvp/design-system": "workspace:*",
+    "@mvp/runtime": "workspace:*",
     "@mvp/trade-prefs": "workspace:*",
     "@mvp/trade-theme": "workspace:*",
     "@mvp/ui": "workspace:*",

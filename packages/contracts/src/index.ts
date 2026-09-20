@@ -296,6 +296,19 @@ export const RequestContextSchema = z.object({
     .default("unknown"),
   userAgent: z.string().default(""),
   ip: z.string().optional(),
+  /**
+   * Open extension slot for context dimensions the FRAMEWORK must not know
+   * about (A/B bucket, acquisition channel, membership tier).
+   *
+   * Without it this schema was closed: adding a dimension meant editing
+   * `@mvp/contracts`, which is a framework package that the layering rule
+   * forbids product code from touching — so the only legal move was to widen
+   * the framework for a business need. `@podium/context` solves the same
+   * problem with a `.register(name, parser)` extension point; this is the
+   * schema-validated equivalent. Values are strings because they cross an
+   * HTTP boundary (see `serializeContext`).
+   */
+  extensions: z.record(z.string()).default({}),
   timestamp: z.string().datetime(),
 });
 export type RequestContext = z.infer<typeof RequestContextSchema>;
@@ -350,6 +363,32 @@ export const FragmentManifestSchema = z.object({
   cachePolicy: CachePolicySchema.optional(),
   fallback: z.string().min(1),
   assets: z.object({ js: z.array(z.string()), css: z.array(z.string()) }),
+  /**
+   * Backend endpoints this fragment's BROWSER-side code needs, as
+   * `{ targetName: target }`, where a target is either an absolute
+   * `http(s)` URL (a third-party or shared backend) or a **root-relative path**
+   * resolved against this fragment's own `serviceUrl` from the registry.
+   *
+   * The composition gateway mounts each one at
+   * `/_fragment/<fragment>/<target>/*` on the public origin, so an island can
+   * call `/_fragment/order-form/account` — same-origin, no CORS, and the
+   * fragment's real service address never reaches the browser.
+   *
+   * This closes a structural gap: a fragment could reach its backend during SSR
+   * (through `@mvp/request`), but its hydrated island had no channel at all.
+   * Modelled on `@podium/proxy`; the relative form is a deliberate departure
+   * from it, because a fragment's own endpoint lives at a different host per
+   * environment and an absolute self-target would have to be env-interpolated
+   * into a static manifest.
+   */
+  proxy: z
+    .record(
+      z.union([
+        z.string().url(),
+        z.string().startsWith("/", "a relative proxy target must start with /"),
+      ]),
+    )
+    .default({}),
   budget: PerformanceBudgetSchema.refine(
     (value) => value.scope === "fragment",
     "fragment budget required",
