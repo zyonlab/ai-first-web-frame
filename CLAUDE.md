@@ -9,6 +9,11 @@ which fetch SSR fragments (14 services, 4201-4214) via `@mvp/registry`.
 - pnpm only. Never npm, npx, or yarn. Run tools via `pnpm exec <tool>` or `pnpm --filter <pkg> <script>`.
 - Tests: Vitest (root config `vitest.config.ts`). Contracts: Zod schemas in `@mvp/contracts` (`packages/contracts/src/index.ts`).
 - Typecheck is `pnpm typecheck` (tsgo, per-project tsconfigs). Builds use tsdown (packages/fragments) or next build (pages).
+- React **19.3** on Next **15.3** (a single declared range repo-wide — `audit:deps`'
+  `duplicated-package-version` rule fails on a peer/dep range split). React 19 hoists
+  `<title>`/`<meta>`/`<link>` from anywhere in the tree into `<head>`, so do not
+  reintroduce React-18-era workarounds for that; the page-health marker stays a
+  `<div hidden>` on purpose (it is a gateway signal, not document metadata).
 - No bare `fetch(...)` in business code — use `@mvp/request` / `@mvp/data` (dependency-audit fails otherwise).
 - Performance budgets are hard gates: exceeding component/fragment/page budgets fails `pnpm verify`.
 - New code and comments in English; formatting via biome (2 spaces). `pnpm check` must pass.
