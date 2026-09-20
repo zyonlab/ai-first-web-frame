@@ -155,3 +155,94 @@ describe("evaluateRuntime", () => {
     expect(interaction?.detail).toContain("skipped");
   });
 });
+
+describe("core web vitals against the declared budget", () => {
+  const base: RuntimeObservation = {
+    pageErrors: [],
+    consoleErrors: [],
+    staticRequests: [],
+    panes: [],
+    horizontalOverflowPx: 0,
+  };
+  const vitalChecks = (obs: RuntimeObservation) =>
+    Object.fromEntries(
+      evaluateRuntime(obs)
+        .checks.filter((check) => check.name.startsWith("web-vitals-"))
+        .map((check) => [check.name, check]),
+    );
+
+  it("passes a page inside its ceilings", () => {
+    const checks = vitalChecks({
+      ...base,
+      webVitals: {
+        lcpMs: 1800,
+        cls: 0.02,
+        ttfbMs: 300,
+        budget: { maxLCPMs: 2500, maxCLS: 0.1, maxTTFBMs: 800 },
+      },
+    });
+    expect(checks["web-vitals-lcp"].ok).toBe(true);
+    expect(checks["web-vitals-lcp"].detail).toBe("1800ms vs budget 2500ms");
+    expect(checks["web-vitals-cls"].ok).toBe(true);
+    expect(checks["web-vitals-ttfb"].ok).toBe(true);
+    expect(
+      evaluateRuntime({
+        ...base,
+        webVitals: {
+          lcpMs: 1,
+          cls: 0,
+          ttfbMs: 1,
+          budget: { maxLCPMs: 2, maxCLS: 1, maxTTFBMs: 2 },
+        },
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("fails a page over any ceiling", () => {
+    const obs: RuntimeObservation = {
+      ...base,
+      webVitals: {
+        lcpMs: 4200,
+        cls: 0.34,
+        ttfbMs: 1500,
+        budget: { maxLCPMs: 2500, maxCLS: 0.1, maxTTFBMs: 800 },
+      },
+    };
+    const checks = vitalChecks(obs);
+    expect(checks["web-vitals-lcp"].ok).toBe(false);
+    expect(checks["web-vitals-cls"].ok).toBe(false);
+    expect(checks["web-vitals-ttfb"].ok).toBe(false);
+    expect(evaluateRuntime(obs).ok).toBe(false);
+  });
+
+  it("skips — never silently passes — when nothing was measured", () => {
+    const checks = vitalChecks(base);
+    for (const name of [
+      "web-vitals-lcp",
+      "web-vitals-cls",
+      "web-vitals-ttfb",
+    ]) {
+      expect(checks[name].skipped).toBe(true);
+      expect(checks[name].detail).toBe("not measured in this run");
+    }
+    // Skipped checks must not fail the gate.
+    expect(evaluateRuntime(base).ok).toBe(true);
+  });
+
+  it("skips a measured metric the page declares no ceiling for", () => {
+    const checks = vitalChecks({
+      ...base,
+      webVitals: { lcpMs: 9999, budget: {} },
+    });
+    expect(checks["web-vitals-lcp"].skipped).toBe(true);
+    expect(checks["web-vitals-lcp"].detail).toContain("no ceiling");
+  });
+
+  it("never reports INP (a headless run cannot measure it honestly)", () => {
+    const names = evaluateRuntime({
+      ...base,
+      webVitals: { lcpMs: 1, budget: { maxLCPMs: 2 } },
+    }).checks.map((check) => check.name);
+    expect(names).not.toContain("web-vitals-inp");
+  });
+});

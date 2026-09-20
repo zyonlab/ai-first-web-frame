@@ -1,11 +1,56 @@
 import { type RequestContext, RequestContextSchema } from "@mvp/contracts";
 
 type HeaderBag = Record<string, string | string[] | undefined> | Headers;
+
+/**
+ * Reads one custom context dimension off the inbound request. Returning
+ * `undefined` omits the dimension entirely (it never appears as an empty
+ * string in `ctx.extensions`).
+ */
+export type ContextParser = (
+  read: (name: string) => string | undefined,
+) => string | undefined;
+
 type ReqLike = {
   headers?: HeaderBag;
   ip?: string;
   socket?: { remoteAddress?: string };
+  /**
+   * Custom context dimensions, keyed by name. The framework stays ignorant of
+   * what they mean: each parser gets a header reader and returns a string.
+   * Parsed values land in `ctx.extensions` and are propagated to fragments as
+   * `x-mvp-ctx-<name>` headers, so a fragment's own `createRequestContext`
+   * recovers them without any framework change.
+   */
+  extensions?: Record<string, ContextParser>;
 };
+
+/** Header prefix carrying `ctx.extensions` across the page → fragment hop. */
+export const CONTEXT_EXTENSION_HEADER_PREFIX = "x-mvp-ctx-";
+
+/** Custom dimensions already present on the inbound request headers. */
+function readInboundExtensions(
+  headers: HeaderBag | undefined,
+): Record<string, string> {
+  const found: Record<string, string> = {};
+  if (!headers) return found;
+  const entries: Array<[string, string]> =
+    headers instanceof Headers
+      ? [...headers.entries()]
+      : Object.entries(headers).flatMap(([key, value]) => {
+          const first = Array.isArray(value) ? value[0] : value;
+          return first === undefined
+            ? []
+            : ([[key, first]] as Array<[string, string]>);
+        });
+  for (const [key, value] of entries) {
+    const lower = key.toLowerCase();
+    if (!lower.startsWith(CONTEXT_EXTENSION_HEADER_PREFIX)) continue;
+    const name = lower.slice(CONTEXT_EXTENSION_HEADER_PREFIX.length);
+    if (name) found[name] = value;
+  }
+  return found;
+}
 
 function readHeader(
   headers: HeaderBag | undefined,
@@ -81,6 +126,18 @@ export function createRequestContext(
       readHeader(headers, "x-forwarded-for") ??
       reqLike.ip ??
       reqLike.socket?.remoteAddress,
+    // Inbound `x-mvp-ctx-*` headers come first (an upstream edge already
+    // resolved them); locally declared parsers then override, so the edge
+    // closest to the request wins.
+    extensions: {
+      ...readInboundExtensions(headers),
+      ...Object.fromEntries(
+        Object.entries(reqLike.extensions ?? {}).flatMap(([name, parse]) => {
+          const value = parse((header) => readHeader(headers, header));
+          return value === undefined ? [] : [[name.toLowerCase(), value]];
+        }),
+      ),
+    },
     timestamp: new Date().toISOString(),
   });
   return deepFreeze(ctx);
@@ -91,6 +148,9 @@ export const getTenant = (ctx: RequestContext) => ctx.tenant;
 export const getUser = (ctx: RequestContext) => ctx.user;
 export const getFeatureFlags = (ctx: RequestContext) => ctx.featureFlags;
 export const getTraceId = (ctx: RequestContext) => ctx.traceId;
+/** One custom context dimension, or undefined when it was not resolved. */
+export const getContextExtension = (ctx: RequestContext, name: string) =>
+  ctx.extensions[name.toLowerCase()];
 
 export function serializeContext(ctx: RequestContext): Record<string, string> {
   return {
@@ -103,6 +163,18 @@ export function serializeContext(ctx: RequestContext): Record<string, string> {
       .join(","),
     "x-theme": ctx.theme,
     "x-device": ctx.device,
+    // One header per custom dimension rather than one packed header: a
+    // fragment (or a proxy hop) can read a single dimension without parsing,
+    // and an unknown dimension is simply ignored.
+    // `?? {}` on purpose: this is the hot page→fragment path, and a context
+    // object built by an older version of this package (or by hand in a test
+    // fixture) must not crash serialization over a field it never had.
+    ...Object.fromEntries(
+      Object.entries(ctx.extensions ?? {}).map(([name, value]) => [
+        `${CONTEXT_EXTENSION_HEADER_PREFIX}${name}`,
+        value,
+      ]),
+    ),
   };
 }
 

@@ -124,6 +124,87 @@ try {
 }
 ```
 
+### Executable example (injected `fetchImpl`, no network)
+
+The example above is `no-run` because it calls a real endpoint. `fetchImpl` is
+injectable for exactly this reason, so the policy gate, the response-schema gate
+and the error taxonomy are all verifiable offline — this block is executed by
+`pnpm docs:test`:
+
+```ts
+import type { RequestPolicy } from "@mvp/contracts";
+import {
+  createRequestClient,
+  RequestContractError,
+  RequestPolicyError,
+} from "@mvp/request";
+import { createRequestContext } from "@mvp/request-context";
+
+const policy: RequestPolicy = {
+  endpoints: [
+    {
+      id: "pricing-api",
+      baseUrl: "https://pricing.internal.example.com",
+      allowedMethods: ["GET"],
+      timeoutMs: 500,
+      retries: 0,
+      privacy: "public",
+    },
+  ],
+  defaultTimeoutMs: 500,
+  maxRetries: 2,
+};
+
+const client = createRequestClient({
+  ctx: createRequestContext(),
+  policy,
+  // Stand-in upstream: returns a payload whose `price` is a string.
+  fetchImpl: (async () =>
+    new Response(JSON.stringify({ price: "not-a-number" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    })) as unknown as typeof fetch,
+});
+
+// An endpoint id outside the policy never reaches the network.
+let policyRejected = false;
+try {
+  await client.requestJson("unknown-api", { path: "/v1/quote" });
+} catch (error) {
+  policyRejected = error instanceof RequestPolicyError;
+}
+if (!policyRejected) throw new Error("policy gate did not reject unknown endpoint");
+
+// Without a responseSchema the body is cast to T (legacy behavior).
+const cast = await client.requestJson<{ price: unknown }>("pricing-api", {
+  path: "/v1/quote?symbol=BTC-USD",
+});
+if (cast.data.price !== "not-a-number") throw new Error("body not returned");
+
+// With one, shape drift throws RequestContractError and is never retried.
+let drift: RequestContractError | undefined;
+try {
+  await client.requestJson("pricing-api", {
+    path: "/v1/quote?symbol=BTC-USD",
+    responseSchema: {
+      description: "QuoteSchema",
+      safeParse: (value: unknown) =>
+        typeof (value as { price?: unknown })?.price === "number"
+          ? { success: true as const, data: value as { price: number } }
+          : {
+              success: false as const,
+              error: { issues: [{ path: ["price"], message: "expected number" }] },
+            },
+    },
+  });
+} catch (error) {
+  if (error instanceof RequestContractError) drift = error;
+}
+if (!drift) throw new Error("responseSchema drift was not reported");
+if (drift.schemaName !== "QuoteSchema") throw new Error("schema name not carried");
+if (drift.issues[0]?.path[0] !== "price") throw new Error("issues not carried");
+```
+
 ## Accept
 
 ```

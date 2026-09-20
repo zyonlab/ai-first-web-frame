@@ -1,0 +1,48 @@
+<p class="eyebrow">指南</p>
+<h1>设计系统</h1>
+<p class="lede">视觉层是一个<strong>没有任何业务依赖</strong>的独立包，所以它可以整体交给设计团队维护，业务团队直接消费，两边不互相改代码。</p>
+
+<h2 id="分层">分层</h2>
+<pre><code>@mvp/design-tokens    原始比例 -&gt; CSS 自定义属性
+@mvp/design-system    语义 token、主题、Tailwind preset、基础 reset
+@mvp/ui               7 个组件（Button、Card、Image、Section、Skeleton、AppNav、
+                      ProductCardBase）+ ./shadcn（11 个原语）
+fragments/*           消费 @mvp/ui 和 CSS 变量；绝不重新定义 token</code></pre>
+<p>分层规则是被强制的：<code>dependency-audit.json</code> 带 <code>tags</code> 和 <code>depConstraints</code>（仿 <code>@nx/enforce-module-boundaries</code>），违规是 <code>layer-constraint-violation</code>。片段可以 import <code>@mvp/ui</code>；<code>@mvp/ui</code> 不能 import 片段、页面或 domain 包。</p>
+
+<h2 id="设计与业务之间的契约">设计与业务之间的契约</h2>
+<p>跨越边界的一切都是 <strong>CSS 自定义属性</strong>，前缀 <code>--mvp-</code>：</p>
+<pre><code>import { tokens, cssVariableNames, TOKEN_PREFIX } from "@mvp/design-system";
+// TOKEN_PREFIX === "mvp"   -&gt;   --mvp-color-…, --mvp-radius-sm, …</code></pre>
+<p><code>cssVariableNames</code> 是系统输出的全部变量的冻结清单。正是这份清单让边界可审计：<code>audit:css</code> 把没人引用的选择器或变量算作无用字节，所以设计团队删掉的 token 不可能悄悄残留。</p>
+<p>业务代码通过<strong>设置</strong>变量来调整外观，而不是去改组件：</p>
+<pre><code>.trade-terminal { --trade-panel-bg: var(--mvp-color-surface-sunken); }</code></pre>
+<p>片段已经在遵循这个约定 —— <code>order-book</code> 的样式表读 <code>var(--trade-panel-border, #23262f)</code>，即「业务作用域变量 + 字面量兜底」，主题层缺席时面板照样渲染。</p>
+
+<h2 id="主题">主题</h2>
+<pre><code>import {
+  createThemeVariables, createAllThemeVariables, createBaseVariables,
+  emitDeclarations, DARK_MODE_SELECTOR, themeColors,
+} from "@mvp/design-system";</code></pre>
+<p>两套主题（<code>ThemeName = "light" | "dark"</code>），按属性切换：<code>DARK_MODE_SELECTOR === '[data-theme="dark"]'</code>。Tailwind preset 配成 <code>darkMode: ["selector", DARK_MODE_SELECTOR]</code>，所以 Tailwind 的 <code>dark:</code> 变体和原始 CSS 变量认的是同一个开关。</p>
+<p>主题同时也是一个<strong>请求上下文维度</strong>（<code>ctx.theme</code>：<code>light</code> | <code>dark</code> | <code>system</code>），网关提供 <code>GET /_shell/theme</code>，所以这个选择能扛过整页刷新，而不是只活在客户端状态里。</p>
+
+<h2 id="tailwind">Tailwind</h2>
+<pre><code>// 消费方的 tailwind.config.ts
+import { tailwindPreset } from "@mvp/design-system";
+export default { presets: [tailwindPreset], content: ["./src/**/*.{ts,tsx}"] };</code></pre>
+<p>preset 把 Tailwind 的 theme key 映射到 <code>var(--mvp-…)</code> 而不是复制值，所以每个 token 只有一处定义。<code>@mvp/ui</code> 另外发布 <code>./tailwind.config</code> 和 <code>./shadcn/globals.css</code> 供直接使用。</p>
+
+<h2 id="组件元数据">组件元数据</h2>
+<p>每个 <code>@mvp/ui</code> 组件都在组件旁边带 <code>metadata.ts</code>（category、<code>serverSafe</code>、<code>propsSchema</code>、description）、<code>budget.ts</code> 和 <code>fixtures.ts</code>。fixtures 是相似度审计和组件开发工作台（<code>pnpm dev:component</code>）消费的东西，<code>serverSafe</code> 则是服务端/客户端边界审计要核对的字段。</p>
+
+<h2 id="把这一层交出去">把这一层交出去</h2>
+<p>实务上，一个设计团队可以整体拥有 <code>packages/design-tokens</code>、<code>packages/design-system</code> 和 <code>packages/ui</code> 并独立出货，因为：</p>
+<ul>
+<li>这三个包不 import 任何 domain 或产品代码（被强制）；</li>
+<li>它们的公开面就是 token + 组件 + 一个 Tailwind preset；</li>
+<li><code>audit:css</code> 和 <code>audit:similarity</code> 恰好守住共享 UI 层真正会踩的两个坑 —— 死 CSS，以及「新加一个近似重复的组件而不是复用已有的」。</li>
+</ul>
+<div class="note bad">
+<p><b>没有被自动化的是视觉回归。</b>仓库里没有截图基线，所以一个改变布局的 token 变更，只有在恰好有 Playwright 跑过时才可能被 <code>maxCLS</code> 抓到 —— 而 web vitals 检查并不属于 <code>pnpm verify</code>（<a href="../known-limitations.html#f11">F11</a>）。</p>
+</div>

@@ -22,6 +22,9 @@
  *   Requires the target to be up (docker compose up / a running page service).
  */
 
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium, type Page } from "@playwright/test";
 import {
   evaluateRuntime,
@@ -30,11 +33,127 @@ import {
   type RuntimeObservation,
 } from "../tools/runtime-gate/src/checks.ts";
 
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+
 const argv = process.argv.slice(2);
 const json = argv.includes("--json");
 const url = argv[argv.indexOf("--url") + 1]?.startsWith("http")
   ? argv[argv.indexOf("--url") + 1]
   : "http://localhost:4100/trade/BTC";
+
+/**
+ * The Core Web Vitals ceilings the page under test declares.
+ *
+ * Resolved by matching the URL's path against each page's own
+ * `src/manifest.ts` `route` (the same "no hand-kept page→URL table" rule
+ * `deploy-affected` follows), then reading the numeric fields out of that
+ * page's `src/budget.ts`. Regex rather than an import because this runs under
+ * `tsx` against source that imports `@mvp/*`, and a missing ceiling must
+ * degrade to "skipped", never to a hard failure.
+ */
+function readWebVitalBudget(
+  targetUrl: string,
+): { maxLCPMs?: number; maxCLS?: number; maxTTFBMs?: number } | undefined {
+  const appsDir = join(repoRoot, "apps");
+  if (!existsSync(appsDir)) return undefined;
+  const pathname = new URL(targetUrl).pathname;
+  for (const entry of readdirSync(appsDir)) {
+    const manifestPath = join(appsDir, entry, "src", "manifest.ts");
+    const budgetPath = join(appsDir, entry, "src", "budget.ts");
+    if (!existsSync(manifestPath) || !existsSync(budgetPath)) continue;
+    const route = /route:\s*"([^"]+)"/.exec(
+      readFileSync(manifestPath, "utf8"),
+    )?.[1];
+    if (!route) continue;
+    // `/product/:id` matches `/product/123`; `/` matches only `/`.
+    const pattern = new RegExp(
+      `^${route.replace(/:[^/]+/g, "[^/]+").replace(/\//g, "\\/")}$`,
+    );
+    if (!pattern.test(pathname)) continue;
+    const budgetSource = readFileSync(budgetPath, "utf8");
+    const num = (field: string) => {
+      const raw = new RegExp(`${field}:\\s*([0-9.]+)`).exec(budgetSource)?.[1];
+      return raw === undefined ? undefined : Number(raw);
+    };
+    const budget = {
+      maxLCPMs: num("maxLCPMs"),
+      maxCLS: num("maxCLS"),
+      maxTTFBMs: num("maxTTFBMs"),
+    };
+    if (Object.values(budget).every((value) => value === undefined)) {
+      // Found the page but parsed no ceiling: say so, or the vitals checks
+      // would silently report "no ceiling declared" forever after a rename of
+      // the budget fields — exactly the silent-non-enforcement this whole
+      // change set exists to remove.
+      console.warn(
+        `[verify:runtime] matched ${entry} but parsed no web-vital ceilings from src/budget.ts`,
+      );
+    }
+    return budget;
+  }
+  console.warn(
+    `[verify:runtime] no page manifest route matched ${pathname} — web vitals will be reported as skipped`,
+  );
+  return undefined;
+}
+
+/**
+ * Collects LCP, CLS and TTFB from the live page.
+ *
+ * LCP and CLS come from `PerformanceObserver` with `buffered: true`, so entries
+ * emitted before this script ran are still seen; TTFB is
+ * `responseStart - requestStart` off the navigation entry. INP is NOT collected:
+ * it measures real interaction latency, and a headless scripted click cannot
+ * produce an honest value — it is reported as skipped instead of faked.
+ */
+async function measureWebVitals(page: Page): Promise<{
+  lcpMs?: number;
+  cls?: number;
+  ttfbMs?: number;
+}> {
+  return page.evaluate(async () => {
+    const result: { lcpMs?: number; cls?: number; ttfbMs?: number } = {};
+    const navigation = performance.getEntriesByType("navigation")[0] as
+      | PerformanceNavigationTiming
+      | undefined;
+    if (navigation) {
+      result.ttfbMs = Math.max(
+        0,
+        navigation.responseStart - navigation.requestStart,
+      );
+    }
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            result.lcpMs = Math.max(result.lcpMs ?? 0, entry.startTime);
+          }
+        }).observe({ type: "largest-contentful-paint", buffered: true });
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            const shift = entry as PerformanceEntry & {
+              value: number;
+              hadRecentInput: boolean;
+            };
+            if (shift.hadRecentInput) continue;
+            result.cls = (result.cls ?? 0) + shift.value;
+          }
+        }).observe({ type: "layout-shift", buffered: true });
+      } catch {
+        // A browser without these entry types reports nothing rather than 0.
+      }
+      // Give the observers a beat to flush buffered entries.
+      setTimeout(done, 600);
+    });
+    return result;
+  });
+}
 
 /** Benign console noise that isn't a contract failure (e.g. missing favicon). */
 const isBenign = (s: string) =>
@@ -182,6 +301,9 @@ async function main() {
           detail: "no order-book on this page — skipped",
         };
 
+  // Before the browser closes: the vitals observers need the live page.
+  const webVitals = await measureWebVitals(page);
+
   await browser.close();
 
   const obs: RuntimeObservation = {
@@ -191,6 +313,7 @@ async function main() {
     panes,
     paneSource,
     horizontalOverflowPx,
+    webVitals: { ...webVitals, budget: readWebVitalBudget(url) },
     interaction,
   };
   const { checks, ok } = evaluateRuntime(obs);

@@ -1,0 +1,20 @@
+<h1 id="installation">Installation</h1>
+<h2 id="requirements">Requirements</h2>
+<div class="table-wrap"><table><thead><tr><th>Tool</th><th>Version</th><th>Why</th></tr></thead><tbody><tr><td>Node.js</td><td>20+</td><td><code>@types/node</code> is pinned at 20.x; the services are plain Node</td></tr><tr><td>pnpm</td><td>10.13+</td><td>workspace protocol and the lockfile format in the repo</td></tr><tr><td>Docker</td><td>optional</td><td>one image per fragment; <code>infra/docker/docker-compose.yml</code> runs all 22</td></tr></tbody></table></div>
+<p><strong>pnpm only.</strong> <code>npm</code> and <code>yarn</code> will produce a lockfile this workspace does not use. Run tools through <code>pnpm exec &lt;tool&gt;</code> or <code>pnpm --filter &lt;pkg&gt; &lt;script&gt;</code>.</p>
+<h2 id="install">Install</h2>
+<pre><code class="lang-sh">pnpm install</code></pre>
+<p>That is the whole setup. There is no separate bootstrap step: <code>pnpm test</code>, <code>pnpm verify:manifest-gen</code> and <code>pnpm docs:test</code> each run <code>scripts/ensure-workspace-build.mts</code> first, which delegates to Turborepo and builds <code>packages/</code> + <code>domains/</code> when a needed <code>dist/</code> is missing or stale. A cold clone can therefore go straight to <code>pnpm test</code>.</p>
+<h2 id="verify-the-checkout">Verify the checkout</h2>
+<pre><code class="lang-sh">pnpm verify</code></pre>
+<p>14 gates, exit 0 when all pass, <code>reports/</code> rewritten each run. On a warm Turborepo cache this takes roughly half a minute; cold it is a few minutes, dominated by <code>build</code>.</p>
+<p>If a gate fails, <a href="../troubleshooting/gates.html">Troubleshooting → gates</a> maps each gate to the report it writes.</p>
+<h2 id="optional-the-browser-test-suite">Optional: the browser test suite</h2>
+<p>The Playwright specs are <strong>not</strong> part of <code>pnpm verify</code> and do not start any servers.</p>
+<pre><code class="lang-sh">pnpm exec playwright install chromium   # once; ~94 MB
+pnpm dev                                 # in another shell: all 22 services
+pnpm e2e</code></pre>
+<p>Without the browser binary the API-only specs still pass and every browser spec fails with <code>Executable doesn't exist</code> — that is a missing download, not a product failure.</p>
+<p>A caveat worth knowing: if <code>pnpm build</code> runs while <code>pnpm dev</code> is serving, the dev servers are reading <code>.next</code> directories that the build is replacing, and the suite reports nonsense. Re-run the stack before trusting an e2e result taken around a build.</p>
+<h2 id="react-and-next-versions">React and Next versions</h2>
+<p>React <strong>19.3</strong> on Next <strong>15.3</strong>. One declared range repo-wide — <code>audit:deps</code> fails the build on a peer/dependency range split for the same package name.</p>

@@ -1,0 +1,52 @@
+<h1 id="cross-fragment-communication">Cross-fragment communication</h1>
+<p>Independently deployed fragments still have to talk: clicking a price in the order book has to fill the order form. This is deliberately out of scope for Podium; here it is a contract.</p>
+<h2 id="the-contract">The contract</h2>
+<p>Each channel declares <strong>one publisher</strong>, an explicit subscriber list, and a Zod payload schema:</p>
+<pre><code class="lang-ts">// domains/trade-contracts/src/slices.ts
+export const tradeSliceContracts = [
+  {
+    channel: TRADE_ORDER_DRAFT_PRICE,      // "trade.order-draft.price"
+    publisher: "order-book",
+    subscribers: ["order-form"],
+    payloadSchema: orderDraftPriceSchema,
+  },
+  // …
+] as const;</code></pre>
+<p>The trade demo declares seven channels:</p>
+<div class="table-wrap"><table><thead><tr><th>Channel</th><th>Publisher</th><th>Subscribers</th></tr></thead><tbody><tr><td><code>trade.active-symbol</code></td><td><code>symbol-switcher</code></td><td>chart-panel, order-book, trades-feed, order-form, market-header, positions-table, account-bar</td></tr><tr><td><code>trade.order-draft.price</code></td><td><code>order-book</code></td><td>order-form</td></tr><tr><td><code>trade.order-draft</code></td><td><code>order-form</code></td><td>order-form, order-preview</td></tr><tr><td><code>trade.chart-interval</code></td><td><code>chart-panel</code></td><td>chart-panel</td></tr><tr><td><code>trade.hovered-price</code></td><td><code>order-book</code></td><td>order-form, chart-panel</td></tr><tr><td><code>trade.book-grouping</code></td><td><code>order-book</code></td><td>order-book</td></tr><tr><td><code>trade.leverage</code></td><td><code>account-bar</code></td><td>account-bar, order-form</td></tr></tbody></table></div>
+<p><strong>Publisher and subscriber ids are logical component ids, not fragment names.</strong> <code>symbol-switcher</code> is an owner identity the page uses (<code>apps/page-trade/src/hydrate.tsx</code>), not a service in <code>fragments/</code>. Getting this wrong is the most common integration mistake here.</p>
+<p><code>publisher</code> is singular: a channel has exactly one. If two components need to publish the same concept, that is two channels or one shared owner identity — not a list.</p>
+<h2 id="using-the-bus">Using the bus</h2>
+<pre><code class="lang-ts">import { createInteractionBus, validateInteractionPayload } from "@mvp/interaction";
+
+const bus = createInteractionBus({ contracts: tradeSliceContracts });
+
+const off = bus.subscribe(TRADE_ORDER_DRAFT_PRICE, (payload) =&gt; setPrice(payload.price), {
+  owner: "order-form",
+});
+
+bus.publish(TRADE_ORDER_DRAFT_PRICE, { price: 64000 }, { owner: "order-book" });</code></pre>
+<p>An undeclared publish, or a publish from an owner the contract does not name as the publisher, throws <code>InteractionContractError</code> at runtime. Payloads are validated against <code>payloadSchema</code>.</p>
+<p><code>createBroadcastBridge</code> extends a bus across browser tabs over <code>BroadcastChannel</code>.</p>
+<h2 id="mutations">Mutations</h2>
+<p>State changes that hit a backend are modelled explicitly rather than as fire-and-forget events:</p>
+<pre><code class="lang-ts">import { defineMutation } from "@mvp/interaction";
+
+const placeOrder = defineMutation({ /* input/output schemas + execute */ });</code></pre>
+<p>A contract violation raises <code>MutationContractError</code>. The order-form flow shows the pattern: validate the order against the instrument's constraints <strong>before</strong> <code>placeOrder.execute</code> runs, so an invalid order never reaches the matching engine.</p>
+<h2 id="the-client-store">The client store</h2>
+<p>For state several islands read, the bus is paired with a single-owner slice store:</p>
+<pre><code class="lang-ts">import { createSliceStore } from "@mvp/store";
+
+const store = createSliceStore&lt;TradeSlices&gt;(tradeStoreContracts, {
+  initial: structuredClone(initialTradeSlices),
+  owner: TRADE_STORE_OWNER,
+});
+
+store.get(TRADE_ACTIVE_SYMBOL);
+store.set(TRADE_ACTIVE_SYMBOL, { symbol: "ETH" });
+store.subscribe(TRADE_ACTIVE_SYMBOL, (payload) =&gt; { /* … */ });</code></pre>
+<p><code>useStoreSlice</code> is the React binding. Channels and slice keys line up by construction: a slice name is the channel's topic tail, so <code>TradeSlices</code> keys match the contract channels.</p>
+<p>The store is a <strong>client-side mechanism</strong>; the contracts are the source of truth. Two shapes of the same list exist for that reason — <code>tradeSliceContracts</code> (island-level, canonical) and <code>tradeStoreContracts</code> (reshaped for the generic store's type parameter).</p>
+<h2 id="what-is-not-checked">What is not checked</h2>
+<p>Nothing validates that a declared publisher or subscriber id corresponds to a component that exists. <code>order-preview</code> appears as a subscriber and nowhere else in the repository (<a href="../known-limitations.html#f13">F13</a>).</p>

@@ -1,0 +1,60 @@
+<svg viewBox="0 0 960 356" role="img" aria-labelledby="rc-title rc-desc" xmlns="http://www.w3.org/2000/svg">
+<title id="rc-title">Shipping a fragment version</title>
+<desc id="rc-desc">Deploy the image, point canary at the new version, confirm which build answers via the health endpoint, then promote to stable; rollback restores the version recorded at promote time.</desc>
+<defs>
+  <marker id="r-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+    <polygon points="0 0, 8 3, 0 6" fill="currentColor"/>
+  </marker>
+</defs>
+
+<g color="var(--muted)">
+  <path class="d-line" d="M200 112 H248" marker-end="url(#r-arr)"/>
+  <path class="d-line" d="M424 112 H472" marker-end="url(#r-arr)"/>
+  <path class="d-line" d="M648 112 H696" marker-end="url(#r-arr)"/>
+</g>
+<g color="var(--rust)">
+  <path class="d-line" d="M792 152 V200 Q792 208 784 208 H344 Q336 208 336 200 V160" stroke="var(--rust)" marker-end="url(#r-arr)"/>
+</g>
+
+<rect class="d-mask" x="256" y="88" width="76" height="12" rx="2"/>
+<text class="d-lbl" x="294" y="97" text-anchor="middle">register</text>
+<rect class="d-mask" x="480" y="88" width="76" height="12" rx="2"/>
+<text class="d-lbl" x="518" y="97" text-anchor="middle">verify</text>
+<rect class="d-mask" x="704" y="88" width="76" height="12" rx="2"/>
+<text class="d-lbl" x="742" y="97" text-anchor="middle">promote</text>
+<rect class="d-mask" x="512" y="200" width="112" height="12" rx="2"/>
+<text class="d-lbl" x="568" y="209" text-anchor="middle" fill="var(--rust)">rollback-fragment</text>
+
+<rect class="d-mask" x="32" y="80" width="168" height="64" rx="6"/>
+<rect class="d-box-m" x="32" y="80" width="168" height="64" rx="6"/>
+<text class="d-name" x="116" y="108" text-anchor="middle">image deployed</text>
+<text class="d-sub" x="116" y="126" text-anchor="middle">your platform's job</text>
+
+<rect class="d-mask" x="248" y="80" width="176" height="80" rx="6"/>
+<rect class="d-box" x="248" y="80" width="176" height="80" rx="6"/>
+<rect x="260" y="92" width="52" height="12" rx="2" fill="none" stroke="var(--muted)" stroke-opacity="0.45" stroke-width="0.8"/>
+<text class="d-tag" x="286" y="101" text-anchor="middle">CANARY</text>
+<text class="d-name" x="336" y="126" text-anchor="middle">0.2.0</text>
+<text class="d-sub" x="336" y="144" text-anchor="middle">pages resolve it per request</text>
+
+<rect class="d-mask" x="472" y="80" width="176" height="64" rx="6"/>
+<rect class="d-box-m" x="472" y="80" width="176" height="64" rx="6"/>
+<text class="d-name" x="560" y="108" text-anchor="middle">GET /health</text>
+<text class="d-sub" x="560" y="126" text-anchor="middle">reports the DEPLOYED version</text>
+
+<rect class="d-mask" x="696" y="80" width="192" height="72" rx="6"/>
+<rect class="d-box-t" x="696" y="80" width="192" height="72" rx="6"/>
+<rect x="708" y="92" width="48" height="12" rx="2" fill="none" stroke="var(--teal)" stroke-opacity="0.45" stroke-width="0.8"/>
+<text class="d-tag" x="732" y="101" text-anchor="middle" fill="var(--teal)">STABLE</text>
+<text class="d-name" x="792" y="126" text-anchor="middle">0.2.0</text>
+<text class="d-sub" x="792" y="144" text-anchor="middle">previous recorded in versions</text>
+
+<rect class="d-mask" x="32" y="232" width="856" height="56" rx="6"/>
+<rect class="d-box-m" x="32" y="232" width="856" height="56" rx="6"/>
+<text class="d-sub" x="48" y="256" text-anchor="start">No page rebuild anywhere in this loop. A page reads channel → version → serviceUrl from the registry on every request,</text>
+<text class="d-sub" x="48" y="272" text-anchor="start">and &lt;FRAGMENT_NAME&gt;_URL repoints one fragment at runtime without even a registry write.</text>
+
+<line x1="32" y1="312" x2="928" y2="312" stroke="var(--rule)" stroke-width="0.8"/>
+<text class="d-tag" x="32" y="334">TODAY</text>
+<text class="d-sub" x="96" y="334">12 of the 14 fragments carry only a canary entry — the promote path is exercised on 2 units</text>
+</svg>

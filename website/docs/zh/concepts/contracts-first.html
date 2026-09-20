@@ -1,0 +1,59 @@
+<p class="eyebrow">概念</p>
+<h1>契约优先</h1>
+<p class="lede"><code>packages/contracts/src/index.ts</code> 导出 <strong>35 份 Zod schema</strong>，外加 <strong>6 份预生成的 JSON Schema</strong>。系统里每一条边界都是其中之一。</p>
+
+<h2 id="覆盖范围">覆盖范围</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>领域</th><th>Schema</th></tr></thead>
+<tbody>
+<tr><td>渲染线上格式</td><td><code>FragmentRenderRequestSchema</code>、<code>FragmentRenderRequestEnvelopeSchema</code>、<code>FragmentRenderResponseSchema</code></td></tr>
+<tr><td>Manifest</td><td><code>FragmentManifestSchema</code>、<code>PageManifestSchema</code>、<code>ComponentManifestSchema</code>、<code>ComponentMetadataSchema</code></td></tr>
+<tr><td>注册表</td><td><code>FragmentRegistrySchema</code>、<code>FragmentRegistryEntrySchema</code>、<code>ReleaseManifestSchema</code>、<code>RouteManifestSchema</code></td></tr>
+<tr><td>上下文</td><td><code>RequestContextSchema</code></td></tr>
+<tr><td>岛屿</td><td><code>IslandSnapshotSchema</code></td></tr>
+<tr><td>交互</td><td><code>InteractionContractSchema</code></td></tr>
+<tr><td>数据</td><td><code>DataDependencySchema</code>、<code>DataFreshnessSchema</code>、<code>DataPrivacySchema</code></td></tr>
+<tr><td>缓存 / 策略</td><td><code>CachePolicySchema</code>、<code>RequestPolicySchema</code>、<code>StoragePolicySchema</code>、<code>CookiePolicySchema</code>、<code>ApiEndpointPolicySchema</code></td></tr>
+<tr><td>资源</td><td><code>AssetManifestSchema</code>、<code>AssetResourceSchema</code>、<code>ScriptAssetSchema</code>、<code>FontManifestSchema</code>、<code>I18nManifestSchema</code>、<code>ThemeManifestSchema</code></td></tr>
+<tr><td>预算</td><td><code>PerformanceBudgetSchema</code></td></tr>
+<tr><td>优化器</td><td><code>OptimizationFindingSchema</code>、<code>OptimizationEvidenceSchema</code>、<code>OptimizationFindingLocationSchema</code></td></tr>
+<tr><td>Worker</td><td><code>WorkerManifestSchema</code></td></tr>
+<tr><td>枚举</td><td><code>RenderStrategySchema</code>、<code>ReleaseChannelSchema</code></td></tr>
+</tbody></table></div>
+
+<h2 id="值得记住的四个枚举">值得记住的四个枚举</h2>
+<div class="chips">
+<span class="chip t">RenderStrategy</span><span class="chip">static</span><span class="chip">ttl-cache</span><span class="chip">cached-ssr</span><span class="chip">dynamic-ssr</span>
+</div>
+<div class="chips">
+<span class="chip t">ReleaseChannel</span><span class="chip">stable</span><span class="chip">canary</span><span class="chip">preview</span>
+</div>
+<div class="chips">
+<span class="chip t">DataFreshness</span><span class="chip">static</span><span class="chip">build-time</span><span class="chip">isr</span><span class="chip">request-time</span><span class="chip">near-realtime</span><span class="chip">realtime</span><span class="chip">client-local</span>
+</div>
+<div class="chips">
+<span class="chip t">DataPrivacy</span><span class="chip">public</span><span class="chip">tenant</span><span class="chip">user-segment</span><span class="chip g">user-private</span>
+</div>
+<p><code>DataFreshness</code> × <code>DataPrivacy</code> 这张网格决定了一份数据可以被缓存在哪里、缓存多久。<code>user-private</code> 的数据绝不能落进共享缓存条目 —— 这正是 <code>cachePolicy.vary</code> 存在的原因，也是 <code>@mvp/storage</code> 有 <code>requiredPartitionKeysForPrivacy</code> 和 <code>assertStoragePolicy</code> 的原因。</p>
+
+<h2 id="给非-typescript-消费方">给非 TypeScript 消费方</h2>
+<pre><code>import { toJsonSchema, FragmentManifestJsonSchema } from "@mvp/contracts";
+toJsonSchema(SomeSchema, "SomeSchema");   // draft-07，可选 $ref 包装</code></pre>
+<p>6 份 schema 预生成发布，好让只会 JSON Schema 的工具能校验 TypeScript 消费方经 <code>z.infer</code> 得到的同一套契约：片段 manifest、页面 manifest、片段注册表、渲染请求、渲染响应、请求上下文。</p>
+
+<h2 id="在边界处解析">在边界处解析</h2>
+<pre><code>import { parseFragmentRenderRequest, parseFragmentRenderResponse } from "@mvp/contracts";
+
+const parsed = parseFragmentRenderRequest(body);
+// { ok: true, request, strict: boolean } | { ok: false, issues }</code></pre>
+<p><code>parseFragmentRenderRequest</code> 是刻意<strong>两层</strong>的：先严格 schema，再一个 <code>ctx</code> 为 <code>.partial().optional()</code> 的信封，两者都失败才 <code>400</code>。<code>strict</code> 告诉调用方命中了哪一层 —— 而这个信号目前在<em>任何地方都被生产出来又被丢弃</em>（<a href="../known-limitations.html#f14">F14</a>）。</p>
+
+<h2 id="预算也是契约">预算也是契约</h2>
+<pre><code>import { loadDefaultBudget, mergeBudget, assertBudget, createBudgetReport } from "@mvp/contracts";</code></pre>
+<p><code>assertBudget</code> 在违规时抛错；<code>createBudgetReport</code> 返回结构化对比。注意：<strong>schema 里有这个字段，不代表有闸门在读它</strong> —— 见<a href="../guides/performance-budgets.html">性能预算</a>。</p>
+
+<h2 id="哪些地方刻意不用-schema">哪些地方刻意不用 schema</h2>
+<ol>
+<li><b>业务词汇。</b>不要加宽 <code>RequestContextSchema</code>，用 <code>ctx.extensions</code>。</li>
+<li><b>交互载荷。</b>那些 schema 住在 <em>domain</em> 层（<code>domains/trade-contracts/src/slices.ts</code>），和频道 id 挨着，而不在 <code>@mvp/contracts</code> —— 框架只提供 <code>InteractionContractSchema</code> 规定「一份契约该长什么样」，具体契约由 domain 提供。</li>
+</ol>

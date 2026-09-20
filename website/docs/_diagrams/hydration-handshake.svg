@@ -1,0 +1,63 @@
+<svg viewBox="0 0 960 400" role="img" aria-labelledby="hy-title hy-desc" xmlns="http://www.w3.org/2000/svg">
+<title id="hy-title">The island version handshake</title>
+<desc id="hy-desc">Four checks run against a fragment's inline snapshot before hydration; any failure leaves the server-rendered markup untouched rather than mounting a component against props it does not understand.</desc>
+<defs>
+  <marker id="y-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+    <polygon points="0 0, 8 3, 0 6" fill="currentColor"/>
+  </marker>
+</defs>
+
+<g color="var(--muted)">
+  <path class="d-line" d="M208 128 H264" marker-end="url(#y-arr)"/>
+  <path class="d-line" d="M440 128 H496" marker-end="url(#y-arr)"/>
+  <path class="d-line" d="M672 128 H728" marker-end="url(#y-arr)"/>
+  <path class="d-line" d="M352 176 V232" marker-end="url(#y-arr)"/>
+  <path class="d-line" d="M584 176 V232" marker-end="url(#y-arr)"/>
+</g>
+
+<rect class="d-mask" x="360" y="192" width="112" height="12" rx="2"/>
+<text class="d-lbl" x="368" y="201" text-anchor="start">ANY CHECK FAILS</text>
+
+<!-- input -->
+<rect class="d-mask" x="32" y="96" width="176" height="64" rx="6"/>
+<rect class="d-box-m" x="32" y="96" width="176" height="64" rx="6"/>
+<text class="d-name" x="120" y="124" text-anchor="middle">SSR markup</text>
+<text class="d-sub" x="120" y="142" text-anchor="middle">+ inline JSON snapshot</text>
+
+<!-- checks -->
+<rect class="d-mask" x="264" y="96" width="176" height="80" rx="6"/>
+<rect class="d-box" x="264" y="96" width="176" height="80" rx="6"/>
+<text class="d-sub" x="352" y="118" text-anchor="middle">invalid-snapshot</text>
+<text class="d-sub" x="352" y="134" text-anchor="middle">version-mismatch</text>
+<text class="d-sub" x="352" y="150" text-anchor="middle">contract-hash-mismatch</text>
+<text class="d-sub" x="352" y="166" text-anchor="middle">invalid-props</text>
+
+<rect class="d-mask" x="496" y="96" width="176" height="64" rx="6"/>
+<rect class="d-box-t" x="496" y="96" width="176" height="64" rx="6"/>
+<text class="d-name" x="584" y="124" text-anchor="middle">all four pass</text>
+<text class="d-sub" x="584" y="142" text-anchor="middle">props are what the island expects</text>
+
+<rect class="d-mask" x="728" y="96" width="200" height="64" rx="6"/>
+<rect class="d-box-t" x="728" y="96" width="200" height="64" rx="6"/>
+<text class="d-name" x="828" y="124" text-anchor="middle">hydrate</text>
+<text class="d-sub" x="828" y="142" text-anchor="middle">the panel becomes interactive</text>
+
+<!-- outcomes -->
+<rect class="d-mask" x="248" y="232" width="208" height="80" rx="6"/>
+<rect class="d-box-m" x="248" y="232" width="208" height="80" rx="6"/>
+<text class="d-name" x="352" y="258" text-anchor="middle">skip hydration</text>
+<text class="d-sub" x="352" y="276" text-anchor="middle">SSR markup left intact —</text>
+<text class="d-sub" x="352" y="292" text-anchor="middle">readable, indexable, not interactive</text>
+
+<rect class="d-mask" x="496" y="232" width="176" height="80" rx="6"/>
+<rect class="d-box-m" x="496" y="232" width="176" height="80" rx="6"/>
+<text class="d-name" x="584" y="258" text-anchor="middle">onSnapshotMismatch</text>
+<text class="d-sub" x="584" y="276" text-anchor="middle">{island, expected,</text>
+<text class="d-sub" x="584" y="292" text-anchor="middle">actual, reason}</text>
+
+<line x1="32" y1="344" x2="928" y2="344" stroke="var(--rule)" stroke-width="0.8"/>
+<text class="d-tag" x="32" y="366">LEGEND</text>
+<rect x="104" y="356" width="16" height="12" rx="2" class="d-box-t"/>
+<text class="d-lbl" x="128" y="366">the happy path</text>
+<text class="d-sub" x="264" y="366">skipping is the SUCCESS case for a mismatch — a half-mounted order form is the failure</text>
+</svg>

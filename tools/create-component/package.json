@@ -5,6 +5,12 @@
   "bin": {
     "create-component": "./dist/index.js"
   },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js"
+    },
+    "./fragmentTemplate": "./src/fragmentTemplate.ts"
+  },
   "files": [
     "dist",
     "README.md",

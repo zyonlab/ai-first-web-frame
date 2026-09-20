@@ -1,0 +1,66 @@
+<p class="eyebrow">简介</p>
+<h1>这是什么</h1>
+<p class="lede">一个把「一个网页由多个各自独立部署的服务端渲染服务拼成」这件事做成<strong>可校验契约</strong>而不是团队约定的框架。</p>
+
+<h2 id="它要解决的问题">它要解决的问题</h2>
+<p>一个大型产品页面通常由好几个团队共同拥有，却作为<em>一个</em>产物发布。任何一处改动都意味着重建并重新部署整个页面；而其中一块变慢或挂掉，整个页面跟着陪葬。</p>
+<p>另一条路是浏览器侧微前端：把组合搬到客户端，代价是 JavaScript 体积和首屏时间。对一个必须被收录、必须首屏快的页面来说，这笔交易是亏的。</p>
+<p>这个框架在<strong>服务端</strong>组合。每一块是一个 HTTP 服务，对 <code>POST /render</code> 返回 HTML；页面并行去取，谁先就绪谁先流式输出，失败的那块用它自己声明的降级内容顶上。</p>
+
+<figure class="figure">
+<!--@figure:request-lifecycle-->
+<figcaption><b>一次请求的完整时间线。</b>注意最后一步：网关把「必需槽位失败」翻译成 <code>503</code>，但<em>原样返回页面主体</em> —— 人还能看到降级后的页面，监控也能看到失败。二者不必二选一。</figcaption>
+</figure>
+
+<h2 id="三条主张">三条主张</h2>
+
+<div class="cards three">
+  <div class="card t">
+    <h4>片段是最小部署单位</h4>
+    <p>而且这是一条<em>可执行</em>的主张，不是架构口号。</p>
+  </div>
+  <div class="card i">
+    <h4>每条边界都是 schema</h4>
+    <p>不是注释，不是约定，是 35 份 Zod 契约。</p>
+  </div>
+  <div class="card r">
+    <h4>仓库可被 agent 寻址</h4>
+    <p>文档示例由 CI 执行，所以 agent 读到的东西是被证明还能跑的。</p>
+  </div>
+</div>
+
+<h3 id="1-片段是最小部署单位">1 · 片段是最小部署单位，而且可执行</h3>
+<p><code>pnpm verify:unit --name &lt;fragment&gt;</code> 只构建该单元的依赖闭包，启动构建产物，然后断言 <code>/health</code>、<code>/ready</code>、<code>/manifest</code> 报告的 manifest <strong>版本一致</strong>，且 <code>POST /render</code> 的输出携带同一版本。每个片段有自己的 Dockerfile。发布新版本不需要重建页面：页面在每次请求时从 <code>registry/registry.data.json</code> 解析 <code>serviceUrl</code> 和版本。</p>
+<p>详见<a href="../concepts/minimum-deployable-unit.html">最小部署单元</a>。</p>
+
+<h3 id="2-每条边界都是-schema">2 · 每条边界都是 schema，不是约定</h3>
+<p><code>packages/contracts/src/index.ts</code> 里的 35 份 Zod schema 覆盖了渲染请求/响应信封、两种 manifest、注册表文件、请求上下文、岛屿快照、性能预算和数据依赖描述符。其中 6 份还额外导出预生成的 JSON Schema，这样非 TypeScript 的消费方也能校验同一套契约。</p>
+<p>详见<a href="../concepts/contracts-first.html">契约优先</a>。</p>
+
+<h3 id="3-仓库可被-agent-寻址">3 · 仓库可被 agent 寻址，而不只是被人阅读</h3>
+<p>8 个 MCP 工具（<code>packages/mcp/src/tools.ts</code>）暴露了整条生命周期。每个生命周期 CLI 都打印带 <code>status</code> 字段的 JSON 信封，失败时不写任何文件。每个 <code>packages/*</code> 和 <code>domains/*</code> 目录都带一份 <code>AGENT.md</code>，其中的 TypeScript 代码块会被 <code>pnpm verify</code> 里的 <code>pnpm docs:test</code> <strong>真正执行</strong> —— 36 个文件、41 个可执行块 —— 所以一个失效的示例是构建失败，不是待办事项。</p>
+<p>详见<a href="../getting-started/ai-setup.html">AI 接入</a>。</p>
+
+<h2 id="它不是什么">它不是什么</h2>
+<p>这一节比上一节更重要，因为选型错误通常来自高估。</p>
+
+<div class="note bad">
+<p><b>不是客户端微前端运行时。</b>没有运行时模块加载，也没有版本协商。SSR 快照与页面期望版本不匹配的岛屿<em>不会被水合</em>（有四种明确的失配原因），它永远不会从另一个 remote 去加载。需要运行时远程加载，应该用 Module Federation。</p>
+</div>
+
+<div class="note">
+<p><b>不是注册表服务。</b>片段注册表就是仓库里的一个 JSON 文件（<code>registry/registry.data.json</code>），由 CLI 以原子写 + 咨询锁的方式改动。它给你通道、晋级和回滚，但不给你跨仓库分发。</p>
+<p><b>不是部署系统。</b>它产出每个单元一个镜像，以及一个可以按片段在运行时重新指向的注册表。把镜像推上线是你的平台的事。</p>
+<p><b>不是语言无关的。</b>片段是构建在 <code>@mvp/fragment-host</code> 上的 Node 服务。线上格式（<code>POST /render</code> → <code>{html, assets, …}</code>）本身与语言无关，JSON Schema 也正是为此而发布，但仓库里<strong>没有任何一个非 Node 片段</strong>。把多语言当成「未验证」而不是「已支持」。</p>
+</div>
+
+<h2 id="一次请求经过什么">一次请求经过什么</h2>
+<ol>
+<li>浏览器打到网关（<code>:4100</code>），网关从 <code>@mvp/routes</code> 解析路由并代理到拥有该路由的页面应用。</li>
+<li>页面应用从 <code>src/manifest.slots.json</code>（经由生成的 <code>fragmentSlots.gen.ts</code>）读取槽位，调用 <code>executeFragmentSlots</code> 或 <code>streamFragmentSlots</code>。</li>
+<li>调度器把槽位和数据依赖做拓扑分层，每层并行执行，每个槽位独立超时，依赖失败的槽位直接跳过。</li>
+<li>每个槽位经注册表通道解析到具体片段版本，再发 <code>POST /render</code>。命中缓存策略时则从有界的进程内缓存返回。</li>
+<li>页面渲染一个健康标记；网关把「必需槽位失败」映射为 <code>503</code>。</li>
+<li>浏览器里，只有通过快照握手的岛屿才水合；声明了实时订阅的面板经 <code>@mvp/runtime/live</code> 订阅数据源。</li>
+</ol>
+<p>每一步都有对应的指南：<a href="../guides/page-composition.html">页面组合</a>、<a href="../guides/slot-scheduling.html">槽位调度</a>、<a href="../guides/fallbacks-and-page-health.html">降级与页面健康</a>、<a href="../guides/islands-and-hydration.html">岛屿与水合</a>、<a href="../guides/realtime-subscriptions.html">实时订阅</a>。</p>

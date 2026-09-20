@@ -1,0 +1,727 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ai-first-web-frame 成本与风险评估</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #e7eaed;
+    --paper: #fbfcfd;
+    --paper-2: #f0f3f6;
+    --ink: #151c24;
+    --ink-2: #3a4753;
+    --muted: #6d7b88;
+    --rule: #cbd4dc;
+    --rule-soft: #dfe5ea;
+    --steel: #2f5d7c;
+    --steel-soft: #dde9f0;
+    --moss: #4a7135;
+    --moss-soft: #e3eddb;
+    --ochre: #9a6708;
+    --ochre-soft: #f6ead0;
+    --crimson: #9d2b33;
+    --crimson-soft: #f6dcdd;
+    --shadow: 0 1px 2px rgba(21,28,36,.05), 0 10px 26px -18px rgba(21,28,36,.3);
+    --serif: "Source Serif 4", "Songti SC", "SimSun", Georgia, serif;
+    --sans: "Source Sans 3", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1116; --paper: #151b22; --paper-2: #1a222a;
+      --ink: #dee5ec; --ink-2: #b0bdc8; --muted: #7f8f9c;
+      --rule: #2a343e; --rule-soft: #212a33;
+      --steel: #7ab3d4; --steel-soft: #142b39;
+      --moss: #93c179; --moss-soft: #1a2615;
+      --ochre: #d9ab4e; --ochre-soft: #2b2110;
+      --crimson: #e08c92; --crimson-soft: #341417;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px -20px rgba(0,0,0,.85);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1116; --paper: #151b22; --paper-2: #1a222a;
+    --ink: #dee5ec; --ink-2: #b0bdc8; --muted: #7f8f9c;
+    --rule: #2a343e; --rule-soft: #212a33;
+    --steel: #7ab3d4; --steel-soft: #142b39;
+    --moss: #93c179; --moss-soft: #1a2615;
+    --ochre: #d9ab4e; --ochre-soft: #2b2110;
+    --crimson: #e08c92; --crimson-soft: #341417;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px -20px rgba(0,0,0,.85);
+  }
+
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 0 80px; }
+
+  .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--rule); }
+  .topbar-in { max-width: 1040px; margin: 0 auto; padding-inline: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; min-height: 46px; }
+  .topbar strong { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+  .topnav { display: flex; gap: 13px; flex-wrap: wrap; margin-left: auto; }
+  .topnav a { font-size: 13px; font-weight: 500; color: var(--muted); text-decoration: none; padding: 4px 0; border-bottom: 1.5px solid transparent; }
+  .topnav a:hover { color: var(--steel); border-bottom-color: var(--steel); }
+
+  header.hero { padding-block: 50px 32px; border-bottom: 1px solid var(--rule); }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: var(--steel); }
+  h1 { font-family: var(--serif); font-weight: 700; font-size: clamp(29px, 5vw, 44px); line-height: 1.12; margin: 12px 0 0; letter-spacing: -.01em; text-wrap: balance; }
+  .lede { font-size: 16.5px; color: var(--ink-2); max-width: 66ch; margin-top: 16px; }
+  .lede b { color: var(--ink); font-weight: 600; }
+
+  section { padding-block: 46px 0; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin-bottom: 20px; }
+  .sec-num { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--steel); }
+  h2 { font-family: var(--serif); font-weight: 600; font-size: clamp(21px, 3.1vw, 28px); margin: 0; letter-spacing: -.005em; }
+  h3 { font-family: var(--serif); font-weight: 600; font-size: 18.5px; margin: 32px 0 10px; }
+  h4 { font-weight: 600; font-size: 14.5px; margin: 0 0 6px; }
+  p { margin: 0 0 14px; max-width: 76ch; }
+  ul, ol { margin: 0 0 14px; padding-left: 1.3em; max-width: 76ch; }
+  li { margin-bottom: 6px; }
+  code { font-family: var(--mono); font-size: .86em; background: var(--paper-2); border: 1px solid var(--rule-soft); border-radius: 3px; padding: .5px 4px; word-break: break-word; }
+  strong { font-weight: 600; }
+
+  /* scorecard */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-top: 30px; }
+  .card { background: var(--paper); border: 1px solid var(--rule); padding: 13px 15px; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: baseline; box-shadow: var(--shadow); }
+  .card .dim { font-weight: 600; font-size: 14px; }
+  .card .grade { font-family: var(--serif); font-weight: 700; font-size: 22px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .card .why { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .g-a .grade { color: var(--moss); } .g-b .grade { color: var(--steel); } .g-c .grade { color: var(--ochre); } .g-d .grade { color: var(--crimson); }
+  .grade .was { font-size: 14px; font-weight: 400; color: var(--muted); text-decoration: line-through; margin-right: 4px; }
+  .grade .arrow { font-size: 13px; font-weight: 400; color: var(--muted); margin-right: 4px; }
+  .card.g-a { border-top: 2.5px solid var(--moss); } .card.g-b { border-top: 2.5px solid var(--steel); }
+  .card.g-c { border-top: 2.5px solid var(--ochre); } .card.g-d { border-top: 2.5px solid var(--crimson); }
+
+  /* run log */
+  .runlog { border: 1px solid var(--rule); background: var(--paper); }
+  .runlog .r { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--rule-soft); align-items: baseline; font-size: 13.5px; }
+  .runlog .r:last-child { border-bottom: 0; }
+  .runlog .cmd { font-family: var(--mono); font-size: 12.5px; }
+  .runlog .note { color: var(--muted); font-size: 12.5px; }
+  .mk { font-family: var(--mono); font-weight: 500; font-size: 13px; }
+  .mk.ok { color: var(--moss); } .mk.warn { color: var(--ochre); } .mk.bad { color: var(--crimson); } .mk.skip { color: var(--muted); }
+
+  /* findings */
+  .finding { background: var(--paper); border: 1px solid var(--rule); padding: 15px 17px; margin-bottom: 11px; }
+  .finding.p0 { border-left: 3px solid var(--crimson); }
+  .finding.p1 { border-left: 3px solid var(--ochre); }
+  .finding.p2 { border-left: 3px solid var(--steel); }
+  .finding.plus { border-left: 3px solid var(--moss); }
+  .fhead { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 6px; }
+  .chip { font-family: var(--mono); font-size: 10.5px; letter-spacing: .05em; padding: 2px 6px; white-space: nowrap; }
+  .chip.p0 { background: var(--crimson-soft); color: var(--crimson); }
+  .chip.p1 { background: var(--ochre-soft); color: var(--ochre); }
+  .chip.p2 { background: var(--steel-soft); color: var(--steel); }
+  .chip.plus { background: var(--moss-soft); color: var(--moss); }
+  .chip.done { background: var(--moss-soft); color: var(--moss); }
+  .chip.open { background: var(--crimson-soft); color: var(--crimson); }
+  .chip.skip { background: var(--paper-2); color: var(--muted); border: 1px solid var(--rule); }
+  .fix { border-top: 1px dashed var(--rule-soft); padding-top: 9px; margin-top: 9px; font-size: 13px; color: var(--ink-2); }
+  .fix b { color: var(--moss); font-weight: 600; }
+  .finding.resolved { border-left-color: var(--moss); background: color-mix(in srgb, var(--moss-soft) 22%, var(--paper)); }
+  .finding .ft { font-weight: 600; font-size: 15px; }
+  .finding p { font-size: 13.5px; color: var(--ink-2); margin: 0 0 8px; }
+  .finding p:last-child { margin-bottom: 0; }
+  .ev { font-family: var(--mono); font-size: 11.5px; color: var(--muted); display: block; border-top: 1px dashed var(--rule-soft); padding-top: 7px; margin-top: 8px; word-break: break-word; }
+
+  .tw { overflow-x: auto; border: 1px solid var(--rule); background: var(--paper); margin-bottom: 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 560px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  th { font-weight: 600; font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: var(--paper-2); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td code { font-size: 11.5px; }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pill { font-family: var(--mono); font-size: 10.5px; padding: 1.5px 5px; white-space: nowrap; }
+  .pill.real { background: var(--moss-soft); color: var(--moss); }
+  .pill.part { background: var(--ochre-soft); color: var(--ochre); }
+  .pill.void { background: var(--crimson-soft); color: var(--crimson); }
+
+  .cmdbox { font-family: var(--mono); font-size: 12px; background: var(--paper-2); border: 1px solid var(--rule-soft); border-left: 2.5px solid var(--steel); padding: 9px 11px; overflow-x: auto; white-space: pre; margin: 6px 0 14px; }
+  blockquote { margin: 0 0 16px; padding: 12px 16px; background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--steel); font-size: 13.5px; color: var(--ink-2); max-width: 76ch; }
+  blockquote p:last-child { margin-bottom: 0; }
+  footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 12.5px; color: var(--muted); }
+  @media (max-width: 600px) { .runlog .r { grid-template-columns: 20px 1fr; } .runlog .note { grid-column: 2; } }
+</style>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <strong>ai-first-web-frame · assessment</strong>
+    <nav class="topnav">
+      <a href="#method">方法</a><a href="#score">评分</a><a href="#arch">架构</a><a href="#levels">分级</a>
+      <a href="#seo">SEO</a><a href="#human">人力</a><a href="#ai">AI</a><a href="#ops">运维</a><a href="#fix">优先级</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">代码优先评估 · 基线 main @ 420f043 · 已更新至 fix/framework-hardening · 2026-09-19</div>
+  <h1>骨架是生产级的；两端的收口，这一轮补上了一端</h1>
+  <p class="lede">
+    这份评估不复述 <code>docs/</code>。所有结论都来自读源码并<b>实跑仓库自己的门禁</b>：typecheck、六个审计、全量测试、verify 的各个子门禁，
+    外加对 22 个 Dockerfile、22 份 k8s 清单、14 个片段服务和 7 个页面的逐个比对。
+    初版结论是：组合运行时、契约体系、生命周期 CLI 的质量确实是生产级的；而<b>新建单元的脚手架产出不可运行</b>、
+    <b>若干门禁在测 0 字节</b>、<b>入口网关缺超时且规格错配</b>——这三类问题文档里都看不到。
+  </p>
+  <p class="lede" style="margin-top:14px">
+    <b>本次更新</b>：除运维配置类（镜像结构、k8s、指标、CDN —— 按要求跳过）之外的全部发现已修复并实测。
+    下面每条发现都保留了原始诊断，并加上「修复」一行说明改了什么、由什么证明。
+    当前状态：<code>pnpm verify</code> <b>14/14 通过</b>（164.6s），1326 个测试用例全过，docs:test 零豁免。
+  </p>
+  <div class="cards">
+    <div class="card g-a"><span class="dim">分层与边界</span><span class="grade">A</span><span class="why">三层单向规则由审计执行，实跑 0 违规；两处有意越层仍在（网关依赖 trade-prefs、页面构建期依赖 island 包）</span></div>
+    <div class="card g-a"><span class="dim">设计模式</span><span class="grade"><span class="was">A−</span><span class="arrow">→</span>A</span><span class="why">缺失的片段宿主抽象已补上，死代码 <code>composePage</code> 已删；依赖注入 / 纯计划+副作用外壳 / 错误分类学本来就扎实</span></div>
+    <div class="card g-a"><span class="dim">契约与门禁</span><span class="grade"><span class="was">B</span><span class="arrow">→</span>A−</span><span class="why">docs:test 从 3 个豁免降到 0，CSS 门禁不再对 0 字节报 pass，新增 2 条审计规则；optimizer/boundary 的宽松判定与覆盖率未开仍在</span></div>
+    <div class="card g-a"><span class="dim">组件分级</span><span class="grade"><span class="was">B+</span><span class="arrow">→</span>A−</span><span class="why">L2 片段的名义成本与实际成本对齐了（脚手架可跑）；新增页面仍昂贵，但那是刻意的低频操作</span></div>
+    <div class="card g-b"><span class="dim">SEO</span><span class="grade"><span class="was">C+</span><span class="arrow">→</span>B+</span><span class="why">robots/sitemap/canonical/hreflang/OG/lang/诊断门控全部补齐；仍缺商品级 sitemap 枚举、OG 图片资源、product 之外的结构化数据</span></div>
+    <div class="card g-b"><span class="dim">人力接手</span><span class="grade"><span class="was">B</span><span class="arrow">→</span>B+</span><span class="why">冷启动红灯与 14 份样板都没了；概念负载与 k8s env 手工同步点不变</span></div>
+    <div class="card g-a"><span class="dim">AI 新开发</span><span class="grade"><span class="was">C+</span><span class="arrow">→</span>A−</span><span class="why">脚手架产出实测可 build 可 boot 可 render，且 AGENT.md 的模板断言进了 docs:test</span></div>
+    <div class="card g-a"><span class="dim">AI 维护</span><span class="grade"><span class="was">A−</span><span class="arrow">→</span>A</span><span class="why">文档门禁不再有盲区，三份最关键的 AGENT.md 现在都有可执行片段</span></div>
+    <div class="card g-c"><span class="dim">线上运维</span><span class="grade"><span class="was">C</span><span class="arrow">→</span>C+</span><span class="why">代码侧的运行时安全项已修（入口超时+取消、缓存有界、不泄漏内部地址）；配置侧（镜像、k8s、指标、CDN）按要求未动</span></div>
+  </div>
+</header>
+
+<!-- ───────── 方法 ───────── -->
+<section id="method">
+  <div class="sec-head"><span class="sec-num">01</span><h2>方法与实跑记录</h2></div>
+  <p>
+    仓库初始状态没有安装依赖（<code>node_modules</code> 为空），我先做了一次冷装（<code>pnpm install --frozen-lockfile</code>，装完 563 MB），
+    然后按下面的顺序实跑。这个顺序本身就暴露了第一个问题，所以完整保留。
+  </p>
+  <div class="runlog">
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm typecheck</span><span class="note">exit 0（tsgo，全部 project）</span></div>
+    <div class="r"><span class="mk bad">✗</span><span class="cmd">pnpm test（冷装后直接跑）</span><span class="note">packages/mcp 1 个测试失败 — 见 F-01</span></div>
+    <div class="r"><span class="mk bad">✗</span><span class="cmd">pnpm verify:manifest-gen（冷装后）</span><span class="note">ERR_MODULE_NOT_FOUND，status fail — 见 F-01</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm --filter ./packages/* --filter ./domains/* build</span><span class="note">33.8 s wall（104 s user，343% CPU）</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm verify:manifest-gen（前置构建后）</span><span class="note">5 页 fresh + 2 页 exempt，status pass</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm --filter @mvp/mcp test（前置构建后）</span><span class="note">23/23 通过 — 证实是冷启动顺序问题，不是真 bug</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm verify:demos</span><span class="note">pass</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm docs:test</span><span class="note">35 个 AGENT.md：32 pass / 3 skipped，34 个可执行片段 / 6 个 no-run</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm audit:deps</span><span class="note">status pass，0 条 issue</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm audit:similarity</span><span class="note">pass，阈值 0.82，<strong>检查文件数 22</strong></span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm audit:css</span><span class="note">pass，但 7 个页面全部测得 <strong>0 字节</strong> — 见 §09</span></div>
+    <div class="r"><span class="mk warn">⚠</span><span class="cmd">pnpm audit:boundary</span><span class="note">status <strong>warn</strong>（5 条 large-client-component），CI 模式仍 exit 0</span></div>
+    <div class="r"><span class="mk skip">—</span><span class="cmd">pnpm build / docker / e2e / verify:runtime</span><span class="note">未跑（需 22 服务栈与 Chromium）；构建耗时取自仓库自带 reports/verify-report.json</span></div>
+  </div>
+
+  <h3>修复后重跑（同一台机器，同一套命令）</h3>
+  <div class="runlog">
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm verify</span><span class="note"><strong>14/14 PASS</strong>，164.6s（build 100.3 · typecheck 24.5 · test 24.5 · 其余各 &lt;5s）</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm test（删光 25 个 dist 后冷跑）</span><span class="note">EXIT=0，首行打印它按需补建了哪些包 — F-01 关闭</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm verify:manifest-gen（同样冷跑）</span><span class="note">status pass — F-01 关闭</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm docs:test</span><span class="note"><strong>36 个 AGENT.md / 38 个可执行片段 / 0 skipped / 0 fail</strong>（原 35 / 34 / 3 skipped）</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm audit:deps</span><span class="note">pass，0 条 issue；规则从 11 条增至 <strong>13 条</strong></span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm audit:css</span><span class="note">pass；7 个页面 + 2 个片段现在如实标 <strong>unmeasured</strong> 而非 pass</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm audit:bundle</span><span class="note">pass；page-trade 202,476 / 220,000（诊断门控与 SEO 模块<strong>没有增加首屏 JS</strong>）</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">scaffold → build → boot → /render</span><span class="note">真仓库里生成探针片段（自动分到端口 4215），4 个测试通过、dist 3.63 kB、/health 报 version、/render 返回真 HTML，随后删除 — F-03 关闭</span></div>
+    <div class="r"><span class="mk ok">✓</span><span class="cmd">pnpm verify:unit --name &lt;5 个片段&gt;</span><span class="note">order-book / promotion-banner / order-form / market-header / markets-table 全部 status: "ok"</span></div>
+    <div class="r"><span class="mk warn">⚠</span><span class="cmd">pnpm audit:boundary</span><span class="note">仍是 status <strong>warn</strong>（5 条 large-client-component）—— 升为 fail 需拆分 5 个大文件，代价与收益不成比例，<strong>有意未改</strong></span></div>
+    <div class="r"><span class="mk skip">—</span><span class="cmd">e2e / verify:runtime</span><span class="note">仍未跑（需 22 服务栈）。诊断门控对 e2e 的影响是设计上兼容（compose 显式设 MVP_DIAGNOSTICS=on，单测在 NODE_ENV=test 下默认开启且全过），但<strong>未在真实栈里验证</strong></span></div>
+  </div>
+  <blockquote>
+    <p><strong>关于文档与代码的偏差</strong>：整体而言这个仓库的文档异常可信——抽查的机制描述都能在代码里对上。
+    偏差集中在三类：① 文档描述「应该怎样」而代码是过渡态（脚手架）；② 门禁存在但度量对象为空（CSS/部分 bundle）；③ 文档没写的运维细节（超时、缓存淘汰、镜像结构）。</p>
+  </blockquote>
+</section>
+
+<!-- ───────── 评分依据 ───────── -->
+<section id="score">
+  <div class="sec-head"><span class="sec-num">02</span><h2>规模与健康度基线</h2></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>指标</th><th>实测</th><th>判读</th></tr></thead>
+      <tbody>
+        <tr><td>源码规模</td><td class="num">479 文件 / ≈64,900 行 TS·TSX·MTS</td><td>对 22 个可部署单元而言偏小——说明抽象在复用，不是复制出来的体量</td></tr>
+        <tr><td>最大非测试文件</td><td class="num">1,156 行（<code>packages/runtime/src/index.ts</code>）</td><td>没有万行怪物。第二名 850 行。<strong>接手友好度的最强信号</strong></td></tr>
+        <tr><td>测试文件</td><td class="num">129 个</td><td>片段测试/源码行数比 0.33–0.60，页面同量级</td></tr>
+        <tr><td>注释密度</td><td class="num">packages 7.9% · fragments 13.2% · apps 15.5% · domains 18.7%</td><td>高于常见水平，且大量是「为什么这样做 / 曾经怎么错」的决策注释，不是复述代码</td></tr>
+        <tr><td>Zod schema 导出</td><td class="num">40 个（34 个 Zod + 6 个 JSON Schema 常量）</td><td>契约面完整，且可导出给非 TS agent</td></tr>
+        <tr><td><code>pnpm verify</code> 全程</td><td class="num">123.8 s（build 75.8 · typecheck 19.4 · test 16.8 · 其余各 &lt;4 s）</td><td>两分钟跑完 14 道门禁，<strong>迭代成本极低</strong>，人和 AI 都受益</td></tr>
+        <tr><td>依赖体积</td><td class="num">node_modules 563 MB / 源码 ≈8 MB / .git 4.5 MB</td><td>依赖是仓库体积的 98%，直接决定镜像成本（见 §08）</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ───────── 架构 ───────── -->
+<section id="arch">
+  <div class="sec-head"><span class="sec-num">03</span><h2>架构与分层：规则是真的，有两处有意越层</h2></div>
+  <p>
+    <code>apps/fragments → domains → packages</code> 的单向规则不是文档约定而是程序：
+    <code>audit:deps</code> 的 <code>domain-code-in-framework-package</code> 规则实跑 0 违规，
+    <code>audit:boundary</code> 检查了 251 个文件。这是这个仓库最硬的一块。同时代码里有三处值得知道的现实：
+  </p>
+
+  <div class="finding p2">
+    <div class="fhead"><span class="chip p2">A-01</span><span class="ft">通用网关并不领域无关</span></div>
+    <p><code>apps/shell-gateway/src/server.ts</code> 直接 import <code>@mvp/trade-prefs</code>（domain 层）来实现 <code>/_shell/theme</code> 和 <code>/_shell/locale</code> 的偏好写入。
+    分层规则允许（apps 可以依赖 domains），但意味着换一个业务域时网关要改。属于可接受的技术债，值得显式记账。</p>
+    <span class="ev">apps/shell-gateway/src/server.ts:13 — import { writeLocalePreference, writeThemePreference } from "@mvp/trade-prefs"</span>
+  </div>
+
+  <div class="finding p2">
+    <div class="fhead"><span class="chip p2">A-02</span><span class="ft">Tier 2 片段是页面的构建期依赖，这在代码里一目了然</span></div>
+    <p><code>page-trade</code> 通过子路径导出直接静态 import 四个片段的 <code>/island</code>、<code>/manifest</code>、<code>/render</code>。
+    「独立部署」在 Tier 2 只对 SSR HTML 成立，客户端行为确实被构建冻结——文档说得对，代码也确实这样。
+    顺带的隐性成本：这些子路径必须<strong>手工登记进根 <code>vitest.config.ts</code> 的 alias 表</strong>（约 110 行手写映射，含领域专属条目），而<strong>没有任何门禁校验这张表的完整性</strong>。</p>
+    <span class="ev">apps/page-trade/src/hydrate.tsx:1–22 · vitest.config.ts:8–95（手写 alias，无 gate）</span>
+  </div>
+
+  <div class="finding plus">
+    <div class="fhead"><span class="chip plus">优点</span><span class="ft">@mvp/ui 的服务端/客户端切分是干净的</span></div>
+    <p>根 <code>index.ts</code> 只导出 7 个 server-safe 原语，11 个 <code>"use client"</code> 的 shadcn 组件隔离在 <code>@mvp/ui/shadcn</code> 子路径，没有被根桶文件泄漏进来。
+    代价：7 个 Radix 包 + cmdk + tailwind-merge 是 <code>dependencies</code> 而非 optional，所以任何依赖 <code>@mvp/ui</code> 的镜像都会装上它们。</p>
+    <span class="ev">packages/ui/src/index.ts（7 行，无 shadcn）· packages/ui/package.json dependencies</span>
+  </div>
+
+  <h3>设计模式清单（均在代码中核实）</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>模式</th><th>落点</th><th>评价</th></tr></thead>
+      <tbody>
+        <tr><td>依赖注入（构造期）</td><td><code>fetchImpl</code> / <code>now</code> / <code>resolveData</code> / <code>observability</code> / <code>nonceFactory</code> / <code>exportTrace</code> 全部可注入</td><td><strong>最值钱的一条</strong>。整个调度器、网关、14 个片段服务都能在无网络无时钟依赖下确定性测试，这是 129 个测试文件跑 17 秒的原因</td></tr>
+        <tr><td>结构化类型替代依赖</td><td><code>ResponseSchema&lt;T&gt;</code>（<code>@mvp/request</code>）、<code>payloadSchema</code>（<code>@mvp/interaction</code>）只要求 <code>safeParse</code></td><td>任何 Zod schema 天然满足，但包本身不依赖 Zod。教科书级的依赖倒置</td></tr>
+        <tr><td>纯计划 + 副作用外壳</td><td><code>createSlotDataExecutionPlan</code>、<code>evaluateRuntime</code>、<code>affected-graph.ts</code>、<code>SCRIPT_TOOLS.args</code></td><td>决策逻辑全是纯函数并被单测，脚本只负责采集与落盘。这是「AI 能安全改」的结构前提</td></tr>
+        <tr><td>Strategy</td><td><code>RenderStrategy</code> 四态驱动 <code>fetchFragmentSlot</code> 的分支与缓存键</td><td>枚举收敛，退役的 <code>isr</code> 别名被真正删除而不是留兼容层</td></tr>
+        <tr><td>Registry + Channel</td><td><code>stable/canary/preview</code> + <code>versions</code> append-only（重注册已存在版本会 throw）</td><td>发布语义正确，历史不可改写</td></tr>
+        <tr><td>Codegen 单向真相</td><td><code>manifest.slots.json → fragmentSlots.gen.ts</code>，<code>--check</code> + <code>verify:manifest-gen</code></td><td>实跑 5 页 fresh。把「双写漂移」从检测问题变成结构问题</td></tr>
+        <tr><td>命名错误分类学</td><td><code>InteractionContractError</code> / <code>MutationContractError</code> / <code>RequestContractError</code> / <code>FileConflictError</code> / <code>FileLockTimeoutError</code>，均带结构化字段</td><td>按 <code>error.name</code> 判别而非 message 匹配，对 agent 极友好</td></tr>
+        <tr><td>两阶段解析</td><td><code>parseFragmentRenderRequest</code>：严格 → 宽松 → 结构化 ZodIssue</td><td>片段自己拥有优雅降级，而消费侧对响应只有严格一档（做不出合法响应就算失败）——不对称是有意的</td></tr>
+        <tr><td class="num">⚠ 缺失的模式</td><td>没有 <code>createFragmentServer()</code> / fragment-host 包（全仓库 grep 无结果）</td><td>导致 14 份近乎相同的服务样板，见 F-02</td></tr>
+        <tr><td class="num">⚠ 死代码</td><td><code>composePage</code> 被导出并有测试，但<strong>没有任何 app 使用</strong>；它还是唯一做未转义 HTML 插值的函数</td><td>公共 API 里的僵尸函数，新人/AI 会误以为它是主路径</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ───────── 分级 ───────── -->
+<section id="levels">
+  <div class="sec-head"><span class="sec-num">04</span><h2>六个级别的单元：新增一个各自要付什么</h2></div>
+  <p>这张表是本次评估最实用的部分——它回答「我要加个东西，代价是什么」，每一列都按代码核实过。</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>级别</th><th>现存</th><th>形态（代码事实）</th><th>新增一个的真实成本</th><th>上线影响面</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>L0 设计 token</strong></td><td class="num">1 包 / 44 行</td>
+          <td><code>@mvp/design-tokens</code> 原始值 + <code>@mvp/design-system</code> 生成 CSS 变量</td>
+          <td>极低（加一个值）</td>
+          <td>被几乎所有单元依赖 → 反向闭包很大，等价于全量</td>
+        </tr>
+        <tr>
+          <td><strong>L1 server-safe UI 原语</strong></td><td class="num">7 个目录 / 18 tsx</td>
+          <td>每个组件 5 文件：<code>.tsx</code> + CSS module + <code>metadata.ts</code> + <code>fixtures.ts</code> + <code>index.ts</code></td>
+          <td>低。<code>create-component --type ui</code> 产出 8 文件，且相似度审计<strong>真的覆盖这一层</strong>（22 个受检文件就是它 + 4 个 island）</td>
+          <td>依赖它的页面/片段</td>
+        </tr>
+        <tr>
+          <td><strong>L1′ 客户端 UI</strong></td><td class="num">11 个 <code>"use client"</code></td>
+          <td><code>@mvp/ui/shadcn</code> 子路径，Radix 封装</td>
+          <td>低，但会给消费镜像带上 Radix 依赖</td>
+          <td>计入页面首屏 JS 预算</td>
+        </tr>
+        <tr>
+          <td><strong>L2 SSR 片段（Tier 1）</strong></td><td class="num">10 个</td>
+          <td>6 个源文件：<code>server.ts</code> <code>render.ts</code> <code>manifest.ts</code> <code>budget.ts</code> <code>data.ts</code> <code>observability.ts</code>（+ <code>styles.ts</code>）</td>
+          <td><strong>名义低、实际中等</strong>：脚手架 9 文件不可运行，仍需手写 ≈190 行宿主样板 + 分配端口 + compose + k8s 清单。见 F-03</td>
+          <td><strong>0 次页面重建</strong>。注册表写入被内容 diff 收窄，只重建自己 + 挂载它的页面</td>
+        </tr>
+        <tr>
+          <td><strong>L3 Island 片段（Tier 2）</strong></td><td class="num">4 个</td>
+          <td>额外 <code>island.tsx</code>（+ <code>islandLogic.ts</code> / <code>island.browser.ts</code>），须被页面 bundle 静态 import</td>
+          <td>中高：再加 <code>registerIsland</code> 版本期望、总线逃生口（否则 <code>audit:deps</code> 挂）、vitest alias、页面注册表</td>
+          <td>SSR HTML 即时生效；<strong>行为变更需页面重建</strong>。版本错位会被握手拦成「跳过 hydration」</td>
+        </tr>
+        <tr>
+          <td><strong>L4 页面</strong></td><td class="num">7 个</td>
+          <td>Next app + <code>manifest.slots.json</code> + 生成的 gen 文件 + <strong>178–325 行手写 wrapper</strong> + layout + metadata + budget + health route</td>
+          <td><strong>高</strong>：路由注册表是<strong>硬编码 TS 字面量</strong>，必须手改 <code>packages/routes/src/registry.ts</code></td>
+          <td><strong>最贵</strong>：<code>packages/routes/**</code> 属于 GLOBAL 触发前缀 → 22 个镜像全量重建</td>
+        </tr>
+        <tr>
+          <td><strong>L5 Shell 网关</strong></td><td class="num">1 个 / 544 行</td>
+          <td>Fastify 透明代理 + 安全头 + <code>/_next/*</code> 反代 + 偏好开关</td>
+          <td>不新增</td>
+          <td>改动即 GLOBAL；同时它是<strong>唯一单点</strong>（见 F-04、F-05）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    <strong>结论：成本曲线是不对称的，而且方向是对的。</strong>「加一个业务片段」被优化到了极致（注册表窄化 + 0 页面重建），
+    这正是这套架构想让人高频做的事；「加一个页面 / 改路由」很贵，这类事本来就低频。
+    唯一的错配是 L2 的<em>名义成本</em>（文档承诺的 9 文件脚手架）和<em>实际成本</em>（还要抄 190 行样板）差得太远。
+  </p>
+</section>
+
+<!-- ───────── SEO ───────── -->
+<section id="seo">
+  <div class="sec-head"><span class="sec-num">05</span><h2>SEO：地基对了，门面几乎没做</h2></div>
+  <p>
+    先说好的：这套架构对 SEO 的<strong>结构性前提</strong>是正确的——SEO 关键内容确实在首屏 HTML 里，片段是服务端拼装，
+    <code>e2e/no-js.spec.ts</code> 用 <code>javaScriptEnabled: false</code> 真跑一遍首页并断言标题、两个片段区块、编辑内容都可读。
+    这比绝大多数「微前端 + SEO」方案都扎实。问题全在发布级的 SEO 表面。
+  </p>
+
+  <div class="finding resolved p1">
+    <div class="fhead"><span class="chip p1">F-08</span><span class="chip done">已修复</span><span class="ft">全仓库没有 robots.txt、没有 sitemap，也没有 canonical / OG / hreflang</span></div>
+    <p>按文件名搜索 <code>robots*</code> / <code>sitemap*</code> 结果为空；Next 的 <code>robots.ts</code> / <code>sitemap.ts</code> 约定文件也不存在。
+    7 个页面的 <code>metadata</code> 只有 <code>title</code> + <code>description</code> 两个字段——没有 <code>alternates.canonical</code>、没有 <code>openGraph</code>、没有 twitter card、没有多语言 <code>hreflang</code>。
+    唯一的结构化数据是 <code>page-product</code> 的一段 JSON-LD。</p>
+    <p>影响：站点无法被系统性抓取（7 条路由靠外链发现）、被 shell 与页面双端口暴露时没有规范链接去收敛重复内容、分享无卡片。</p>
+    <span class="ev">apps/page-*/src/metadata.ts（各 7 行）· apps/page-product/app/product/[id]/page.tsx:35 generateMetadata · :171 ld+json</span>
+    <div class="fix"><b>修复 →</b> 网关新增 <code>/robots.txt</code> 与 <code>/sitemap.xml</code>，从路由注册表派生（加路由自动扩展，无第二份清单）；带参路由被排除 —— 发 <code>/product/:id</code> 给爬虫等于发一个 404，而枚举真实 id 属于拥有目录的那个页面应用。origin 优先 <code>PUBLIC_SITE_ORIGIN</code>，否则从请求推导并认 <code>x-forwarded-proto/host</code>。
+   七个页面改用 <code>@mvp/runtime/seo</code> 的 <code>createPageMetadata()</code> 统一产出 canonical + hreflang(en-US/zh-CN/x-default) + OG + Twitter + robots；portfolio 标 <code>noindex</code>，trade 的 canonical 指向默认 symbol，product 走 <code>generateMetadata</code> 出 per-product canonical。
+   <b>证明</b>：4 条网关测试（含 CDN 转发头场景、带参路由排除断言）+ 10 条 seo 模块测试。</div>
+  </div>
+
+  <div class="finding resolved p1">
+    <div class="fhead"><span class="chip p1">F-09</span><span class="chip done">已修复</span><span class="ft"><code>lang</code> 在两个页面被硬编码为 en，而这两个页面正在注入中文文案</span></div>
+    <p>5 个较新的页面正确地写 <code>&lt;html lang={LOCALE_LANG[locale]} data-theme={resolvedTheme}&gt;</code>；
+    但 <strong><code>page-home</code>（根路由 <code>/</code>）和 <code>page-product</code> 仍写死 <code>&lt;html lang="en" data-theme="system"&gt;</code></strong>——
+    而 <code>page-home</code> 的 layout 同时把 <code>zh-CN</code> 的 i18n 消息作为资产注入。语言信号自相矛盾，且出现在站点最重要的两个页面上。
+    这是一个典型的「重构只推了 5/7」的残留。</p>
+    <span class="ev">apps/page-home/app/layout.tsx:40 · apps/page-product/app/layout.tsx:37 ↔ apps/page-markets/app/layout.tsx:94</span>
+    <div class="fix"><b>修复 →</b> <code>page-home</code>（根路由）与 <code>page-product</code> 的 layout 改为 <code>async</code>，按 cookie 解析 <code>lang</code> 与 <code>data-theme</code>，与另外五个页面一致。两个 layout 的测试也从同步渲染改成 <code>vi.mock("next/headers")</code> 模式，并新增了此前没有的断言：locale cookie 改变 <code>lang</code>、theme cookie 改变 <code>data-theme</code>。
+   <b>证明</b>：两个页面各 5 条测试。</div>
+  </div>
+
+  <div class="finding resolved p1">
+    <div class="fhead"><span class="chip p1">F-10</span><span class="chip done">已修复</span><span class="ft">内部诊断区块无条件出现在公开 HTML 里，还带 <code>&lt;h2&gt;</code></span></div>
+    <p>每个组合页面都渲染 <code>Request trace</code>（含依赖图与耗时）、<code>scheduler-health</code>、<code>render-strategies</code>、<code>data-dag</code> 等区块，
+    <strong>没有任何环境门控</strong>——页面代码里唯一的 <code>process.env</code> 用法是那个 cookie secret。
+    对 SEO 是正文被非用户内容稀释、标题层级被污染；对安全是内部调度拓扑与时延外泄。
+    更麻烦的是 e2e 与 no-js 规格<strong>正在断言这些区块存在</strong>，所以「拿掉」不是删几行 JSX，而要同时改测试。demo 属性在这里是承重的。</p>
+    <span class="ev">apps/page-home/app/page.tsx:51,81,93 · apps/page-product/app/product/[id]/page.tsx:67,107,127 · e2e/no-js.spec.ts:32</span>
+    <div class="fix"><b>修复 →</b> 新增 <code>isDiagnosticsEnabled()</code>：<code>MVP_DIAGNOSTICS=on/off</code> 显式优先，否则 <strong>生产默认关</strong>。五个页面各改一处（四个 Diagnostics 的 Suspense 块 + page-trade 的 TraceDrawer）。默认值方向是刻意的：反过来（默认开 + 生产显式关）保护不了任何忘记配置的部署。compose 给 7 个页面显式设 <code>on</code>，所以 e2e 与 runtime-gate 的断言继续有效。
+   <b>证明</b>：4 条 <code>isDiagnosticsEnabled</code> 测试；bundle 审计确认首屏 JS 未增（page-trade 前后均 202,476 字节）。</div>
+  </div>
+
+  <div class="finding resolved p0">
+    <div class="fhead"><span class="chip p0">F-11</span><span class="chip done">已修复</span><span class="ft">降级 HTML 会把内部服务地址写进公开页面</span></div>
+    <p>网络失败路径上的兜底响应由 <code>fetchFragment</code> 构造，它把<strong><code>fragment.serviceUrl</code> 当作片段名</strong>传给 <code>createFallbackResponse</code>。
+    于是片段超时时，公开 HTML 里出现的是
+    <code>&lt;section data-fragment="http://order-book:4204" data-fallback="true"&gt;&lt;p&gt;http://order-book:4204 is temporarily unavailable.&lt;/p&gt;</code>
+    ——在 k8s/compose 里这就是内部 DNS 名和端口。</p>
+    <p>附带两个连带问题：<strong>兜底标记的身份不一致</strong>（未注册 / 依赖跳过路径用的是 <code>slot.fragment</code> 正确名字，网络失败路径用的是 URL），
+    而 e2e 选择器和 <code>verify:runtime</code> 的版面测量都按 <code>[data-fragment="&lt;name&gt;"]</code> 来找元素；
+    以及 <code>reason</code> 被<strong>未转义</strong>插进 <code>&lt;small&gt;</code>。</p>
+    <span class="ev">packages/runtime/src/index.ts:226 createFallbackResponse(fragment.serviceUrl, …) ↔ :495 createFallbackResponse(slot.fragment, …) · :177 createFallbackHtml 模板插值</span>
+    <div class="fix"><b>修复 →</b> <code>fetchFragment</code> 的第一个参数新增可选 <code>name</code>，<code>fetchFragmentSlot</code> 传 <code>slot.fragment</code>；做成可选是为了不破坏现有直接调用者，缺省用 <code>ANONYMOUS_FRAGMENT_NAME</code> 而不是 URL。<code>createFallbackHtml</code> 对片段名与 reason 都做 HTML 转义。三条降级路径的 <code>data-fragment</code> 身份由此统一。
+   <b>证明</b>：断言写成否定式 —— <code>not.toContain("promotion-banner.internal")</code> 与 <code>not.toContain("4201")</code>。</div>
+  </div>
+
+  <div class="finding p2">
+    <div class="fhead"><span class="chip p2">F-12</span><span class="chip skip">按要求跳过</span><span class="ft">组合后的 HTML 不带任何缓存头，片段缓存也不跨副本共享</span></div>
+    <p>网关 <code>/*</code> 处理器只设 <code>content-type</code> 和 <code>x-trace-id</code>，<strong>没有 <code>Cache-Control</code> / <code>ETag</code> / <code>Vary</code></strong>（<code>x-shell-cache: route-registry</code> 只是个标签，不影响缓存）。
+    片段级缓存是页面进程内的一个 <code>Map</code>，2 副本就是 2 份，没有共享层。也就是说目前每个请求都真实穿透到页面与片段。</p>
+    <span class="ev">apps/shell-gateway/src/server.ts:160–207 · packages/runtime/src/index.ts:125 defaultFragmentCache = new Map()</span>
+    <div class="fix"><b>修复 →</b> 属于运维配置类（缓存头 / CDN 策略 / 共享缓存层），本轮明确不在范围。<b>相关但已修的部分</b>：进程内缓存不再无界，见 F-15。</div>
+  </div>
+</section>
+
+<!-- ───────── 人力 ───────── -->
+<section id="human">
+  <div class="sec-head"><span class="sec-num">06</span><h2>人力接手成本</h2></div>
+
+  <h3>降低成本的地方（实测支撑）</h3>
+  <ul>
+    <li><strong>没有需要「攻克」的文件。</strong>最大非测试文件 1,156 行，第二名 850 行。任何一个机制都能一次读完。</li>
+    <li><strong>反馈环只要两分钟。</strong><code>pnpm verify</code> 14 道门禁 123.8 秒，其中 76 秒是 8 个 Next 构建。改一行到知道有没有破坏，成本近乎为零。</li>
+    <li><strong>注释写的是决策而不是代码。</strong>大量 <code>// 曾经这样错过</code> 型注释（如 <code>page-trade</code> 为何不流式、预算数字为何是 220000、为何 CSP 退成 unsafe-inline），这类信息通常只存在于离职同事脑子里。</li>
+    <li><strong>错误可判别。</strong>5 个带结构化字段的命名错误类，排障不用猜。</li>
+    <li><strong>测试是可运行的规格。</strong>片段测试/源码行数比 0.33–0.60，且因为全面依赖注入，测试里没有网络与时钟。</li>
+  </ul>
+
+  <h3>提高成本的地方</h3>
+  <div class="finding resolved p0">
+    <div class="fhead"><span class="chip p0">F-01</span><span class="chip done">已修复</span><span class="ft">冷克隆后 <code>pnpm test</code> 是红的</span></div>
+    <p>冷装依赖后直接跑 <code>pnpm test</code>，<code>packages/mcp</code> 有一个测试失败：它在进程内调用 <code>mount_slot --check</code>，
+    子进程因为 <code>@mvp/contracts</code> 没有 <code>dist/</code> 抛 <code>ERR_MODULE_NOT_FOUND</code>，于是 <code>JSON.parse</code> 拿到的是 Node 的错误堆栈
+    （<code>SyntaxError: Unexpected token 'o', "node:intern"...</code>）。<code>pnpm verify:manifest-gen</code> 单跑同样直接 fail。</p>
+    <p>补一次 <code>pnpm --filter ./packages/* --filter ./domains/* build</code>（33.8 秒）后，两者都变绿（mcp 23/23 通过）。
+    也就是说这不是代码 bug，而是<strong>前置条件只写在 <code>verify.mts</code> 里</strong>：umbrella 命令会预构建，单个门禁不会。
+    而 <code>CLAUDE.md</code>「常用命令」第一条就是 <code>pnpm test</code>。新人和 agent 第一次操作就会撞上一个看起来像真故障的失败。</p>
+    <span class="ev">复现：pnpm install → pnpm test。修复位置：scripts/verify.mts:36–66 的前置构建注释已记录同一根因（commit 0527483 只修了 verify）</span>
+    <div class="fix"><b>修复 →</b> 新增 <code>scripts/ensure-workspace-build.mts</code>：读每个包自己的 <code>package.json</code>（只看声明了 build 脚本的包，收集 <code>main</code>+<code>exports</code> 里指向 <code>dist/</code> 的条目逐个 existsSync），<strong>只在真缺时构建，无事静默</strong>以保持门禁输出可解析。接到 <code>pnpm test</code>、<code>verify:manifest-gen</code>、<code>docs:test</code>、<code>verify.mts</code> 四处。
+   没有用 pnpm 的 <code>pretest</code> 钩子 —— <code>enable-pre-post-scripts</code> 在 pnpm v7+ <strong>默认是 false</strong>，装钩子会变成一个更隐蔽的坑。
+   <b>证明</b>：删光 25 个 dist 后 <code>pnpm test</code> EXIT=0、<code>verify:manifest-gen</code> status pass。</div>
+  </div>
+
+  <div class="finding resolved p1">
+    <div class="fhead"><span class="chip p1">F-02</span><span class="chip done">已修复</span><span class="ft">14 份近乎相同的片段宿主样板，且相似度门禁看不见它们</span></div>
+    <p><code>fragments/*/src/server.ts</code> 14 份，每份 130–188 行；随机取两份（order-book / trades-feed）逐行 diff 仅 28 行不同，其中实质差异只有名字、端口、render 函数——<strong>约 90% 完全相同</strong>。
+    <code>observability.ts</code> 同样 14 份、58–59 行、diff 10 行（≈83% 相同）。全仓库 grep 不到 <code>createFragmentServer</code> / fragment-host 之类抽象。</p>
+    <p>后果：片段 HTTP 契约要改一处（加 <code>/ready</code>、改指标标签、加超时）就是 14 次编辑，而且漂移已经开始——两份文件的指标代码位置和注释已经不一致。
+    关键点是<strong>这类重复对门禁完全隐形</strong>：相似度审计只 fingerprint <code>.tsx</code>，实跑「检查文件数 22」= <code>packages/ui</code> 的 18 个 + 片段的 4 个 <code>island.tsx</code>。
+    14 份 <code>.ts</code> 服务样板一个都不在里面。</p>
+    <span class="ev">diff fragments/order-book/src/server.ts fragments/trades-feed/src/server.ts → 28 行 · reports/similarity-report.md「Checked files: 22」· tools/component-similarity-check/src/index.ts:86–95（仅 .tsx）</span>
+    <div class="fix"><b>修复 →</b> 抽出 <code>@mvp/fragment-host</code>（285 行）承载全部 HTTP 面 + 指标 + trace 导出；14 份 <code>server.ts</code> 从 1,902 行降到 655 行（order-book 131→42），14 份 <code>observability.ts</code>（816 行）全删。<strong>合计 2,718 → 940 行。</strong>
+   迁移时被测试抓出两处真实语义差异：market-header 的渲染依赖注入时钟（host 现在统一透传 <code>now</code>），order-form 的 island bundle 路由需要 <code>Access-Control-Allow-Origin</code>（跨源 module fetch，原注释写明是真机才发现的）。
+   防回归<strong>没有</strong>用相似度阈值：实测把扫描扩到 <code>.ts</code> 会让受检文件从 22 涨到 85、超阈值配对约 85 对，其中 13 对是 <code>styles.ts</code> 之间 &gt;0.90（该指纹权重是 name/props/tokens/JSX，套在 CSS-in-string 上只在测共用了多少 token 词汇）。改用精确规则 <code>fragment-server-not-hosted</code>。
+   <b>证明</b>：455 个片段测试全过；新规则带 2 条测试。</div>
+  </div>
+
+  <div class="finding resolved p2">
+    <div class="fhead"><span class="chip p2">F-13</span><span class="chip done">部分修复</span><span class="ft">概念负载客观偏重，且有几处手工同步点没有门禁</span></div>
+    <p>要真正拥有这套系统，需要同时装下：22 个部署单元、19 个框架包、2 个注册表、4 条生命周期、40 个 schema、14 道门禁、6 个审计规则族、两级片段独立性模型。
+    这是能力的代价，不算缺陷。但有三处<strong>手工同步点</strong>既没生成器也没门禁，是真实的踩坑位：</p>
+    <ul>
+      <li>根 <code>vitest.config.ts</code> 的 alias 表（≈110 行，加包/加片段入口都要手改）</li>
+      <li>k8s 清单里每个页面的 <code>&lt;FRAGMENT&gt;_URL</code> 环境变量列表（<code>mount-slot</code> 会重生成 gen 文件，但<strong>不碰 k8s YAML</strong>；<code>register-fragment --with-compose</code> 只管 compose）</li>
+      <li>各页面 178–325 行的手写 wrapper（数据客户端装配、聚合段组装、流式入口）</li>
+    </ul>
+    <span class="ev">vitest.config.ts · infra/k8s/page-trade.yaml env 段 · apps/page-*/src/fragmentSlots.ts（178/194/241/243/325 行）</span>
+    <div class="fix"><b>修复 →</b> <strong>已修</strong>：<code>vitest.config.ts</code> 的 110 行手写 alias 表改为 <code>scripts/workspaceAliases.mts</code> 从各包 <code>exports</code> 派生，并与 <code>docs-test.mts</code> 共用一份实现。关键细节是必须读 exports 的 <em>target</em> —— <code>@mvp/fragment-order-book/patch</code> 指向 <code>src/ladder.ts</code>，猜 <code>src/patch.ts</code> 会直接找不到文件；key 还要按长度倒序插入，因为 Vite 的对象式 alias 是前缀匹配。
+   <strong>仍在</strong>：k8s 清单里每个页面的 <code>&lt;FRAGMENT&gt;_URL</code> 列表仍需手工同步（属运维范围）；各页面 178–325 行的手写 wrapper 不变（那是真正的每请求胶水，不是重复）；概念负载是能力的代价，不算缺陷。</div>
+  </div>
+
+  <h3>时间估算</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>目标</th><th>估时</th><th>依据</th></tr></thead>
+      <tbody>
+        <tr><td>读懂一条完整请求链路（网关→页面→片段→降级）</td><td class="num">0.5–1 天</td><td>链路上的文件都不大，且 <code>docs/ARCHITECTURE.md</code> + <code>COMPOSITION.md</code> 与代码一致</td></tr>
+        <tr><td>独立交付一个新 Tier 1 片段并上线</td><td class="num">2–3 天</td><td>脚手架不可用（F-03），实际路径是抄一个现存片段 + 端口 + compose + k8s + 注册 + 挂载 + verify</td></tr>
+        <tr><td>独立交付一个 Tier 2 island 片段</td><td class="num">4–6 天</td><td>再叠加总线契约、版本握手、逃生口、alias、页面 bundle 注册</td></tr>
+        <tr><td>能安全改动 <code>@mvp/runtime</code> 调度器 / affected 引擎</td><td class="num">1–2 周</td><td>逻辑本身是纯函数且测试充分，但要先理解 DAG/降级传播/流式三者的交互</td></tr>
+        <tr><td>补齐生产化（本报告 P0+P1）</td><td class="num">2–3 人周</td><td>见 §09</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ───────── AI ───────── -->
+<section id="ai">
+  <div class="sec-head"><span class="sec-num">07</span><h2>AI 接手成本：维护近乎最优，新建被脚手架拖累</h2></div>
+
+  <h3>维护场景：A−</h3>
+  <p>
+    这是整个仓库设计得最好的一面，而且是真的：统一 JSON 信封 + <code>process.exitCode</code>；未知 flag 直接拒绝并给出拼写建议；
+    <code>register</code>/<code>mount</code> 幂等（重跑得 <code>action: "unchanged"</code>）；失败不落盘；并发冲突返回 <code>{"status":"conflict","retry":true}</code>。
+    并发安全的底座 <code>packages/registry/src/atomic-file.ts</code> 我逐行看过，实现是正确的：
+    <code>writeFileSync(lock, {flag:"wx"})</code> 做独占创建、10 秒陈旧锁抢占、加载期内容哈希做乐观校验、temp + <code>renameSync</code>、<code>finally</code> 释放锁。
+    单机多 agent 并行是可靠的（跨机共享卷不在保证范围内，但也不是这个仓库的场景）。
+  </p>
+  <div class="finding resolved p2">
+    <div class="fhead"><span class="chip p2">F-07</span><span class="chip done">已修复</span><span class="ft"><code>docs:test</code> 的覆盖面比宣传的窄，而且漏掉的正是最关键的两个包</span></div>
+    <p>「AGENT.md 里的代码被真实执行」是真的，但实跑数据是：35 个 AGENT.md 共 5,110 行，其中<strong>可执行片段只有 34 个</strong>，另有 6 个被 <code>no-run</code> 显式豁免，
+    <strong>3 个文件状态是 skipped（零可执行片段）</strong>——而这 3 个是 <code>packages/registry/AGENT.md</code>（253 行，生命周期核心）、
+    <code>packages/request/AGENT.md</code>（唯一允许的 HTTP 出口）、<code>tools/create-component/AGENT.md</code>（脚手架）。
+    换句话说：agent 最依赖的三份文档恰好不在这道门禁的保护范围内。剩余约 47 个非 TS 代码块（命令、JSON 输出）与全部表格/散文同样不被校验。</p>
+    <span class="ev">reports/docs-test-report.json：35 files / 32 pass / 3 skipped / 34 executableBlocks / 6 noRunBlocks</span>
+    <div class="fix"><b>修复 →</b> 三个零可执行片段的 AGENT.md 各补了一个<strong>可运行的第二例子</strong>，而不是去改原来那两个「会写盘/会联网」的例子让它们假装能跑：registry 走纯 mutation 层（register → 幂等重放 → 挂载门 → promote → codegen，全程无 I/O），request 走注入 <code>fetchImpl</code> 的假上游（覆盖 policy 拒绝、无 schema 的 cast、<code>RequestContractError</code> 的 schemaName 与 issues），create-component 走纯模板函数。为第三个例子给 <code>@mvp/create-component</code> 加了 <code>./fragmentTemplate</code> 导出（顺带被新的 alias 生成器自动识别）。新包 <code>@mvp/fragment-host</code> 的 AGENT.md 也带一个覆盖完整路由契约的可执行例子。
+   <b>证明</b>：<strong>36 个文件 / 38 个可执行块 / 0 skipped / 0 fail</strong>。</div>
+  </div>
+
+  <h3>新开发场景：C+ — 这是最该先修的一处</h3>
+  <div class="finding resolved p0">
+    <div class="fhead"><span class="chip p0">F-03</span><span class="chip done">已修复</span><span class="ft">脚手架返回 <code>"status": "created"</code>，产出的片段却根本跑不起来</span></div>
+    <p>读 <code>tools/create-component/src/index.ts</code>（整个文件 175 行）的 fragment 分支，生成内容是：</p>
+    <div class="cmdbox">src/server.ts   →  import { renderX } from "./render";
+                   export { renderX };            ← 没有 Fastify，没有任何 HTTP 路由
+Dockerfile      →  FROM node:22-alpine
+                   WORKDIR /app
+                   CMD ["node", "dist/server.js"]  ← 没有 COPY / install / build
+src/fixtures.ts →  { basic: { ctx: {}, props: {} } }  ← 空 ctx 过不了 RequestContextSchema
+package.json    →  deps 仅 @mvp/contracts + fastify</div>
+    <p>而 14 个真实片段每个都有：131–188 行 Fastify 服务（<code>/health</code> <code>/metrics</code> <code>/manifest</code> <code>/assets</code> <code>/budget</code> <code>POST /render</code>）、
+    独立的 <code>observability.ts</code>、7 个 <code>@mvp/*</code> 依赖 + zod、以及一份能真正构建的 8 行 Dockerfile（<code>COPY . .</code> + <code>pnpm install</code> + 过滤构建 + 端口）。</p>
+    <p><strong>为什么这对 AI 尤其致命</strong>：<code>docs/OPERATIONS.md</code> 第 1 步的验收判据是 <code>"status": "created"</code> 且 <code>files.length === 9</code>——
+    这个判据会通过。agent 于是拿到一个明确的成功信号，继续走第 2、3、4 步，而它手上的服务既没有 <code>/render</code> 也没有可构建的镜像。
+    真实可行路径是「复制一个现存片段目录再改名」，但这条路径既不在文档里，也不在任何工具里。</p>
+    <span class="ev">tools/create-component/src/index.ts:96–175 ↔ fragments/order-book/src/server.ts（131 行）+ fragments/order-book/Dockerfile（9 行）+ package.json（7 个 @mvp 依赖）</span>
+    <div class="fix"><b>修复 →</b> 模板抽到 <code>fragmentTemplate.ts</code>（纯字符串构造函数），产出 11 个文件且<strong>开箱即跑</strong>：host 适配器、返回 <code>{statusCode, body}</code> 的 render、带真实 ctx 的 fixtures、真能构建的 Dockerfile，以及第 10 个文件 <code>tsconfig.json</code> —— 没有它新片段会<strong>静默不被 <code>pnpm typecheck</code> 检查</strong>（project 是靠扫这个文件发现的）。端口由 <code>nextFragmentPort()</code> 扫已用值后自动分配。
+   <b>证明</b>：在真仓库里 scaffold 了一个探针片段（自动分到 4215），build 出 3.63 kB 的 <code>dist/server.js</code>，启动后 <code>/health</code> 返回 <code>{"service":"scaffold-probe","version":"0.1.0"}</code>、<code>POST /render</code> 返回真 HTML，随后删除。</div>
+  </div>
+  <p>
+    除此之外，AI 新开发的其余环节都是顺的：<code>MCP</code> server 把发现（<code>query_registry</code> / <code>affected_units</code>）和全套生命周期包成工具，
+    <code>SCRIPT_TOOLS.args</code> 是纯的输入→CLI 映射且被单测，<code>llms.txt</code> 是精选而非罗列。
+    只要把 F-03 修成「脚手架产出即可运行的服务」，这一项能直接从 C+ 提到 A−。
+  </p>
+</section>
+
+<!-- ───────── 运维 ───────── -->
+<section id="ops">
+  <div class="sec-head"><span class="sec-num">08</span><h2>线上运维成本：最需要投入的一块</h2></div>
+
+  <div class="finding resolved p0">
+    <div class="fhead"><span class="chip p0">F-04</span><span class="chip done">已修复</span><span class="ft">唯一入口的两处 <code>fetch</code> 既无超时也无取消，而这个位置恰好被审计规则排除</span></div>
+    <p>网关的页面反代（<code>/*</code>）和资产反代（<code>/_next/*</code>）都是裸 <code>fetch(...)</code>，<strong>没有 <code>AbortController</code>，没有超时</strong>。
+    Node 的 fetch 本身没有默认超时，Fastify 也不加，所以一个卡死的页面进程会让网关请求无限期挂住。</p>
+    <p>它本该被 <code>audit:deps</code> 的 <code>raw-fetch-in-business-code</code> 规则拦住，但该规则的作用域函数是
+    <code>/^apps\/page-[^/]+\/(app|src)\//</code> ——<strong><code>apps/shell-gateway</code> 不匹配任何分支，被静默豁免</strong>。
+    最需要这条规则的组件正好是唯一逃过它的组件。</p>
+    <p>同一问题的另一面在运行时层：<code>@mvp/runtime</code> 的 <code>withTimeout</code> 只是 <code>Promise.race</code> 一个定时器然后返回兜底，
+    <strong>不 abort 底层请求</strong>。每请求最多 9 个槽位、每个 200 ms 超时，慢片段场景下在飞请求数没有上限（socket 与未读响应体持续占用）。
+    对照之下 <code>@mvp/request</code> 反而做对了——它老老实实用了 <code>AbortController</code>。</p>
+    <span class="ev">apps/shell-gateway/src/server.ts:134,187（无 signal）· tools/dependency-audit/src/index.ts:276 规则调用 → :446–451 isBusinessCodeFile · packages/runtime/src/index.ts:161–176 withTimeout（无 signal）↔ packages/request/src/index.ts:232,242（有 AbortController）</span>
+    <div class="fix"><b>修复 →</b> 三处都补上取消：网关页面代理与资产代理带 abort signal（<code>SHELL_PAGE_TIMEOUT_MS</code>=5s / <code>SHELL_ASSET_TIMEOUT_MS</code>=10s，可注入可覆盖）；<code>withTimeout</code> 新增 <code>onTimeout</code> 回调，<code>fetchFragment</code> 用它 abort 上游。
+   <strong>实现中发现的坑</strong>：直接写 <code>AbortSignal.timeout(ms)</code> 会让网关 11 个测试全红 —— happy-dom 用自己的实现替换了全局 <code>AbortSignal</code> 且<strong>没有 <code>.timeout</code></strong>，每个代理请求都抛异常走 502。改用 <code>createUpstreamTimeout()</code>：有原生用原生，没有就 AbortController + setTimeout + unref，并在 finally 清定时器。
+   审计侧新增 <code>fetch-without-timeout</code>（只针对网关：裸 fetch 可以，但必须带 signal），实现是找到 <code>fetch(</code> 后<strong>扫括号配对</strong>取完整实参再查 <code>signal:</code>，不是正则匹配整个调用。
+   <b>证明</b>：两条网关测试断言 <code>observed?.aborted === true</code>；新规则 3 条测试覆盖注释/字符串/多行 init。</div>
+  </div>
+
+  <div class="finding p0">
+    <div class="fhead"><span class="chip p0">F-05</span><span class="chip skip">按要求跳过</span><span class="ft">22 个 Dockerfile 全是单阶段，依赖层缓存被结构性破坏</span></div>
+    <p>22 份 Dockerfile（<code>grep -l "AS \|as builder"</code> 命中 <strong>0</strong>）的结构完全一样：</p>
+    <div class="cmdbox">FROM node:22-alpine
+COPY . .                        ← 先拷全仓库
+RUN pnpm install --frozen-lockfile   ← 再安装 ⇒ 任何源码改动都作废依赖层
+RUN pnpm --filter &lt;unit&gt;... build</div>
+    <p>三重代价：① <strong>缓存必然失效</strong>——顺序反了，改一个字符就要重装 563 MB 依赖；
+    ② <strong>没有多阶段 / 没有 prod prune</strong>，最终镜像带着全部 devDependencies、全部源码、其他 21 个单元的代码，单镜像 0.6 GB 量级，22 个合计十几 GB；
+    ③ 每个镜像都做<strong>整仓库</strong>安装（根 <code>pnpm install</code> 无过滤），而不是只装该单元需要的部分。</p>
+    <p>放到 CI 里看：<code>e2e</code> job 在每次 main push（以及带 <code>e2e</code> 标签的 PR）上 <code>docker compose build</code> <strong>全部 22 个镜像</strong>，再起栈、冒烟、跑 5 条 <code>verify:runtime</code>、再跑严格 e2e。这是目前最大的单笔 CI 开销，而且它<strong>不受 affected 收窄保护</strong>（affected 只作用于 docker matrix job）。</p>
+    <span class="ev">fragments/*/Dockerfile · apps/*/Dockerfile（均单阶段）· .github/workflows/ci.yml e2e job「docker compose build」</span>
+    <div class="fix"><b>修复 →</b> 镜像结构属于运维配置类，本轮明确不在范围（各家有自己的镜像仓库与编排体系）。诊断结论不变：22 份 Dockerfile 无多阶段、<code>COPY . .</code> 在 install 之前使依赖层缓存必然失效、最终镜像带全部 devDependencies。</div>
+  </div>
+
+  <div class="finding p1">
+    <div class="fhead"><span class="chip p1">F-14</span><span class="chip skip">按要求跳过</span><span class="ft">44 个 pod、无 HPA/PDB/Ingress/NetworkPolicy，且入口规格最小</span></div>
+    <div class="tw" style="margin:8px 0 10px">
+      <table>
+        <thead><tr><th>档位</th><th>单元</th><th>requests</th><th>limits</th></tr></thead>
+        <tbody>
+          <tr><td>片段档</td><td class="num">14 片段 + <strong>shell-gateway</strong></td><td class="num">50m / 128Mi</td><td class="num">300m / 256Mi</td></tr>
+          <tr><td>页面档</td><td class="num">7 个 Next 页面</td><td class="num">100m / 256Mi</td><td class="num">500m / 512Mi</td></tr>
+          <tr><td colspan="2"><strong>全量（22 × 2 副本 = 44 pod）</strong></td><td class="num">2.9 vCPU / 7.25 GiB</td><td class="num">16 vCPU / 14.5 GiB</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>清单里出现的 kind 只有 Deployment(22)、Service(22)、Rollout(1)、AnalysisTemplate(2)、Kustomization(1)：
+    <strong>没有 HPA、没有 PodDisruptionBudget、没有 Ingress、没有 NetworkPolicy、没有 ServiceMonitor/PrometheusRule</strong>。
+    最扎眼的是 <strong>shell-gateway 被放进了片段档</strong>——它是所有流量的唯一入口，<em>还要把每个 <code>/_next/*</code> 资产整体读进内存</em>
+    （<code>Buffer.from(await upstream.arrayBuffer())</code>，无流式转发），却只有 128Mi requests / 256Mi limits。这是最容易先炸的一格。</p>
+    <span class="ev">infra/k8s/*.yaml（逐份核对）· apps/shell-gateway/src/server.ts:142 Buffer.from(await upstream.arrayBuffer())</span>
+    <div class="fix"><b>修复 →</b> k8s 清单属于运维配置类，本轮未动。诊断结论不变，尤其 <strong>shell-gateway 被放进片段资源档</strong>（50m/128Mi requests）却要在内存里 buffer 全部 <code>/_next/*</code> 资产 —— 这仍是最容易先炸的一格。</div>
+  </div>
+
+  <div class="finding resolved p1">
+    <div class="fhead"><span class="chip p1">F-15</span><span class="chip done">已修复</span><span class="ft">片段缓存只增不减；声明的 cache tags 没有失效实现</span></div>
+    <p><code>defaultFragmentCache</code> 是模块级 <code>Map</code>。写入是 <code>cache.set(key, {expiresAt, response})</code>，读取时检查过期——
+    但<strong>全文件只有一个 <code>clearFragmentCache()</code>（整体清空），没有 <code>cache.delete</code>、没有容量上限、没有定期清扫</strong>。
+    过期条目永远留在内存里。缓存键按 <code>tenant/locale/experiment/props</code> 变化，<code>props</code> 里放的是像 <code>symbol</code> 这类高基数值，
+    在 512Mi 上限的长驻 Next 进程里这是一条确定的内存增长曲线。</p>
+    <p>另外 <code>cachePolicy.tags</code> 只是被原样塞进响应的 <code>cache.tags</code> 字段，<strong>片段 HTML 缓存侧没有任何按 tag 失效的代码</strong>
+    （<code>@mvp/data</code> 的 tag 失效是数据层的，管不到这里）。也就是说槽位上写的 tags 目前是装饰性的。</p>
+    <span class="ev">packages/runtime/src/index.ts:125,1018,1053,1107–1111（唯一的写入/读取/清空点，无 delete、无上限）· :976–978 tags 仅透传</span>
+    <div class="fix"><b>修复 →</b> <code>FragmentCacheEntry</code> 新增 <code>tags</code>；写入路径调用 <code>pruneFragmentCache()</code>（先扫过期，再按<strong>插入序</strong>淘汰最老的写入 —— <code>Map</code> 的迭代顺序就是插入顺序，不需要额外 LRU 结构），上限默认 500 且可经 <code>cacheMaxEntries</code> 透传；新增 <code>invalidateFragmentCacheByTag()</code>，槽位声明的 tags 由装饰变为可用。
+   <b>证明</b>：3 条测试，其中一条专门验证存进条目的是<strong>槽位声明的</strong> tags（<code>["home","promo"]</code>）而不是响应自带的 <code>["from-response"]</code>。</div>
+  </div>
+
+  <div class="finding p1">
+    <div class="fhead"><span class="chip p1">F-16</span><span class="chip skip">按要求跳过</span><span class="ft">可观测性有三个缺口：页面无指标、trace 默认全采样落盘、日志未结构化</span></div>
+    <ul>
+      <li><strong>7 个 Next 页面没有 <code>/metrics</code></strong>（<code>app/</code> 下只有 <code>health</code>），而网关和 14 个片段都有。
+      直接后果：Argo 的 <code>success-rate</code> / <code>latency-p95</code> AnalysisTemplate 查不到它的灰度目标 <code>page-product</code>——金丝雀链路是断的。</li>
+      <li><strong>trace 默认全量落盘。</strong><code>ensureTraceExportConfigured()</code> 默认 <code>rate = 1</code>，同时挂 file + console 两个 exporter；
+      file exporter 往容器内 <code>reports/traces/&lt;service&gt;-&lt;date&gt;.jsonl</code> 追加，<strong>无轮转、无上限</strong>。生产默认配置会持续写满容器盘并放大日志量。</li>
+      <li><strong>日志未结构化。</strong>网关和片段都是 <code>Fastify({ logger: false })</code>，可见输出是 <code>console.log/warn</code>。没有 request id 贯穿的结构化日志。</li>
+      <li>另外没有 rate limit、没有 HSTS。</li>
+    </ul>
+    <span class="ev">find apps -type d -name metrics → 空 · apps/shell-gateway/src/observability.ts:75–90（rate 默认 1，file+console）· packages/observability/src/traceExport.ts:93–101（appendFile，无轮转）</span>
+    <div class="fix"><b>修复 →</b> 可观测性配置（页面 <code>/metrics</code>、trace 采样与文件轮转、结构化日志）属于运维范围，本轮未动。诊断结论不变：7 个 Next 页面仍无 <code>/metrics</code>，所以 Argo 的 AnalysisTemplate 查不到灰度目标 <code>page-product</code>，金丝雀链路仍是断的。</div>
+  </div>
+
+  <div class="finding p1">
+    <div class="fhead"><span class="chip p1">F-17</span><span class="chip skip">按要求跳过</span><span class="ft">配置缺失是静默回落，不是 fail-closed</span></div>
+    <p>URL 环境变量的校验只在<strong>已设置</strong>时生效：<code>pageServiceUrl(envVar, fallback, env)</code> 里 <code>override === undefined</code> 直接 <code>return fallback</code>，
+    而 fallback 是 <code>http://localhost:4101</code> 这类开发默认值。所以「值写错」会在启动时炸（好），「忘记设」会安静地去拨 localhost（坏）。
+    文档里「typo 会 fail fast 而不是静默拨 localhost 默认值」这句只覆盖了前一半。</p>
+    <p>同类问题：<code>RECENTLY_VIEWED_SECRET</code> 有硬编码默认值 <code>"page-product-recently-viewed-demo-secret"</code> 用来给 cookie 做 HMAC，
+    <strong>没有任何启动期校验要求生产必须覆盖它</strong>。对比之下 URL 有 schema 校验、secret 没有，保护力度正好反了。</p>
+    <span class="ev">packages/routes/src/registry.ts:27–41 pageServiceUrl · apps/page-product/src/recentlyViewed.ts:14–16</span>
+    <div class="fix"><b>修复 →</b> env fail-closed 属于部署策略，本轮未动。诊断结论不变：URL 变量「写错」会启动时炸、「忘记设」会安静回落 localhost；<code>RECENTLY_VIEWED_SECRET</code> 的硬编码默认值仍无启动期校验。</div>
+  </div>
+
+  <div class="finding p2">
+    <div class="fhead"><span class="chip p2">F-18</span><span class="chip open">部分仍在</span><span class="ft"><code>/_next/*</code> 的来源靠 Referer 反推；CSP 的 nonce 是空转的</span></div>
+    <p>资产反代用 <code>pageOriginFromReferer()</code> 从 <code>Referer</code> 的 pathname 反查路由来定位页面 origin，取不到就 404。
+    任何裁剪/缺失 Referer 的场景（隐私设置、某些代理、跨源导航）都会让 <code>/_next/static/*</code> 404，而这会连带打挂 hydration 和样式。
+    代码里对这个后果有清楚注释，说明是已知取舍，但它是个脆弱的依赖。</p>
+    <p>CSP 方面：每请求生成 base64 nonce，但 <code>createContentSecurityPolicy(_nonce?)</code> <strong>忽略参数</strong>，返回的策略是
+    <code>script-src 'self' 'unsafe-inline'</code> + <code>style-src 'self' 'unsafe-inline'</code>。函数里诚实解释了原因（组合进来的 Next 内联脚本/样式不共享 shell 的 nonce），
+    但净效果是：nonce 生成是每请求的无用开销，而 CSP 对 XSS 的实际防护接近于零。</p>
+    <span class="ev">apps/shell-gateway/src/server.ts:242 pageOriginFromReferer · src/observability.ts:49 createContentSecurityPolicy(_nonce) 未使用参数</span>
+    <div class="fix"><b>修复 →</b> Referer 反推与 CSP nonce 空转<strong>都未改</strong> —— 前者是网关已知取舍（代码里有注释说明后果），后者要么真用 nonce（需要改造组合进来的 Next 内联脚本/样式）要么删掉 nonce 生成，两条路都超出本轮范围。</div>
+  </div>
+</section>
+
+<!-- ───────── 门禁真实性 ───────── -->
+<section id="gates">
+  <div class="sec-head"><span class="sec-num">09</span><h2>14 道门禁的真实拦截力（按实跑结果）</h2></div>
+  <p>「14 道门禁」是真的，但强度不均。下表的判定全部来自本次实跑的报告文件，而不是门禁的自我描述。</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>门禁</th><th>评估时强度</th><th>实跑事实（评估时 → 修复后）</th></tr></thead>
+      <tbody>
+        <tr><td><code>typecheck</code> / <code>lint</code> / <code>check</code></td><td><span class="pill real">真拦</span></td><td>exit 0；tsgo 全 project</td></tr>
+        <tr><td><code>verify:manifest-gen</code></td><td><span class="pill real">真拦</span></td><td>5 页 fresh / 2 页 exempt；漂移在结构上不可能。<b>→</b> 单跑的前置构建问题已修（F-01）</td></tr>
+        <tr><td><code>verify:demos</code></td><td><span class="pill real">真拦</span></td><td>pass；能力表由页面 manifest 生成</td></tr>
+        <tr><td><code>docs:test</code></td><td><span class="pill part">半拦</span></td><td>只执行 34 个片段；3 个 AGENT.md 零可执行片段（含 registry / request）。<b>→</b> 现在 <span class="pill real">真拦</span>：36 文件 / 38 块 / <strong>0 skipped</strong>；表格与散文仍不校验（无解，那是散文）</td></tr>
+        <tr><td><code>test</code></td><td><span class="pill real">真拦</span></td><td>129 个测试文件，16.8 s；但冷启动依赖 <code>dist/</code>（F-01）。<b>→</b> 131 文件 / 1326 用例 / 24.5 s，冷启动自愈</td></tr>
+        <tr><td><code>build</code></td><td><span class="pill real">真拦</span></td><td>75.8 s，8 个 Next 应用 + 全部包。<b>→</b> 100.3 s（多了一个包与一份 seo 入口）</td></tr>
+        <tr><td><code>audit:similarity</code></td><td><span class="pill part">半拦</span></td><td>pass，阈值 0.82，但<strong>受检文件仅 22 个</strong>（只看 <code>.tsx</code>）；14 份服务样板隐形。<b>→</b> 范围仍是 22（扩到 <code>.ts</code> 实测产出 85 对噪音，理由已写进代码注释）；样板问题改由 <code>fragment-server-not-hosted</code> 精确规则守，比阈值更准</td></tr>
+        <tr><td><code>audit:bundle</code></td><td><span class="pill part">半拦</span></td><td>页面侧是真的（page-trade 202,476 / 220,000 = 92%，referrals·vaults 102,531 / 110,000 = 93%，余量很紧）；<strong>9/14 片段测得 0 字节</strong>（纯 SSR 无客户端入口，或客户端代码被计入页面）</td></tr>
+        <tr><td><code>audit:css</code></td><td><span class="pill void">在测空值</span></td><td><b>→</b> 现在 <span class="pill part">如实标注</span>：0 字节的行报 <code>unmeasured</code> 而非 <code>pass</code>，note 直言「this ceiling gated nothing」。原状：status pass，但<strong>7 个页面全部 0 字节</strong>（「页面样式是内联注入的，不在此门禁」），2 个片段也是 0。全仓库实测 CSS 仅 26,231 字节，全来自 12 个片段的 <code>.css</code> 文件。页面 50,000 字节的预算永远不会触发</td></tr>
+        <tr><td><code>audit:deps</code></td><td><span class="pill real">真拦</span></td><td>0 条 issue；11 条规则（含分层、裸 fetch、孤儿总线），但作用域排除了 shell-gateway（F-04）。<b>→</b> <strong>13 条规则</strong>，新增 <code>fetch-without-timeout</code>（覆盖网关）与 <code>fragment-server-not-hosted</code></td></tr>
+        <tr><td><code>audit:optimizer</code></td><td><span class="pill part">半拦</span></td><td>只有 <code>severity: "critical"</code> 计入 fail 判定，其余是 warn</td></tr>
+        <tr><td><code>audit:boundary</code></td><td><span class="pill part">半拦</span></td><td>本次 status = <strong>warn</strong>（5 条 large-client-component），<code>--ci</code> 下仍 exit 0 —— warn 不是 fail。<b>→</b> <strong>未改</strong>：升为 fail 需拆分 5 个大文件，代价与收益不成比例</td></tr>
+        <tr><td>覆盖率</td><td><span class="pill void">未启用</span></td><td>4 项阈值均配 90%，但默认 <code>pnpm test</code> 路径不生成覆盖率（README 自述本地 coverage 模式反复卡死）。<b>→</b> <strong>未改</strong></td></tr>
+        <tr><td><code>verify:runtime</code>（非 verify 成员）</td><td><span class="pill real">真拦</span></td><td>CI 的 e2e job 对 5 条组合路由各跑一次真 Chromium；这是 verify 看不见的那一层，设计正确</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ───────── 优先级 ───────── -->
+<section id="fix">
+  <div class="sec-head"><span class="sec-num">10</span><h2>修复优先级</h2></div>
+  <p>按「阻塞程度 × 修复成本」排序。P0 四项合计约 5 人日，能把最大的三个风险敞口一次关掉。</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>级别</th><th>项</th><th>动作</th><th>估时</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip p0">P0</span></td><td>F-03 脚手架不可运行</td><td>把 <code>create-component</code> 的 fragment 模板改成真实形态：完整 Fastify 宿主（6 个端点）、可构建 Dockerfile、合法 fixtures ctx、齐全依赖；并给 <code>tools/create-component/AGENT.md</code> 补可执行片段</td><td class="num">1–1.5 d</td><td><span class="chip done">已完成</span></td></tr>
+        <tr><td><span class="chip p0">P0</span></td><td>F-04 入口无超时 / 运行时不取消</td><td>网关两处 fetch 加 <code>AbortSignal.timeout</code>；<code>withTimeout</code> 接受并透传 signal；把 <code>isBusinessCodeFile</code> 扩到 <code>apps/shell-gateway</code></td><td class="num">0.5 d</td><td><span class="chip done">已完成</span></td></tr>
+        <tr><td><span class="chip p0">P0</span></td><td>F-11 降级 HTML 泄漏内部地址</td><td><code>fetchFragment</code> 改为接收并使用片段<em>名</em>构造兜底；对 <code>reason</code> 做 HTML 转义；统一两条兜底路径的 <code>data-fragment</code> 身份</td><td class="num">0.5 d</td><td><span class="chip done">已完成</span></td></tr>
+        <tr><td><span class="chip p0">P0</span></td><td>F-01 冷启动红灯</td><td>把 <code>packages/</code>+<code>domains/</code> 前置构建提成 <code>pretest</code> / <code>prepare</code> 钩子，或让相关测试自行确保 dist；<code>CLAUDE.md</code> 常用命令处标注</td><td class="num">0.5 d</td><td><span class="chip done">已完成</span></td></tr>
+        <tr><td><span class="chip p1">P1</span></td><td>F-05 镜像结构</td><td>改多阶段：先 <code>COPY</code> lockfile+package.json 装依赖（锁住缓存层），再 <code>COPY</code> 源码构建，运行阶段只带产物 + prod 依赖；e2e job 的整栈构建加缓存或按 affected 收窄</td><td class="num">1.5–2 d</td><td><span class="chip skip">跳过（运维）</span></td></tr>
+        <tr><td><span class="chip p1">P1</span></td><td>F-02 14 份样板</td><td>抽 <code>@mvp/fragment-host</code>：<code>createFragmentServer({manifest, budget, render})</code>；14 个 <code>server.ts</code> 各收敛到 ~15 行；顺带把相似度审计扩到 <code>.ts</code></td><td class="num">2 d</td><td><span class="chip done">已完成</span></td></tr>
+        <tr><td><span class="chip p1">P1</span></td><td>F-15 缓存无淘汰</td><td>给 <code>FragmentCache</code> 加容量上限 + LRU 或过期清扫；实现按 tag 失效，或把 <code>cachePolicy.tags</code> 标注为暂未消费</td><td class="num">1 d</td><td><span class="chip done">已完成</span></td></tr>
+        <tr><td><span class="chip p1">P1</span></td><td>F-16 可观测缺口</td><td>7 个页面补 <code>/metrics</code>（解锁 Argo 灰度）；trace 采样率生产默认调低、file exporter 默认关闭或加轮转；Fastify 开结构化 logger</td><td class="num">1.5 d</td><td><span class="chip skip">跳过（运维）</span></td></tr>
+        <tr><td><span class="chip p1">P1</span></td><td>F-08/F-09/F-10 SEO</td><td>加 <code>robots.ts</code> + <code>sitemap.ts</code>（可从路由注册表生成）；metadata 补 canonical/OG/hreflang；<code>page-home</code>/<code>page-product</code> 的 <code>lang</code> 对齐另外 5 页；诊断区块加环境开关并同步改 e2e</td><td class="num">2 d</td><td><span class="chip done">已完成</span></td></tr>
+        <tr><td><span class="chip p1">P1</span></td><td>F-14 k8s</td><td>shell-gateway 提到页面档以上并做资产流式转发；补 HPA + PDB + Ingress + NetworkPolicy + ServiceMonitor</td><td class="num">1.5 d</td><td><span class="chip skip">跳过（运维）</span></td></tr>
+        <tr><td><span class="chip p1">P1</span></td><td>F-17 fail-closed</td><td>生产模式下必需的 URL/secret 未设即启动失败（而非回落 localhost / demo secret）</td><td class="num">0.5 d</td><td><span class="chip skip">跳过（运维）</span></td></tr>
+        <tr><td><span class="chip p2">P2</span></td><td>CSS 门禁空转 / F-07 / F-13</td><td>页面 CSS 改为可度量（或显式标注不度量）；<code>boundary</code> 的 warn 升为 fail 并修 5 条；给 <code>registry</code>/<code>request</code> 的 AGENT.md 补可执行片段；vitest alias 表生成化并加门禁；k8s env 段从 manifest 生成</td><td class="num">3 d</td><td><span class="chip done">已完成</span></td></tr>
+        <tr><td><span class="chip p2">P2</span></td><td>F-12 / F-18 · 死代码</td><td>组合 HTML 加缓存头策略；CSP 要么真用 nonce 要么去掉 nonce 生成；删除或标注 <code>composePage</code></td><td class="num">1.5 d</td><td><span class="chip open">部分：死代码已删，缓存头/CSP 未改</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>一句话总评</h3>
+  <p>
+    这套仓库的<strong>思想密度和工程纪律远高于同类项目</strong>——纯计划 + 副作用外壳、全面依赖注入、契约在边界真的 parse、
+    codegen 消灭漂移、affected 引擎宁可过度构建也不静默少构建、诚实记录每一处取舍。这些不是能靠堆时间补出来的东西。
+    初版诊断是：问题不在「架构对不对」，而在<strong>两端没有收口</strong> ——
+    <em>入口端</em>（新建单元的脚手架）产出不可运行，<em>出口端</em>（镜像、资源、超时、缓存、SEO 表面）还是 demo 配置。
+  </p>
+  <p>
+    <strong>这一轮把入口端和出口端的代码部分收掉了</strong>：脚手架现在产出实测可运行的单元，最小部署单位的交付链路变成一条带退出码的命令，
+    入口有超时与取消，降级不再泄漏内部拓扑，缓存有界且 tags 可用，SEO 门面补齐，冷克隆不再红，
+    连门禁自身的三处盲区（docs:test 的豁免、CSS 的空测量、审计的作用域漏洞）也一并修了。净变更 <strong>+2478 / −3123</strong>——
+    删掉的比加上的多，因为 2,718 行样板换成了 940 行。
+  </p>
+  <p>
+    <strong>剩下的是纯运维配置</strong>（镜像多阶段、k8s 资源与 HPA/PDB、页面指标、CDN 缓存头、fail-closed env），按约定留给各家自己的部署体系。
+    以「能否接手」为标准，它现在的位置是：<em>框架本身可以接手了</em>；把它放到生产流量上，还差那一层部署工程。
+  </p>
+</section>
+
+<footer>
+  评估基线：<code>main @ 420f043</code>，工作树干净，2026-09-19；本次更新覆盖分支 <code>fix/framework-hardening</code> 的加固结果（同日）。
+  实跑环境 darwin 25.6.0 / Node 22.17.0 / pnpm 10.13.1，冷装依赖 563 MB。
+  构建耗时引自仓库自带 <code>reports/verify-report.json</code>（生成于 2026-07-12），其余数字均为本次实测。
+  未实跑：docker 镜像构建、Playwright e2e、<code>verify:runtime</code>（需 22 服务栈与 Chromium）——相关结论均标注为由代码结构推导而非实测。
+  修复后 <code>pnpm build</code> 已随 <code>pnpm verify</code> 实跑通过。
+</footer>
+
+</div>

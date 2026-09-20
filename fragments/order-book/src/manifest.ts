@@ -28,6 +28,11 @@ export const orderBookManifest = {
   // dependsOn / dataDependencies use the C5 symbol-scoped book id template.
   dependsOn: [],
   dataDependencies: ["book.l2.<symbol>"],
+  // Source-id TEMPLATES this fragment's browser panel subscribes to. Distinct
+  // from `dataDependencies`, which is what SSR reads: a fragment can read a
+  // source once at render time without keeping it live. `<symbol>` is bound by
+  // the page at mount time; changing it re-subscribes the panel.
+  subscriptions: ["book.l2.<symbol>"],
   // A row click feeds the order-form price (published on the shared store by the
   // page's order-book→order-form bridge); modeled here as the slice's producer.
   produces: { slices: ["trade.order-draft.price"] },

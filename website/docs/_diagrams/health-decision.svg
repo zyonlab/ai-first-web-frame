@@ -1,0 +1,64 @@
+<svg viewBox="0 0 960 400" role="img" aria-labelledby="hd-title hd-desc" xmlns="http://www.w3.org/2000/svg">
+<title id="hd-title">When degradation changes the status code</title>
+<desc id="hd-desc">A failed slot always renders its declared fallback; only a slot marked required makes the page unhealthy, which the gateway translates into 503 while still returning the degraded body.</desc>
+<defs>
+  <marker id="h-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+    <polygon points="0 0, 8 3, 0 6" fill="currentColor"/>
+  </marker>
+</defs>
+
+<g color="var(--muted)">
+  <path class="d-line" d="M216 144 H272" marker-end="url(#h-arr)"/>
+  <path class="d-line" d="M448 120 V96 Q448 88 456 88 H584" marker-end="url(#h-arr)"/>
+  <path class="d-line" d="M448 192 V216 Q448 224 456 224 H584" marker-end="url(#h-arr)"/>
+  <path class="d-line" d="M760 88 H816 Q824 88 824 96 V120" marker-end="url(#h-arr)"/>
+  <path class="d-line" d="M760 224 H816 Q824 224 824 232 V256" marker-end="url(#h-arr)"/>
+</g>
+
+<rect class="d-mask" x="456" y="64" width="36" height="12" rx="2"/>
+<text class="d-lbl" x="474" y="73" text-anchor="middle">NO</text>
+<rect class="d-mask" x="456" y="200" width="40" height="12" rx="2"/>
+<text class="d-lbl" x="476" y="209" text-anchor="middle">YES</text>
+
+<!-- trigger -->
+<rect class="d-mask" x="32" y="112" width="184" height="64" rx="6"/>
+<rect class="d-box" x="32" y="112" width="184" height="64" rx="6"/>
+<text class="d-name" x="124" y="140" text-anchor="middle">A slot fails</text>
+<text class="d-sub" x="124" y="158" text-anchor="middle">timeout · error · dep skipped</text>
+
+<!-- always: fallback -->
+<rect class="d-mask" x="272" y="112" width="176" height="80" rx="6"/>
+<rect class="d-box-m" x="272" y="112" width="176" height="80" rx="6"/>
+<text class="d-name" x="360" y="140" text-anchor="middle">Its fallback renders</text>
+<text class="d-sub" x="360" y="158" text-anchor="middle">declared in the manifest</text>
+<text class="d-sub" x="360" y="174" text-anchor="middle">required: true ?</text>
+
+<!-- branch outcomes -->
+<rect class="d-mask" x="584" y="56" width="176" height="64" rx="6"/>
+<rect class="d-box" x="584" y="56" width="176" height="64" rx="6"/>
+<text class="d-name" x="672" y="84" text-anchor="middle">degraded</text>
+<text class="d-sub" x="672" y="102" text-anchor="middle">an optional slot went missing</text>
+
+<rect class="d-mask" x="584" y="192" width="176" height="64" rx="6"/>
+<rect class="d-box-r" x="584" y="192" width="176" height="64" rx="6"/>
+<text class="d-name" x="672" y="220" text-anchor="middle">unhealthy</text>
+<text class="d-sub" x="672" y="238" text-anchor="middle">the page's own content is dead</text>
+
+<!-- status codes -->
+<rect class="d-mask" x="736" y="120" width="176" height="56" rx="6"/>
+<rect class="d-box" x="736" y="120" width="176" height="56" rx="6"/>
+<text class="d-name" x="824" y="144" text-anchor="middle">200</text>
+<text class="d-sub" x="824" y="160" text-anchor="middle">partial degradation is a feature</text>
+
+<rect class="d-mask" x="736" y="256" width="176" height="72" rx="6"/>
+<rect class="d-box-r" x="736" y="256" width="176" height="72" rx="6"/>
+<text class="d-name" x="824" y="282" text-anchor="middle">503 + retry-after</text>
+<text class="d-sub" x="824" y="298" text-anchor="middle">body returned unchanged,</text>
+<text class="d-sub" x="824" y="312" text-anchor="middle">so a human still sees the page</text>
+
+<line x1="32" y1="352" x2="928" y2="352" stroke="var(--rule)" stroke-width="0.8"/>
+<text class="d-tag" x="32" y="374">LEGEND</text>
+<rect x="104" y="364" width="16" height="12" rx="2" class="d-box-r"/>
+<text class="d-lbl" x="128" y="374">the only path that changes the status code</text>
+<text class="d-sub" x="472" y="374">SHELL_REQUIRED_FAILURE_STATUS=0 disables the translation</text>
+</svg>

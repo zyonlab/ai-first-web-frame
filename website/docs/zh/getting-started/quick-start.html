@@ -1,0 +1,55 @@
+<p class="eyebrow">上手</p>
+<h1>快速开始</h1>
+<p class="lede">把整套组合跑起来看一眼。比读十页描述快。</p>
+
+<h2 id="全部启动">全部启动</h2>
+<pre><code>pnpm install
+pnpm dev</code></pre>
+<p><code>pnpm dev</code> 即 <code>pnpm -r --parallel --filter './apps/*' --filter './fragments/*' dev</code> —— 22 个服务一次起。片段服务一两秒内就应答；Next.js 页面应用首次请求时才编译，所以第一次打开某个页面会慢。</p>
+
+<div class="table-wrap"><table>
+<thead><tr><th>地址</th><th>是什么</th></tr></thead>
+<tbody>
+<tr><td><code>http://localhost:4100/</code></td><td>网关 —— 浏览器应该只用这个源站</td></tr>
+<tr><td><code>http://localhost:4100/trade/BTC</code></td><td>最丰富的页面：9 个槽位、岛屿、实时面板</td></tr>
+<tr><td><code>http://localhost:4100/product/123</code></td><td>静态 + ISR + 动态槽位在同一页</td></tr>
+<tr><td><code>http://localhost:4100/manifest/fragments</code></td><td>解析后的片段注册表（已应用环境变量覆盖）</td></tr>
+<tr><td><code>http://localhost:4100/manifest/routes</code></td><td>路由注册表</td></tr>
+<tr><td><code>http://localhost:4201/</code></td><td>某个片段服务自己的首页，带它全部端点的链接</td></tr>
+</tbody></table></div>
+
+<p>只有 4 个单元有专门的 dev 脚本（<code>dev:shell</code>、<code>dev:page-home</code>、<code>dev:page-product</code>、<code>dev:fragment:promotion-banner</code>、<code>dev:fragment:recommendation-widget</code>）。其余直接用 filter：</p>
+<pre><code>pnpm --filter @mvp/page-trade dev
+pnpm --filter @mvp/fragment-order-book dev</code></pre>
+
+<h2 id="单独看一个片段">单独看一个片段</h2>
+<p>14 个片段提供完全相同的 8 个端点，所以不需要页面就能单独操练一个：</p>
+<pre><code>curl -s localhost:4204/health    | jq   # {status,service,version,uptimeMs}
+curl -s localhost:4204/manifest  | jq   # manifest 原样返回
+curl -s localhost:4204/budget    | jq   # 该单元的性能预算
+curl -s localhost:4204/assets    | jq   # manifest.assets</code></pre>
+
+<p><code>POST /render</code> 收 <code>{ctx, props}</code>，返回 <code>{html, assets, cache, metadata}</code>：</p>
+<pre><code>curl -s localhost:4204/render -X POST -H 'content-type: application/json' \
+  -d '{"props":{"symbol":"BTC"},"ctx":{"locale":"en-US","tenant":"default"}}' | jq 'del(.html)'
+# { "assets": {...}, "cache": {"ttl":0,"tags":["book","book:BTC"]},
+#   "metadata": {"name":"order-book","version":"0.1.0"} }</code></pre>
+
+<div class="note">
+<p><b>上面那个 <code>ctx</code> 并不是一个完整的 <code>RequestContext</code></b> —— 完整 schema 还要求 <code>traceId</code>、<code>requestId</code>、<code>featureFlags</code> 和 <code>timestamp</code>。它之所以能work，是因为 <code>parseFragmentRenderRequest</code> 是<strong>两层</strong>的：先试严格 schema，再回落到宽容信封（<code>ctx</code> 为 partial 且可选），两者都失败才返回 <code>400</code>。</p>
+<p>手工戳服务时很方便；但为什么你<em>目前无法知道线上流量是否落在宽容层</em>，见<a href="../known-limitations.html#f14">已知缺陷 F14</a>。</p>
+</div>
+
+<p><code>4204</code> 是 <code>order-book</code>。完整端口表见<a href="../reference/ports.html">端口</a>。</p>
+
+<h2 id="证明一个片段能独立出货">证明一个片段能独立出货</h2>
+<pre><code>pnpm verify:unit --name order-book</code></pre>
+<p>只构建该单元的依赖闭包，启动 <code>dist/server.js</code>，断言 <code>/health</code>、<code>/ready</code>、<code>/manifest</code> 在 manifest 版本上一致，且 <code>POST /render</code> 的输出携带该版本。每一步都过才 exit 0。</p>
+
+<h2 id="读报告">读报告</h2>
+<pre><code>pnpm verify      # 写出 reports/
+pnpm reports     # 在 :4300 提供 docs/reports/ —— 关于仓库本身的长篇 HTML 报告
+pnpm docs:serve  # 在 :4301 提供这份文档</code></pre>
+<div class="note warn">
+<p><b>两个名字很像的目录。</b>仓库根的 <code>reports/</code> 是机器产物，每次 <code>pnpm verify</code> 重写；<code>docs/reports/</code> 是手写的长篇分析。它们是刻意分开的。</p>
+</div>

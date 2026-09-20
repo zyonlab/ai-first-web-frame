@@ -1,0 +1,51 @@
+<p class="eyebrow">概念</p>
+<h1>心智模型</h1>
+<p class="lede">四个想法。这四条立住了，其余 API 读起来就是顺理成章的。</p>
+
+<h2 id="1-页面是服务的组合不是构建产物">1 · 页面是服务的组合，不是构建产物</h2>
+<p>页面应用拥有布局和槽位名，但<strong>不</strong>拥有那些区块。每个区块是一个可以在页面照常运行时被重新部署的 HTTP 服务，因为页面在每次请求时才从注册表解析 <code>serviceUrl</code> 和版本。</p>
+<p>实务后果：「给盘口发一个改动」意味着构建一个镜像、注册一个版本、晋级一个通道。它<em>不</em>意味着重建交易页面。</p>
+
+<h2 id="2-声明和它描述的东西放在一起">2 · 声明，和它描述的那个东西放在一起</h2>
+<p>片段在自己的 <code>src/manifest.ts</code> 里声明自己的版本、降级内容、资源、预算、后端代理目标、SSR 数据依赖和浏览器订阅，并由 <code>GET /manifest</code> 发布。</p>
+<p>页面只声明它<em>独有</em>的知识：有哪些槽位、每个由哪个片段和哪个通道填充、每槽位超时和缓存策略，以及参数值（当前是哪个币对）。</p>
+<div class="note good">
+<p>每当这两份清单对「谁拥有某个事实」产生分歧时，<strong>片段赢</strong>。这正是让独立部署成真的东西：实时订阅那次重构把约 470 行从交易页面搬进三个片段，回报是<em>改变一个片段订阅什么，现在完全不需要动页面</em>。</p>
+</div>
+
+<h2 id="3-失败是局部的而且是声明过的">3 · 失败是局部的，而且是声明过的</h2>
+<p>每条边界都有一个声明好的降级形态。槽位有 <code>manifest.fallback</code>。依赖失败会把下游槽位标为 <code>skipped-dependency</code> 而不是去尝试它们。快照不匹配的岛屿<em>不会被水合</em>，留下有效的服务端渲染标记。</p>
+<p>唯一会改变 HTTP 状态码的失败，是<strong>必需</strong>槽位失败，网关把它变成 <code>503</code>。其余一切都是「<code>200</code>，但页面上东西少了」。</p>
+<p>这套系统里没有任何一处，会用「产出一个半成品」来回应「某个部件坏了」。这正是版本握手存在的意义。</p>
+
+<h2 id="4-重要的东西都由一条命令检查">4 · 重要的东西，都由一条命令检查</h2>
+<p>本仓库的立场是：<strong>没人能运行的约定就是注释</strong>。所以：</p>
+<ul>
+<li>边界是 Zod schema，其中 6 份还额外导出 JSON Schema；</li>
+<li>分层是一份被审计强制的声明式配置；</li>
+<li>「片段能独立部署」就是 <code>pnpm verify:unit</code>；</li>
+<li>manifest 与代码的漂移在结构上不可能发生（代码生成）<em>并且</em>还被检查（<code>verify:manifest-gen</code>）；</li>
+<li>文档示例会被执行（<code>docs:test</code>）。</li>
+</ul>
+<p>推论，也是<a href="../known-limitations.html">已知缺陷</a>作为一等公民页面存在的原因：<strong>凡是声明了但没有被检查的东西，都应当按「愿景」对待</strong>。11 个性能预算字段里有 5 个属于这一类。</p>
+
+<h2 id="各块职责对应到哪个包">各块职责对应到哪个包</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>关注点</th><th>包</th></tr></thead>
+<tbody>
+<tr><td>每条边界的契约</td><td><code>@mvp/contracts</code></td></tr>
+<tr><td>槽位调度、缓存、流式、代理解析、SEO、实时面板</td><td><code>@mvp/runtime</code></td></tr>
+<tr><td>唯一的片段 HTTP 宿主</td><td><code>@mvp/fragment-host</code></td></tr>
+<tr><td>注册表解析 + 生命周期变更 + 槽位代码生成</td><td><code>@mvp/registry</code></td></tr>
+<tr><td>路由注册表</td><td><code>@mvp/routes</code></td></tr>
+<tr><td>数据源、缓存适配器、订阅、新鲜度</td><td><code>@mvp/data</code></td></tr>
+<tr><td>契约化 HTTP 客户端</td><td><code>@mvp/request</code></td></tr>
+<tr><td>请求上下文与序列化</td><td><code>@mvp/request-context</code></td></tr>
+<tr><td>岛屿水合与快照握手</td><td><code>@mvp/islands</code></td></tr>
+<tr><td>交互总线与 mutation</td><td><code>@mvp/interaction</code></td></tr>
+<tr><td>客户端 slice store</td><td><code>@mvp/store</code></td></tr>
+<tr><td>token、主题、组件</td><td><code>@mvp/design-tokens</code>、<code>@mvp/design-system</code>、<code>@mvp/ui</code></td></tr>
+<tr><td>trace、指标、OTLP 导出</td><td><code>@mvp/observability</code></td></tr>
+<tr><td>建议性的优化发现</td><td><code>@mvp/optimizer</code></td></tr>
+<tr><td>agent 工具（MCP）</td><td><code>@mvp/mcp</code></td></tr>
+</tbody></table></div>

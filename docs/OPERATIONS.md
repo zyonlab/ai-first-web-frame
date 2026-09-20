@@ -24,12 +24,38 @@ pnpm --filter @mvp/create-component start -- <PascalCaseName> --type fragment
 ```
 - `<PascalCaseName>` (positional, required) — must match `/^[A-Z][A-Za-z0-9]*$/`.
 - `--type fragment|ui` (optional, default `ui`) — `fragment` creates
-  `fragments/<kebab-name>/` (9 files: `src/server.ts`, `src/render.tsx`,
-  `src/manifest.ts`, `src/budget.ts`, `src/fixtures.ts`,
-  `src/render.test.tsx`, `package.json`, `Dockerfile`, `README.md`); `ui`
-  creates `packages/ui/src/<Name>/` (8 files).
+  `fragments/<kebab-name>/` (11 files); `ui` creates
+  `packages/ui/src/<Name>/` (8 files).
 - `--force` (optional flag) — overwrite if any target file already exists
   (default: fail on collision).
+
+**The generated fragment runs as scaffolded.** It answers `/render`, builds to
+`dist/server.js`, and boots — verify with
+`pnpm verify:unit --name <kebab-name>` (§8). This was NOT true before: the old
+templates emitted a `server.ts` that was a two-line re-export (no Fastify, no
+routes) and a three-line `Dockerfile` with no COPY/install/build, so this step's
+acceptance passed for a unit that could neither serve nor be imaged.
+
+The 11 files:
+
+| File | Contents |
+| --- | --- |
+| `src/server.ts` | ~20-line adapter: `buildServer(options)` → `createFragmentServer()` from `@mvp/fragment-host`, plus the `isProcessEntry`/`startFragmentServer` entry block. The host owns `GET /`, `/health`, `/ready`, `/metrics`, `/manifest`, `/assets`, `/budget`, `POST /render`. |
+| `src/render.ts` | `render<Name>(request, { trace, now })` → `{ statusCode, body }`, with a `metadata.fallback`-stamped degraded path. |
+| `src/manifest.ts` | `satisfies FragmentManifest` + the `layoutHint` skeleton. |
+| `src/budget.ts` | `loadDefaultBudget("fragment", "<kebab-name>")`. |
+| `src/fixtures.ts` | `basic` + `degraded` requests with a REAL `ctx` (`locale`/`tenant`) — a bare `{}` ctx fails the strict `FragmentRenderRequestSchema` pass. |
+| `src/render.test.ts` | Asserts the 200 path and the stamped fallback. Extend this first (step 2). |
+| `tests/server.test.ts` | Asserts `/health` reports the manifest version and `POST /render` renders. |
+| `package.json` | `@mvp/fragment-<kebab-name>`, `dev`/`start`/`build`/`test`/`typecheck`, deps incl. `@mvp/fragment-host`. |
+| `tsconfig.json` | Makes the unit visible to `pnpm typecheck` (projects are discovered by this file). |
+| `Dockerfile` | `node:22-alpine`, `COPY . .` + install + `pnpm --filter @mvp/fragment-<name>... build`, `EXPOSE <port>`, start CMD. |
+| `README.md` | How to test/build/run it alone and how to register/mount/promote it. |
+
+The default port is **allocated, not hard-coded**: `nextFragmentPort()` scans
+every existing `fragments/*/src/server.ts` for its `DEFAULT_PORT` and takes the
+first free value from 4201 — the same base `register-fragment --with-compose`
+allocates from.
 
 **Result envelope** (`CreateComponentResult`, from
 `tools/create-component/src/index.ts`)
@@ -44,7 +70,7 @@ pnpm --filter @mvp/create-component start -- <PascalCaseName> --type fragment
 ```
 Exit 0 on `"created"`, 1 on `"failed"`.
 
-**Accept**: `"status": "created"` and `files.length === 9` (fragment) /
+**Accept**: `"status": "created"` and `files.length === 11` (fragment) /
 `=== 8` (ui).
 
 **Failure recovery**: `"failed"` with a collision error means a file already
@@ -52,13 +78,20 @@ exists — pick a different name, pass `--force` only if you intend to
 overwrite, or delete the stale directory first. A name-format error means the
 positional arg was not PascalCase; no files are written in either case.
 
+**Never hand-roll a fragment server.** `pnpm audit:deps`' rule
+`fragment-server-not-hosted` (severity `fail`) rejects any
+`fragments/*/src/server.ts` that does not import `@mvp/fragment-host`. That HTTP
+layer was copy-pasted 14 times before it was extracted (130–188 lines each,
+≈90% identical, already drifting) and the similarity audit could not see it
+because it only fingerprints `.tsx`.
+
 ---
 
 ## 2. Implement + test (TDD)
 
-Not a scripted step — hand-edit `fragments/<kebab-name>/src/render.tsx`,
-extending `src/render.test.tsx` first (the scaffolded test already asserts
-`render<Name>().html` contains the fragment's kebab name).
+Not a scripted step — hand-edit `fragments/<kebab-name>/src/render.ts`,
+extending `src/render.test.ts` first (the scaffolded tests already assert both
+the 200 path and the `metadata.fallback`-stamped degraded path).
 
 **Command**
 ```
@@ -337,6 +370,69 @@ known release) — this is the "fails cleanly when no rollback target is
 recorded" case; register/promote first, or pass an explicit `--to <version>`
 that exists in `releases.json`. `"failed"` means the fragment name is
 missing/malformed.
+
+---
+
+## 8. Verify one unit ships on its own
+
+A fragment is the framework's minimum deployable unit. This step turns that from
+a design claim into a command.
+
+**Command**
+```
+pnpm verify:unit --name <kebab-name> [--port <n>] [--skip-build]
+```
+
+What it does, in order: builds only that unit's dependency closure
+(`pnpm --filter @mvp/fragment-<name>... build` → `dist/server.js`), boots the
+built artifact on `--port` (default 4399), then asserts
+
+- `/health` returns `{ status: "ok", service, version, uptimeMs }`,
+- `/ready` answers (the separate probe target for rollout systems),
+- `/manifest`'s `version` equals `/health`'s `version`,
+- `GET /` renders with a `data-fragment-version="<version>"` marker,
+
+and finally reports which version each registry channel currently points at.
+
+**Result envelope** (`VerifyUnitResult`, from `scripts/verify-unit.mts`)
+```ts
+{
+  tool: "verify-unit";
+  status: "ok" | "failed";
+  name: string;
+  version?: string;                        // version the running artifact reported
+  channels?: Record<string, string>;       // stable/canary/preview -> version
+  steps: Array<{ step: string; status: "passed" | "failed" | "skipped"; detail?: string }>;
+  error?: string;
+}
+```
+Exit 0 only when no step failed.
+
+**Accept**: `"status": "ok"`, and `version` equal to the version you are about to
+register.
+
+### Shipping a new version without rebuilding any page
+
+Deployment mechanics belong to the host organization (image registry,
+orchestrator), so the framework implements only what a per-unit rollout needs:
+
+1. Build and publish the image from `fragments/<name>/Dockerfile`.
+2. Roll the service. `/health` reports the deployed `version`, so the rollout can
+   assert WHICH build is answering before any traffic decision.
+3. `register-fragment --name <name> --version <new> --channel canary` (§3), then
+   `promote-fragment --name <name>` (§6) to move `stable`.
+
+Pages resolve the fragment's version and `serviceUrl` from
+`registry/registry.data.json` **per request**, so the new version is live with
+**zero page rebuilds**. `<FRAGMENT_NAME>_URL` retargets a fragment at runtime
+without a registry write (local/staging), and `rollback-fragment` (§7) restores
+the version recorded at the last promote.
+
+Caveat, unchanged: a **React-island** fragment's client JS is statically imported
+into the consuming page's bundle, so island *behavior* changes still need that
+page rebuilt. The SSR HTML goes live immediately either way, and a version skew
+is caught by the island handshake rather than shipping silently — see
+[COMPOSITION.md §6](./COMPOSITION.md).
 
 ---
 

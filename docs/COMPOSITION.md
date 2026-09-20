@@ -176,6 +176,96 @@ Plan §7 names this table explicitly; the tiers come from goals C1–C3
 | Version skew | Not possible — the HTML is always the fragment service's current output; failure degrades to the slot fallback (§4). | Detected, not silent (goal C2): the fragment stamps `{fragment, version}` (schema also carries `contractHash`) into its inline `<script type="application/json" data-island-props>` snapshot; `registerIsland(name, component, { expectedVersion, expectedContractHash })` declares the page bundle's expectation; on mismatch `mountIsland`/`hydrateIslands` (`packages/islands/src/index.ts`) **skip hydration entirely** — no `createRoot` call — keep the SSR HTML as the final static state, `console.warn`, and invoke the `configureIslandRuntime({ onSnapshotMismatch })` hook. A snapshot with no `version` (a non-participating fragment) hydrates normally. |
 | Path to full independence | Already there. | The C3 import-map spike (merged as PR #1): registry entries gain an optional `assetsUrl` (`FragmentRegistryEntrySchema`, `packages/contracts/src/index.ts`); the page emits an import map + runtime `import()` of the fragment-served island module. Validated end-to-end on **`order-form` only**; the full rollout was decided **no-go for this cycle** (2026-07-11, no island-only-ship demand yet — decision record and reopen trigger in `docs/ARCHITECTURE_REFACTOR_PLAN.md` §4.3.3). |
 
+## 7. Fragment backend proxy (`FragmentManifest.proxy`)
+
+A fragment can reach its backend during SSR through `@mvp/request`. Its
+**hydrated island could not**: the only options were a one-shot value baked into
+the island snapshot, or a hard-coded cross-origin URL — which leaks the internal
+service address to the browser and needs CORS (exactly what the C3 spike hit with
+`Access-Control-Allow-Origin` on the island bundle).
+
+`proxy` closes that gap, modelled on [`@podium/proxy`](https://github.com/podium-lib/proxy):
+
+```ts
+// fragments/order-form/src/manifest.ts
+proxy: { quotes: "https://quotes.internal/v1" }
+```
+
+The shell gateway mounts every declared target at
+
+```
+/_fragment/<fragment>/<target>/<rest...>
+```
+
+so the island calls `/_fragment/order-form/quotes/BTC?depth=10` — same origin, no
+CORS, and the fragment's real `serviceUrl` never reaches the browser. The gateway
+forwards the request with the same `RequestContext` headers a `/render` call
+carries, under `SHELL_FRAGMENT_PROXY_TIMEOUT_MS` (default 6000ms, matching
+Podium's default), and answers `no-store` because proxied data is per-request by
+nature.
+
+| Behavior | Where |
+| --- | --- |
+| Path parsing, URL joining, escape check (all pure) | `packages/runtime/src/fragmentProxy.ts` |
+| Route mounting, manifest fetch + version-keyed cache, forwarding | `apps/shell-gateway/src/server.ts` |
+| Schema | `FragmentManifestSchema.proxy` — `z.record(z.string().url()).default({})` |
+
+Two invariants worth knowing:
+
+- **The declared base is the boundary.** `buildFragmentProxyUrl` rejects any
+  remainder that would leave the target's origin+path (`../admin`,
+  `//evil.example/x`, an absolute URL), because the target comes from a trusted
+  manifest but the path after it comes from the browser.
+- **The manifest cache is keyed by the registry-resolved version**, which is how
+  Podium uses its own manifest `version` field: a `promote-fragment` changes the
+  version, which invalidates the entry, so new proxy targets go live without a
+  gateway restart and without a manifest fetch per request. A cache miss serves
+  an empty target map (the route 404s) and refreshes in the background rather
+  than making the request wait.
+
+## 8. Page health → HTTP status (the `primary` semantic)
+
+Zalando Tailor let a `primary` fragment's failure decide the page's response
+code. We had no equivalent: a page whose **required** slot was entirely down
+still answered `200`, so crawlers indexed degraded markup as real content and
+success-rate monitoring saw a healthy page.
+
+The channel is a hidden marker element in the page body, because in the Next App
+Router a `page.tsx` cannot set a status or a header — only middleware and route
+handlers can — while the gateway already reads the upstream body as text. It is a
+`<div hidden data-…>` rather than a `<meta>` because it is an internal signal for
+the gateway, not metadata about the document. React 19 **does** hoist a `<meta>`
+rendered from a page component into `<head>` (verified by SSR probe; React 18,
+which this repo used to be on, left it in `<body>` — invalid HTML), but `<head>`
+is the document's public metadata surface and a degradation signal does not
+belong there.
+
+```tsx
+// streaming pages
+<Suspense fallback={null}>
+  <PageHealthMetaStream execution={stream.execution} />
+</Suspense>
+
+// barrier pages (page-trade)
+<PageHealthMeta execution={fragmentHtml.execution} />
+```
+
+which emits `<div hidden data-mvp-page-health="ok|degraded|unhealthy"
+data-failed-slots="...">`. The gateway reads it with `readPageHealthFromHtml`
+(read-only — the body is still returned byte-for-byte) and answers
+`503` + `Retry-After` when the value is `unhealthy`.
+
+- Only `unhealthy` (a **required** slot failed) changes the status. `degraded`
+  (an optional slot failed) stays `200`, because partial degradation is a
+  designed feature (§4).
+- A page that does not stamp the marker is unaffected — pages opt in.
+- `SHELL_REQUIRED_FAILURE_STATUS=0` keeps the upstream status, for a deployment
+  that is still stabilizing a new fragment.
+
+Pages with a required slot today: `page-home` (`promotion`), `page-markets`
+(`marketsTable`), `page-portfolio` (`portfolioSummary`), `page-trade`
+(`marketHeader`).
+
 ## Related docs
 
 - [OPERATIONS.md](./OPERATIONS.md) — lifecycle commands and their JSON envelopes.

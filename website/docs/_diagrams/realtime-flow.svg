@@ -1,0 +1,64 @@
+<svg viewBox="0 0 960 400" role="img" aria-labelledby="rt-title rt-desc" xmlns="http://www.w3.org/2000/svg">
+<title id="rt-title">Who declares what, for a live panel</title>
+<desc id="rt-desc">The fragment declares its source templates and ships the patch logic; the page supplies only parameter values and a subscribe adapter; a generic driver resolves templates, subscribes, and re-mounts only the panels whose bound parameters changed.</desc>
+<defs>
+  <marker id="t-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+    <polygon points="0 0, 8 3, 0 6" fill="currentColor"/>
+  </marker>
+</defs>
+
+<rect class="d-zone" x="32" y="64" width="368" height="200" rx="8"/>
+<text class="d-tag" x="48" y="88">OWNED BY THE FRAGMENT · ships on its own</text>
+<rect class="d-zone" x="560" y="64" width="368" height="200" rx="8"/>
+<text class="d-tag" x="576" y="88">OWNED BY THE PAGE</text>
+
+<g color="var(--muted)">
+  <path class="d-line" d="M400 136 H452" marker-end="url(#t-arr)"/>
+  <path class="d-line" d="M560 136 H508" marker-end="url(#t-arr)"/>
+  <path class="d-line" d="M400 216 H452 Q460 216 460 208 V184" marker-end="url(#t-arr)"/>
+</g>
+
+<rect class="d-mask" x="404" y="108" width="104" height="12" rx="2"/>
+<text class="d-lbl" x="456" y="117" text-anchor="middle">TEMPLATES</text>
+<rect class="d-mask" x="404" y="192" width="104" height="12" rx="2"/>
+<text class="d-lbl" x="456" y="201" text-anchor="middle">onFrame</text>
+
+<rect class="d-mask" x="56" y="104" width="320" height="64" rx="6"/>
+<rect class="d-box-t" x="56" y="104" width="320" height="64" rx="6"/>
+<text class="d-name" x="216" y="128" text-anchor="middle">manifest.subscriptions</text>
+<text class="d-sub" x="216" y="146" text-anchor="middle">["book.l2.&lt;symbol&gt;"] — published at GET /manifest</text>
+<text class="d-sub" x="216" y="160" text-anchor="middle">separate from dataDependencies, which SSR reads once</text>
+
+<rect class="d-mask" x="56" y="184" width="320" height="64" rx="6"/>
+<rect class="d-box" x="56" y="184" width="320" height="64" rx="6"/>
+<text class="d-name" x="216" y="208" text-anchor="middle">./live export</text>
+<text class="d-sub" x="216" y="226" text-anchor="middle">mount(ctx) → { onFrame, stop? }</text>
+<text class="d-sub" x="216" y="240" text-anchor="middle">folds a frame into an in-place DOM patch</text>
+
+<rect class="d-mask" x="424" y="104" width="112" height="80" rx="6"/>
+<rect class="d-box-t" x="424" y="104" width="112" height="80" rx="6"/>
+<text class="d-name" x="480" y="134" text-anchor="middle">driver</text>
+<text class="d-sub" x="480" y="150" text-anchor="middle">@mvp/runtime</text>
+<text class="d-sub" x="480" y="164" text-anchor="middle">/live</text>
+
+<rect class="d-mask" x="584" y="104" width="320" height="64" rx="6"/>
+<rect class="d-box" x="584" y="104" width="320" height="64" rx="6"/>
+<text class="d-name" x="744" y="128" text-anchor="middle">params + subscribe adapter</text>
+<text class="d-sub" x="744" y="146" text-anchor="middle">{ symbol: "BTC" } · onto its own data client</text>
+<text class="d-sub" x="744" y="160" text-anchor="middle">the driver never sees the client, only resolved ids</text>
+
+<rect class="d-mask" x="584" y="184" width="320" height="64" rx="6"/>
+<rect class="d-box-m" x="584" y="184" width="320" height="64" rx="6"/>
+<text class="d-name" x="744" y="208" text-anchor="middle">panel list</text>
+<text class="d-sub" x="744" y="226" text-anchor="middle">two lines per NEW live fragment;</text>
+<text class="d-sub" x="744" y="240" text-anchor="middle">zero when an existing one changes what it listens to</text>
+
+<rect class="d-mask" x="32" y="288" width="896" height="48" rx="6"/>
+<rect class="d-box-m" x="32" y="288" width="896" height="48" rx="6"/>
+<text class="d-sub" x="48" y="308" text-anchor="start">On a symbol switch the driver marks a panel remounted ONLY if that panel binds the changed parameter. book.l2.&lt;symbol&gt; rebuilds;</text>
+<text class="d-sub" x="48" y="324" text-anchor="start">positions binds nothing, so its rows survive. The rule used to be hand-written in the page; now it follows from the declaration.</text>
+
+<line x1="32" y1="360" x2="928" y2="360" stroke="var(--rule)" stroke-width="0.8"/>
+<text class="d-tag" x="32" y="382">BEFORE</text>
+<text class="d-sub" x="104" y="382">542 lines of per-fragment wiring in the page — a fragment could not become live without a page edit</text>
+</svg>

@@ -1,0 +1,30 @@
+<h1 id="fallbacks-and-page-health">Fallbacks and page health</h1>
+<p>Partial degradation is a designed feature. The question this guide answers is: <em>when does degradation change the HTTP status code?</em></p>
+<figure class="figure">
+<!--@figure:health-decision-->
+<figcaption><b>Only one path changes the status code.</b> The <code>503</code> branch still returns the page body unchanged — the two are not a trade-off.</figcaption>
+</figure>
+<h2 id="three-levels">Three levels</h2>
+<div class="table-wrap"><table><thead><tr><th>Level</th><th>What it is</th></tr></thead><tbody><tr><td>Slot fallback</td><td>one slot renders its declared <code>manifest.fallback</code> HTML</td></tr><tr><td><code>degraded</code></td><td>at least one <strong>optional</strong> slot fell back — page still answers <code>200</code></td></tr><tr><td><code>unhealthy</code></td><td>at least one <strong>required</strong> slot fell back — gateway answers <code>503</code></td></tr></tbody></table></div>
+<p><code>required: true</code> on a slot is what promotes a failure from cosmetic to fatal. This is Tailor's <code>primary</code> semantic: a page whose main content is dead should not answer <code>200</code>, because crawlers will index the degraded markup as real content and success-rate monitoring will see nothing wrong.</p>
+<h2 id="how-the-status-actually-gets-set">How the status actually gets set</h2>
+<p>A Next.js App Router <code>page.tsx</code> cannot set a response status or header — only middleware and route handlers can. But the shell gateway already reads the upstream body as text. So the page <strong>stamps its health into the markup</strong> and the gateway translates it:</p>
+<pre><code class="lang-tsx">import { PageHealthMeta } from "@mvp/runtime/react";
+
+&lt;PageHealthMeta health={execution.health} failed={failedRequiredSlotNames(execution)} /&gt;</code></pre>
+<p>which emits</p>
+<pre><code class="lang-html">&lt;div hidden data-mvp-page-health="unhealthy" data-failed-slots="book,orderForm"&gt;&lt;/div&gt;</code></pre>
+<p>(<code>PAGE_HEALTH_ATTR</code> and <code>PAGE_HEALTH_FAILED_ATTR</code> in <code>@mvp/runtime</code> — note the second is <code>data-failed-slots</code>, not a <code>data-mvp-</code> prefixed name.)</p>
+<p>The gateway calls <code>readPageHealthFromHtml</code>, and on <code>unhealthy</code> answers <code>503</code> with <code>retry-after</code> <strong>while returning the body unchanged</strong> — so a human still sees the degraded page and a monitor still sees a failure. <code>degraded</code> stays <code>200</code>.</p>
+<p><code>SHELL_REQUIRED_FAILURE_STATUS=0</code> disables the translation and keeps the upstream status.</p>
+<h3 id="why-a-hidden-div-and-not-a-meta">Why a hidden <code>div</code> and not a <code>&lt;meta&gt;</code></h3>
+<p>Because it is an internal signal for the gateway, not metadata about the document. React 19 <em>would</em> hoist a <code>&lt;meta&gt;</code> rendered from a page component into <code>&lt;head&gt;</code> — verified by SSR probe — and <code>&lt;head&gt;</code> is the document's public metadata surface, read by crawlers and third-party tools. A degradation signal does not belong there.</p>
+<p>(Under React 18 the same <code>&lt;meta&gt;</code> stayed in <code>&lt;body&gt;</code>, which is invalid HTML. The repository is on React 19 now, so the constraint is gone and the choice is deliberate rather than forced.)</p>
+<h2 id="streaming-pages">Streaming pages</h2>
+<p>Use <code>PageHealthMetaStream</code>, which takes the aggregate promise and emits the marker once the rollup is known. The marker necessarily appears late in the body — which is fine, because the gateway buffers the page body to translate the status anyway.</p>
+<h2 id="designing-a-good-fallback">Designing a good fallback</h2>
+<ul>
+<li>Keep the <code>data-fragment="&lt;name&gt;"</code> root and add <code>data-fallback="true"</code>. Runtime code keys on it: the live-panel driver refuses to mount a panel on a fallback node.</li>
+<li>Make it readable without JavaScript. The <code>no-js</code> Playwright project renders every page with JavaScript disabled and asserts the content is there.</li>
+<li>Do not reserve zero height. <code>maxCLS</code> is budgeted at <code>0</code>, and a fallback that collapses and then expands is a layout shift.</li>
+</ul>

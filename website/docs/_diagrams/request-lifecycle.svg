@@ -1,0 +1,74 @@
+<svg viewBox="0 0 960 520" role="img" aria-labelledby="req-title req-desc" xmlns="http://www.w3.org/2000/svg">
+<title id="req-title">One page request, end to end</title>
+<desc id="req-desc">Time-ordered exchange between browser, shell gateway, page app and fragment services: the page resolves slots against the registry, calls fragments in parallel, stamps a health marker, and the gateway translates an unhealthy marker into 503.</desc>
+<defs>
+  <marker id="s-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+    <polygon points="0 0, 8 3, 0 6" fill="currentColor"/>
+  </marker>
+</defs>
+
+<!-- lifelines -->
+<g color="var(--muted)">
+  <path class="d-line-d" d="M120 96 V456"/>
+  <path class="d-line-d" d="M360 96 V456"/>
+  <path class="d-line-d" d="M600 96 V456"/>
+  <path class="d-line-d" d="M840 96 V456"/>
+</g>
+
+<!-- actor heads -->
+<rect class="d-box-m" x="40" y="40" width="160" height="44" rx="6"/>
+<text class="d-name" x="120" y="60" text-anchor="middle">Browser</text>
+<text class="d-sub" x="120" y="75" text-anchor="middle">one origin</text>
+
+<rect class="d-box-t" x="280" y="40" width="160" height="44" rx="6"/>
+<text class="d-name" x="360" y="60" text-anchor="middle">shell-gateway</text>
+<text class="d-sub" x="360" y="75" text-anchor="middle">:4100</text>
+
+<rect class="d-box" x="520" y="40" width="160" height="44" rx="6"/>
+<text class="d-name" x="600" y="60" text-anchor="middle">page app</text>
+<text class="d-sub" x="600" y="75" text-anchor="middle">scheduler</text>
+
+<rect class="d-box" x="760" y="40" width="160" height="44" rx="6"/>
+<text class="d-name" x="840" y="60" text-anchor="middle">fragments</text>
+<text class="d-sub" x="840" y="75" text-anchor="middle">14 services</text>
+
+<!-- messages -->
+<g color="var(--muted)">
+  <path class="d-line" d="M120 136 H352" marker-end="url(#s-arr)"/>
+  <path class="d-line" d="M360 180 H592" marker-end="url(#s-arr)"/>
+  <path class="d-line" d="M600 268 H832" marker-end="url(#s-arr)"/>
+  <path class="d-line" d="M840 312 H608" marker-end="url(#s-arr)"/>
+  <path class="d-line" d="M600 356 H368" marker-end="url(#s-arr)"/>
+</g>
+<g color="var(--teal)">
+  <path class="d-line-t" d="M360 416 H128" marker-end="url(#s-arr)"/>
+</g>
+<!-- self-call: resolve slots -->
+<g color="var(--muted)">
+  <path class="d-line" d="M600 212 H660 Q668 212 668 220 V232 Q668 240 660 240 H608" marker-end="url(#s-arr)"/>
+</g>
+
+<text class="d-lbl" x="236" y="128" text-anchor="middle">GET /trade/BTC</text>
+<text class="d-lbl" x="476" y="172" text-anchor="middle">PROXY TO OWNING PAGE</text>
+<text class="d-lbl" x="680" y="208" text-anchor="start">RESOLVE SLOTS</text>
+<text class="d-sub" x="680" y="222" text-anchor="start">registry: channel → version + url</text>
+<text class="d-lbl" x="716" y="260" text-anchor="middle">POST /render  ×N PARALLEL</text>
+<text class="d-lbl" x="716" y="304" text-anchor="middle">HTML + ASSETS + CACHE</text>
+<text class="d-lbl" x="484" y="348" text-anchor="middle">HTML + HEALTH MARKER</text>
+<text class="d-lbl" x="244" y="408" text-anchor="middle" fill="var(--teal)">200 · OR 503 IF REQUIRED SLOT FAILED</text>
+
+<!-- note: per-slot timeout -->
+<rect class="d-box-m" x="724" y="328" width="204" height="48" rx="6"/>
+<text class="d-sub" x="736" y="348" text-anchor="start">a slow slot times out alone;</text>
+<text class="d-sub" x="736" y="364" text-anchor="start">its fallback ships, page keeps going</text>
+
+<!-- legend -->
+<line x1="40" y1="472" x2="920" y2="472" stroke="var(--rule)" stroke-width="0.8"/>
+<text class="d-tag" x="40" y="494">LEGEND</text>
+<path class="d-line" d="M112 490 H144" marker-end="url(#s-arr)" color="var(--muted)"/>
+<text class="d-lbl" x="152" y="494">message</text>
+<path class="d-line-t" d="M240 490 H272" marker-end="url(#s-arr)" color="var(--teal)"/>
+<text class="d-lbl" x="280" y="494">the response the browser sees</text>
+<path class="d-line-d" d="M496 490 H528" color="var(--muted)"/>
+<text class="d-lbl" x="536" y="494">lifeline</text>
+</svg>

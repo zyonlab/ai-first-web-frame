@@ -1,0 +1,114 @@
+<h1 id="known-limitations">Known limitations</h1>
+<p>Everything here was found by reading the source tree and running the gates, not by reading the internal docs. Each entry names the file that proves it. Nothing in this list is a hypothetical.</p>
+<p>The list is ordered by what would hurt first, and each entry says who it hurts: <strong>AX</strong> an AI agent working in the repository, <strong>DX</strong> a human developer, <strong>OPS</strong> someone running it, <strong>DOCS</strong> a claim that is not true as stated.</p>
+<hr />
+<h2 id="f1">F1 · The optimizer advises statically rendering the realtime order book — AX, high</h2>
+<p><code>reports/optimization-findings.json</code> currently contains 10 findings of the form:</p>
+<blockquote><code>static-slot-book</code> · "Slot <strong>book</strong> has no declared dependencies and may not need dynamic SSR." · recommendation: "Change the slot strategy to static, ttl-cache, or cached-ssr if its content is deterministic."</blockquote>
+<p>The 10 slots include <code>book</code>, <code>trades</code>, <code>orderForm</code>, <code>positions</code>, <code>openOrders</code> and <code>accountBar</code> — the realtime trading panels. Acting on the recommendation breaks them.</p>
+<p><strong>Why it happens</strong> — three links, all verifiable:</p>
+<ol>
+<li><code>tools/optimization-audit/src/index.ts:55</code> calls <code>createOptimizationFindings({ slots, traces })</code>. <code>dataDependencies</code> is never passed.</li>
+<li><code>packages/optimizer/src/index.ts:461-468</code> — <code>findStaticSlotCandidates</code> has a guard that would have suppressed exactly these: <code>dependencies.some(d =&gt; d.privacy === "user-private" || d.freshness === "realtime" || d.freshness === "client-local")</code>. Because the input is always <code>[]</code>, the guard is always false.</li>
+<li><code>packages/optimizer/src/index.ts:470-474</code> — the surviving condition is <code>(slot.strategy ?? "dynamic-ssr") === "dynamic-ssr" &amp;&amp; (slot.dependsOn ?? []).length === 0</code>. <code>dependsOn</code> is <strong>inter-slot ordering</strong>. <code>book</code> has no <code>dependsOn</code> because no other slot waits on it, not because it is static.</li>
+</ol>
+<p>Underneath both is the same structural issue: the fragments <em>do</em> declare their data (<code>fragments/order-book/src/manifest.ts:30</code> → <code>dataDependencies: ["book.l2.&lt;symbol&gt;"]</code>), the optimizer reads the page side, and nothing reconciles the two.</p>
+<p><strong>Severity for an agent.</strong> These findings are <code>info</code>, so the gate passes and a human skims past them. An agent reading <code>reports/optimization-findings.json</code> sees a structured <code>recommendation</code> field on 10 of 19 slots and has no signal that it is wrong.</p>
+<p><strong>Fix shape.</strong> Pass the fragment-declared dependencies into the audit input, and key the rule on declared freshness rather than on <code>dependsOn</code>.</p>
+<hr />
+<h2 id="f2">F2 · <code>&lt;FRAGMENT&gt;_URL</code> moves the service but not its island assets — OPS, medium</h2>
+<p><code>packages/registry/src/registry.ts</code> — <code>withOverride()</code> rewrites <code>serviceUrl</code> and <code>manifestUrl</code> from the env override and passes <code>assetsUrl</code> through <strong>unchanged</strong>. The code says so itself:</p>
+<blockquote>"Not rewritten relative to the overridden host … a real rollout needs <code>assetsUrl</code> to derive from the same override, not just <code>serviceUrl</code>."</blockquote>
+<p>So pointing a fragment at another host still loads its island JavaScript from wherever it was registered. Affects the one fragment that has <code>assetsUrl</code> today: <code>order-form</code> on <code>canary</code>.</p>
+<p>Since the env override is the documented way to repoint a fragment without a registry write, this undercuts that path for any fragment serving its own island bundle.</p>
+<hr />
+<h2 id="f3">F3 · <del>Three env vars are declared and read nowhere</del> — FIXED</h2>
+<p><code>turbo.json</code> <code>globalPassThroughEnv</code> listed <code>REGISTRY_URL</code>, <code>REGISTRY_USERNAME</code> and <code>REGISTRY_PASSWORD</code>, which a repository-wide search showed were read <strong>nowhere</strong>. They implied an authenticated remote-registry integration that does not exist, and an operator could reasonably have set them and expected an effect.</p>
+<p>Removed. <code>globalPassThroughEnv</code> is now <code>SHELL_URL</code>, <code>PAGE_*_URL</code>, <code>*_URL</code>, <code>RECENTLY_VIEWED_COOKIE_SECRET</code> — all of which are read. Kept on this page as a record of the class of rot to watch for: a passthrough env declaration costs nothing to add and nothing warns when it stops (or never starts) being used.</p>
+<hr />
+<h2 id="f4">F4 · Two CLI flags exist only in code — AX, medium</h2>
+<p>The authoritative flag list for each lifecycle script is the allowlist it passes to <code>unknownFlagError</code>. Compared against the operations manual:</p>
+<div class="table-wrap"><table><thead><tr><th>Script</th><th>Flag in code</th><th>In <code>CLAUDE.md</code>?</th></tr></thead><tbody><tr><td><code>mount-slot</code></td><td><code>--depends-on</code></td><td>no</td></tr><tr><td><code>register-fragment</code></td><td><code>--manifest-url</code></td><td>no</td></tr><tr><td><code>register-fragment</code></td><td><code>--assets-url</code></td><td>no</td></tr></tbody></table></div>
+<p><code>--depends-on</code> is the only way to declare slot ordering from the CLI, and slot ordering is one of the framework's distinguishing features. An agent that only reads the manual cannot discover it, and will instead hand-edit the manifest — which the same manual forbids.</p>
+<p>(The full sets are in <a href="reference/cli.html">reference/cli</a>, taken from the allowlists.)</p>
+<hr />
+<h2 id="f5">F5 · The gateway's own HTTP surface is undocumented — DX, medium</h2>
+<p><code>apps/shell-gateway/src/server.ts</code> serves <code>/manifest/routes</code>, <code>/manifest/fragments</code>, <code>/_shell/theme</code> and <code>/_shell/locale</code> (lines 239–252). None of the four appears in <code>CLAUDE.md</code> or anywhere in <code>docs/</code>.</p>
+<p><code>/manifest/fragments</code> in particular is the fastest way to debug a misrouted slot, because it returns the registry <strong>after</strong> env overrides are applied. It is written up in <a href="reference/http-endpoints.html">reference/http-endpoints</a> for the first time here.</p>
+<hr />
+<h2 id="f6">F6 · The promote path is exercised on 2 of 14 fragments — OPS, medium</h2>
+<p><code>registry/registry.data.json</code>: only <code>promotion-banner</code> (stable + canary) and <code>recommendation-widget</code> (stable) have a <code>stable</code> entry. The other 12 are <code>canary</code>-only, and every slot on <code>page-trade</code>, <code>page-markets</code> and <code>page-portfolio</code> mounts <code>channel: "canary"</code>.</p>
+<p>Two consequences:</p>
+<ul>
+<li>The documented <code>canary → stable</code> lifecycle is demonstrated on 2 units, not 14. Treat the promote and rollback paths as lightly exercised.</li>
+<li>A slot naming a channel the fragment does not have resolves to the slot's <strong>fallback, silently</strong>. There is no build-time check that every slot's channel exists in the registry — which would be a cheap gate to add, and would have caught this.</li>
+</ul>
+<p><code>recommendation-widget</code> additionally has no <code>versions</code> history, so <code>rollback-fragment</code> correctly refuses it for lack of a recorded target.</p>
+<hr />
+<h2 id="f7">F7 · Two of the seven pages compose nothing — DOCS, low</h2>
+<p><code>apps/page-referrals/src/manifest.slots.json</code> and <code>apps/page-vaults/src/manifest.slots.json</code> are both <code>[]</code>. "Seven pages composing fragments" overstates it: five compose, 19 slots total.</p>
+<p>Their 102 KB first-load JS against a 110 KB budget is therefore framework baseline with <strong>7.5 KB of headroom</strong> — adding one island to either needs a budget change.</p>
+<hr />
+<h2 id="f8">F8 · <code>dev:*</code> scripts exist for 4 of 22 units — DX, low</h2>
+<p>Root <code>package.json</code> has <code>dev:shell</code>, <code>dev:page-home</code>, <code>dev:page-product</code>, <code>dev:fragment:promotion-banner</code>, <code>dev:fragment:recommendation-widget</code>. There is no <code>dev:page-trade</code>, despite <code>page-trade</code> being the nine-slot demo everything else is explained through.</p>
+<p><code>pnpm --filter @mvp/page-trade dev</code> works fine — the scripts are a half-finished convenience, and their partial presence implies the filter form is a fallback rather than the norm.</p>
+<hr />
+<h2 id="f9">F9 · <code>pnpm verify</code> runs its 14 gates strictly sequentially — DX, low</h2>
+<p><code>scripts/verify.mts:51</code> — <code>commands.map(({cmd, args}) =&gt; spawnSync(...))</code>. The six audits are independent of each other and of <code>test</code>/<code>build</code>, and none of them overlaps.</p>
+<p>Latency, not correctness; a warm run is around 32s so it rarely hurts. Worth knowing before someone concludes the gates are inherently slow.</p>
+<hr />
+<h2 id="f10">F10 · Four islands exceed the size guideline and nothing owns it — DX, low</h2>
+<p><code>reports/server-client-boundary-report.json</code> carries four open <code>large-client-component</code> issues at severity <code>warn</code>:</p>
+<ul>
+<li><code>apps/page-trade/src/hydrate.tsx</code></li>
+<li><code>fragments/chart-panel/src/island.tsx</code></li>
+<li><code>fragments/market-header/src/island.tsx</code></li>
+<li><code>fragments/order-form/src/island.tsx</code></li>
+</ul>
+<p><code>warn</code> does not fail the gate, the guideline has no number in any <code>budget.ts</code>, and no unit owns the warning. It is a permanent yellow light: either give it a budget field so it can fail, or drop the rule.</p>
+<hr />
+<h2 id="f11">F11 · Five of eleven budget fields have no gate anywhere — DOCS, medium</h2>
+<p><code>PerformanceBudgetSchema</code> defines 11 ceilings. What actually enforces them:</p>
+<div class="table-wrap"><table><thead><tr><th>Enforcement</th><th>Fields</th></tr></thead><tbody><tr><td>Gated by <code>pnpm verify</code></td><td><code>jsBytes</code>, <code>cssBytes</code></td></tr><tr><td>Gated only by <code>pnpm verify:runtime</code> (needs a live URL, <strong>not</strong> a verify gate)</td><td><code>maxTTFBMs</code>, <code>maxLCPMs</code>, <code>maxCLS</code></td></tr><tr><td>Runtime-only, acknowledged unmeasurable</td><td><code>rscPayloadBytes</code></td></tr><tr><td><strong>No gate anywhere</strong></td><td><code>maxNetworkRequests</code>, <code>maxINPMs</code>, <code>maxFragmentLatencyMs</code>, <code>maxRenderMs</code>, <code>maxMemoryMB</code></td></tr></tbody></table></div>
+<p>The blanket claim "performance budgets are hard gates: exceeding component/fragment/page budgets fails <code>pnpm verify</code>" is true of 2 fields out of 11.</p>
+<p>To be fair to the tooling: <code>audit:bundle</code> is explicit about its own scope — its report carries an <code>unmeasured</code> array with a <code>reason</code> per skip, and a <code>notes</code> entry stating that runtime-only metrics are not gated. The gap is between the schema and the gates, and between the gates and the summary prose.</p>
+<p>The sharpest instance: every one of the 14 fragments declares <code>maxFragmentLatencyMs</code> and <code>maxRenderMs</code> — the two most operationally meaningful numbers a fragment has — and nothing reads either. Also, every page declares <code>maxINPMs: 200</code> while the runtime gate implements LCP, CLS and TTFB checks and no INP check at all.</p>
+<hr />
+<h2 id="f12">F12 · <del>The scaffold file count is stated as 9 in three places and 11 in three others</del> — FIXED</h2>
+<p>The scaffolder writes <strong>11</strong> files (<code>tools/create-component/src/index.ts</code>, <code>createFragment</code>): <code>src/{server,render,manifest,budget,fixtures,render.test}.ts</code>, <code>tests/server.test.ts</code>, <code>package.json</code>, <code>tsconfig.json</code>, <code>Dockerfile</code>, <code>README.md</code>.</p>
+<div class="table-wrap"><table><thead><tr><th>Says 11 (correct)</th><th>Says 9 (stale)</th></tr></thead><tbody><tr><td><code>CLAUDE.md:48</code></td><td><code>packages/mcp/src/tools.ts:72</code> — the <strong>MCP tool description</strong></td></tr><tr><td><code>tools/create-component/AGENT.md:49</code></td><td><code>docs/AI_NATIVE_DEVX.md:215</code></td></tr><tr><td><code>docs/OPERATIONS.md:27</code></td><td><code>docs/trade-demo/07-deployment-examples.md:56</code></td></tr></tbody></table></div>
+<p>The wrong number was in the one place an AI agent reads by default: the MCP tool description is what a tool listing shows. <code>CLAUDE.md</code> states the accept criterion as <code>files.length === 11</code>, so an agent that trusted the tool description and asserted 9 would fail a check the manual defines correctly.</p>
+<p>All three stale sites are now corrected to 11. <code>tools/create-component/src/fragmentTemplate.ts:7</code> still says 9 and is left alone deliberately — that comment narrates the <em>old</em> broken scaffold (which emitted 9 files and could neither answer <code>/render</code> nor build an image) and is correct in context.</p>
+<p>Worth keeping on this page because the underlying gap remains: <strong>nothing checks that a count asserted in prose matches what the scaffolder emits.</strong> The scaffolder's own test does not assert a total, so the next divergence will be just as silent.</p>
+<hr />
+<h2 id="f13">F13 · The interaction ACL is not validated against reality — DX, low</h2>
+<p><code>domains/trade-contracts/src/slices.ts:164</code> lists <code>order-preview</code> as a subscriber of <code>trade.order-draft</code>. <code>order-preview</code> appears nowhere else in the repository — no fragment, no island, no owner id.</p>
+<p>Nothing checks that a declared publisher or subscriber id corresponds to something that exists, so the ACL can drift from the system it governs. Contrast with the live-panel contract, where <code>apps/page-trade/src/liveContract.test.ts</code> fails the build for exactly this class of drift.</p>
+<p>A related trap that is <em>not</em> a defect but reliably confuses people: publisher and subscriber ids are <strong>logical component ids, not fragment names</strong>. <code>symbol-switcher</code> is an owner identity used in <code>apps/page-trade/src/hydrate.tsx:173</code>, not a service under <code>fragments/</code>.</p>
+<hr />
+<h2 id="f14">F14 · The render contract has two tiers and the tier is thrown away — OPS, medium</h2>
+<p><code>parseFragmentRenderRequest</code> (<code>packages/contracts/src/index.ts</code>) tries the strict <code>FragmentRenderRequestSchema</code>, falls back to <code>FragmentRenderRequestEnvelopeSchema</code> (where <code>ctx</code> is <code>.partial().optional()</code>), and returns <code>strict: boolean</code> saying which tier matched. Only if both fail does it return <code>ok: false</code>.</p>
+<p>Verified live: <code>POST /render</code> with <code>{"ctx":{"locale":"en-US","tenant":"default"}}</code> — a context missing the required <code>traceId</code>, <code>requestId</code>, <code>featureFlags</code> and <code>timestamp</code> — answers <strong>200 with real HTML</strong>.</p>
+<p>The two-tier design is reasonable. The problem is that <strong>nothing reads <code>strict</code></strong>: a repository-wide search finds no consumer outside tests. <code>packages/fragment-host/src/index.ts:209</code> destructures the result, uses <code>parsed.ok</code> and <code>parsed.request</code>, and ignores <code>parsed.strict</code> — no log line, no response header, no metric label.</p>
+<p>Consequence: in production you cannot tell whether your pages are sending valid contexts or silently degrading to the lenient tier — which means a page that quietly stopped propagating <code>traceId</code> looks identical to one that works, while every downstream trace loses its parent.</p>
+<p>One counter label would fix it.</p>
+<hr />
+<h2 id="f15">F15 · A declared interaction channel is invisible to the dependency graph — DX, low</h2>
+<p><code>tradeSliceContracts</code> declares 7 channels. <code>pnpm graph</code> reports <strong>6</strong> slice units. The missing one is <code>trade.book-grouping</code>.</p>
+<p><code>tools/release-tools/src/unit-graph.ts:178-184</code> builds slice nodes by upserting from each fragment manifest's <code>consumes.slices</code> / <code>produces.slices</code>. No manifest mentions <code>trade.book-grouping</code>, so it has no node and no edges — and the affected engine therefore cannot know that changing that channel's payload affects <code>order-book</code>.</p>
+<p>Same shape as <a href="#f1">F1</a>: two sides declare related facts (the authoritative contract list, and the manifest convention fields) and no gate compares them. Those manifest fields are also outside <code>FragmentManifestSchema</code>, so nothing validates their spelling either.</p>
+<hr />
+<h2 id="things-that-look-like-limitations-and-are-not">Things that look like limitations and are not</h2>
+<p>Worth stating, because each one gets reported as a bug:</p>
+<ul>
+<li><strong>An island silently not hydrating.</strong> That is the version handshake working. Four distinct reasons are reported to <code>onSnapshotMismatch</code>; the SSR markup is deliberately left intact.</li>
+<li><strong>No runtime version negotiation.</strong> A deliberate scope choice, and the main axis on which Module Federation is stronger. We detect and decline; we never load a different remote.</li>
+<li><strong>The page still statically imports each island and live panel.</strong> There is no runtime module loading in this repository. Adding a <em>new</em> interactive fragment is a two-line page change; changing what an existing one does is not.</li>
+<li><strong><code>/health</code> and <code>/ready</code> return identical payloads.</strong> One handler serves both. If you need liveness and readiness to differ, that is a gap to close, not a subtlety.</li>
+<li><strong>The page-health signal is a hidden <code>&lt;div&gt;</code>, not a <code>&lt;meta&gt;</code>.</strong> Deliberate: it is a gateway signal, not document metadata. React 19 <em>would</em> hoist a <code>&lt;meta&gt;</code> into <code>&lt;head&gt;</code>, which is exactly where a degradation marker should not be.</li>
+<li><strong><code>reports/</code> keeps changing.</strong> Machine output, rewritten by every <code>pnpm verify</code>. The hand-written reports are in <code>docs/reports/</code>.</li>
+</ul>
+<h2 id="how-to-use-this-page">How to use this page</h2>
+<p>If you are evaluating: F1, F11 and F14 are the ones that would change a decision — one advisory tool that is wrong, one claim broader than its implementation, one observability hole at the main boundary. None of them is a design dead end; all three are a day of work each.</p>
+<p>If you are an agent working here: read F1 before acting on any optimizer recommendation, and F4 before concluding a flag does not exist.</p>
+<p>F3 and F12 are marked FIXED and kept rather than deleted, because the <em>mechanism</em> that let each one happen is still there — an undeclared-env-var drift has no warning, and no test compares a documented file count against what the scaffolder writes.</p>

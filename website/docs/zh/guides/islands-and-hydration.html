@@ -1,0 +1,60 @@
+<p class="eyebrow">指南</p>
+<h1>岛屿与水合</h1>
+<p class="lede">片段输出 SSR HTML 加一段内联 JSON 快照。页面在这段标记之上水合一个 React 岛屿 —— <strong>但只有版本握手通过才会</strong>。</p>
+
+<figure class="figure">
+<!--@figure:hydration-handshake-->
+<figcaption><b>对一次失配而言，跳过水合才是「成功」。</b>页面照常工作：服务端渲染过、可读、可被收录，只是那一块不可交互。绝不能发生的是：拿着自己不理解的 props 去挂载一个组件。</figcaption>
+</figure>
+
+<h2 id="标记契约">标记契约</h2>
+<pre><code>&lt;div data-island="orderForm"&gt;
+  &lt;script type="application/json" data-island-props="orderForm"&gt;
+    {"props":{…},"slice":"trade.order-draft","fragment":"order-form",
+     "version":"0.1.0","contractHash":"…"}
+  &lt;/script&gt;
+  &lt;!-- 服务端渲染的标记 --&gt;
+&lt;/div&gt;</code></pre>
+<p><code>IslandSnapshotSchema</code>：<code>props</code>（record，默认 <code>{}</code>），以及可选的 <code>slice</code>、<code>fragment</code>、<code>version</code>、<code>contractHash</code>。</p>
+
+<h2 id="注册与水合">注册与水合</h2>
+<pre><code>import { registerIsland, hydrateIslands } from "@mvp/islands";
+import { OrderFormIsland, OrderFormIslandPropsSchema } from "@mvp/fragment-order-form/island";
+
+registerIsland("orderForm", OrderFormIsland, {
+  expect: { fragment: "order-form", version: "0.1.0" },
+  propsSchema: OrderFormIslandPropsSchema,
+});
+
+hydrateIslands(document);   // 找到每个 [data-island]，挂载通过检查的那些</code></pre>
+<p>其他入口：<code>mountIsland</code>（单节点）、<code>readIslandSnapshot</code>、<code>getIsland</code>、<code>clearIslandRegistry</code>、<code>configureIslandRuntime</code>。</p>
+
+<h2 id="握手以及失败意味着什么">握手，以及失败意味着什么</h2>
+<p>以下四种原因之一会导致跳过水合、<strong>原样保留 SSR 标记</strong>（<code>SnapshotMismatchInfo.reason</code>）：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>原因</th><th>成因</th></tr></thead>
+<tbody>
+<tr><td><code>version-mismatch</code></td><td>快照 <code>version</code> ≠ 页面期望的版本</td></tr>
+<tr><td><code>contract-hash-mismatch</code></td><td>同一版本下载荷契约变了</td></tr>
+<tr><td><code>invalid-snapshot</code></td><td>JSON 不满足 <code>IslandSnapshotSchema</code></td></tr>
+<tr><td><code>invalid-props</code></td><td>快照 props 通不过岛屿自己的 <code>propsSchema</code></td></tr>
+</tbody></table></div>
+
+<div class="note good">
+<p><b>跳过就是失配情形下的成功路径。</b>一个在没有品种 tick size 和 lot size 的情况下水合出来的下单表单，会接受交易所必然拒绝的订单 —— 那才是失败。</p>
+</div>
+
+<p>装一个 handler 来观测它：</p>
+<pre><code>configureIslandRuntime({
+  onSnapshotMismatch: (info) =&gt; reportDrift(info),  // {island, expected, actual, reason}
+});</code></pre>
+
+<p>这也是本设计相对 Module Federation 的诚实边界：MF 会<em>协商</em>并加载匹配版本；我们只<em>检测</em>并拒绝。这里没有运行时远程加载。</p>
+
+<h2 id="给岛屿加必填-prop-是破坏性变更">给岛屿加必填 prop 是破坏性变更</h2>
+<p>如果你给某个岛屿的 <code>propsSchema</code> 加一个必填字段，所有由旧版片段产出的 SSR 快照都会 <code>invalid-props</code> 失败，那些岛屿会停止水合 —— <strong>这是设计如此</strong>。要么先升版本并滚动发布片段，要么把字段设为可选并给安全默认值。</p>
+<p>这不是理论：给下单表单的 props schema 加了三个必填字段之后，一份手工构造的测试快照立刻停止水合 —— 而这正是旧片段遇上新页面 bundle 时你希望线上发生的行为。</p>
+
+<h2 id="预算">预算</h2>
+<p>岛屿是客户端 JS 的主要成本。每个片段的 <code>jsBytes</code> 以「其客户端入口经 esbuild 压缩后的体积，且 <code>react</code>、<code>react-dom</code>、<code>@mvp/*</code> 全部 external」计量 —— 共享 vendor 算在消费它的页面头上，而不是每个片段重复计费。由 <code>audit:bundle</code> 强制。</p>
+<p>目前有 4 个岛屿超过了建议性的 <code>large-client-component</code> 体积参考线（<a href="../known-limitations.html#f10">F10</a>）。</p>

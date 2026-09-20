@@ -82,17 +82,33 @@ export function runSimilarityCheck(
   return report;
 }
 
+/**
+ * Scope: React component sources only (`.tsx`).
+ *
+ * Extending this to every `.ts` under a unit's `src/` was tried and rejected —
+ * it raised the corpus from 22 to 85 files and produced ~85 pairs over the 0.82
+ * threshold, nearly all of them meaningless: this fingerprint weighs
+ * name/props/tokens/JSX, so applied to CSS-in-string `styles.ts` modules it just
+ * measures how much of the shared design-token vocabulary two files use (13
+ * pairs above 0.90), and `metadata.ts`/`manifest.ts`/`budget.ts` score high for
+ * correctly filling in the same fixed contract shape.
+ *
+ * The duplication that motivated widening the scope — 14 copy-pasted ~130-line
+ * `src/server.ts` files — is now structurally impossible rather than merely
+ * detectable: that HTTP layer lives in `@mvp/fragment-host`, and
+ * `pnpm audit:deps`' `fragment-server-not-hosted` rule fails the build if a
+ * fragment hand-rolls its own server again. A precise rule beats a noisy
+ * threshold.
+ */
+function isComponentSource(path: string): boolean {
+  return path.endsWith(".tsx") && !path.endsWith(".test.tsx");
+}
+
 function discoverComponents(root: string): ComponentFingerprint[] {
-  const uiFiles = walkFiles(
-    join(root, "packages", "ui"),
-    (path) => path.endsWith(".tsx") && !path.endsWith(".test.tsx"),
-  );
+  const uiFiles = walkFiles(join(root, "packages", "ui"), isComponentSource);
   const fragmentFiles = walkFiles(
     join(root, "fragments"),
-    (path) =>
-      path.includes(`${join("src")}`) &&
-      path.endsWith(".tsx") &&
-      !path.endsWith(".test.tsx"),
+    (path) => path.includes(`${join("src")}`) && isComponentSource(path),
   );
   return [...uiFiles, ...fragmentFiles].map((file) => fingerprint(root, file));
 }
@@ -101,7 +117,7 @@ function fingerprint(root: string, file: string): ComponentFingerprint {
   const source = readFileSync(file, "utf8");
   const metadata = readMetadata(dirname(file));
   return {
-    name: metadata.name ?? basename(file).replace(/\.tsx$/, ""),
+    name: metadata.name ?? basename(file).replace(/\.tsx?$/, ""),
     file: relativePosix(root, file),
     category: metadata.category ?? inferCategory(root, file),
     props: extractProps(source),

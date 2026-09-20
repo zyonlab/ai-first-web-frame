@@ -1,0 +1,28 @@
+<h1 id="troubleshooting-build">Troubleshooting: build</h1>
+<h2 id="pnpm-build-is-slow"><code>pnpm build</code> is slow</h2>
+<p>It should not be, twice. <code>build</code> and <code>test</code> run through Turborepo (<code>turbo.json</code>); a warm tree takes <code>pnpm verify</code> from roughly 165s to 32s, and Turborepo restores deleted <code>dist/</code> and <code>.next/</code> directories from cache rather than rebuilding them.</p>
+<p>If everything rebuilds every time, something is invalidating the cache. The two rules:</p>
+<ol>
+<li><strong>Anything a task reads from outside its own package must be declared</strong>, or the cache serves a stale pass. <code>packages/mcp/turbo.json</code> is the worked example — its tests read the registry data and page manifests, so those are listed as <code>$TURBO_ROOT$</code> inputs.</li>
+<li><strong>Env vars that change what a task does belong in <code>globalEnv</code></strong>; values that only address an external environment (<code>*_URL</code>, secrets) belong in <code>globalPassThroughEnv</code> so they never enter a cache key.</li>
+</ol>
+<p>A change to any <code>globalDependencies</code> entry (<code>pnpm-lock.yaml</code>, root <code>package.json</code>, <code>tsconfig.base.json</code>, <code>vitest.config.ts</code>, <code>biome.json</code>, <code>oxlint.json</code>, <code>dependency-audit.json</code>) invalidates everything by design.</p>
+<h2 id="module-not-found-for-a-mvp-package">Module not found for a <code>@mvp/*</code> package</h2>
+<p>The package's <code>dist/</code> is missing or stale. Run <code>pnpm build</code>. Do not import from <code>src/</code> to work around it — package exports point at <code>dist/</code> on purpose.</p>
+<p>If it happens on a fresh clone during <code>pnpm test</code>, the prerequisite build should have handled it; read the build error rather than the test error.</p>
+<h2 id="a-new-export-subpath-is-not-resolvable-in-tests">A new export subpath is not resolvable in tests</h2>
+<p>Vitest aliases are derived from each package's <code>exports</code> map by <code>scripts/workspaceAliases.mts</code>. The generator reads the export <strong>target</strong>, not the subpath name — <code>@mvp/fragment-order-book/patch</code> maps to <code>src/ladder.ts</code>, so guessing <code>src/patch.ts</code> from the name would be wrong. Add the subpath to <code>package.json</code> <code>exports</code> and the alias follows; nothing needs hand-editing.</p>
+<h2 id="next-build-fails-only-in-one-page-app"><code>next build</code> fails only in one page app</h2>
+<p>Page apps are separate deployables with their own <code>tsconfig.json</code>. Build just that one:</p>
+<pre><code class="lang-sh">pnpm --filter @mvp/page-trade build</code></pre>
+<h2 id="tsgo-vs-tsc">tsgo vs tsc</h2>
+<p><code>pnpm typecheck</code> uses tsgo over per-project tsconfigs and writes <code>reports/typecheck-report.json</code> with a result per project. <code>pnpm typecheck:legacy</code> (<code>tsc -b</code>) is kept as a fallback for when a tsgo diagnostic is unclear — expect it to be slower and to occasionally disagree at the margins.</p>
+<h2 id="docker">Docker</h2>
+<pre><code class="lang-sh">docker compose -f infra/docker/docker-compose.yml config   # validate after registering a fragment
+docker compose -f infra/docker/docker-compose.yml up
+pnpm smoke                                                  # health-check the running stack</code></pre>
+<p>One Dockerfile per fragment. <code>register-fragment --with-compose</code> adds the service and refuses a port already in use; pass an explicit free <code>--port</code> if it does.</p>
+<h2 id="the-browser-vendor-bundle">The browser vendor bundle</h2>
+<p><code>page-trade</code> builds a self-hosted vendor bundle for the island-over-import-map spike:</p>
+<pre><code class="lang-sh">pnpm --filter @mvp/page-trade build:spike-vendor</code></pre>
+<p>Output lands in <code>apps/page-trade/public/spike-vendor/</code> (gitignored, built on demand). It bundles <code>react</code>, <code>react-dom/client</code>, <code>react/jsx-runtime</code>, <code>@mvp/trade-contracts</code> and <code>@mvp/ui/shadcn</code> from <code>node_modules</code>, so it tracks whatever React version is installed. Nothing is fetched from a CDN.</p>

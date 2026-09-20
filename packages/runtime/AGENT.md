@@ -198,6 +198,192 @@ const FALLBACK = (
 </Suspense>;
 ```
 
+## Fragment backend proxy + page health
+
+Two page-side contracts beyond slot composition.
+
+**`FragmentManifest.proxy` → `/_fragment/<fragment>/<target>/*`** — the channel a
+hydrated island uses to reach its own backend. The gateway mounts it; this package
+owns the pure resolution (path parse, URL join, escape check). Modelled on
+`@podium/proxy`.
+
+**`PAGE_HEALTH_ATTR`** — a composed page stamps its aggregate health into a hidden
+marker element (`<PageHealthMeta>` / `<PageHealthMetaStream>` from
+`@mvp/runtime/react`; a hidden `div`, not a `<meta>`, because this is an internal
+gateway signal rather than document metadata — React 19 would hoist a `<meta>`
+into `<head>`, which is exactly where it does not belong),
+and the gateway maps `unhealthy` (a **required** slot failed) to `503`. This is
+Tailor's `primary` semantic; before it, a page with a dead required slot answered
+`200` and crawlers indexed the degraded markup.
+
+```ts
+import {
+  buildFragmentProxyUrl,
+  failedRequiredSlotNames,
+  FRAGMENT_PROXY_PREFIX,
+  PAGE_HEALTH_ATTR,
+  PAGE_HEALTH_FAILED_ATTR,
+  parseFragmentProxyPath,
+  readPageHealthFromHtml,
+  resolveFragmentProxy,
+} from "@mvp/runtime";
+
+// A declared target resolves to an upstream URL…
+const resolved = resolveFragmentProxy({
+  pathname: `${FRAGMENT_PROXY_PREFIX}/order-form/quotes/BTC`,
+  search: "?depth=10",
+  proxyTargets: (fragment) =>
+    fragment === "order-form" ? { quotes: "https://quotes.internal/v1" } : null,
+});
+if (!resolved.ok) throw new Error(`unexpected: ${resolved.reason}`);
+if (resolved.url !== "https://quotes.internal/v1/BTC?depth=10") {
+  throw new Error("proxy url wrong");
+}
+
+// …and the declared base is the boundary: the path after it comes from the
+// browser, so a remainder that would escape is refused.
+if (buildFragmentProxyUrl("https://quotes.internal/v1", "../admin") !== null) {
+  throw new Error("escape not refused");
+}
+if (parseFragmentProxyPath("/markets") !== null) {
+  throw new Error("non-proxy path must not parse");
+}
+
+// Page health: only REQUIRED slots count toward `unhealthy`.
+const unhealthyExecution = {
+  slots: {
+    hero: {
+      slot: { name: "hero", fragment: "hero", required: true },
+      strategy: "dynamic-ssr" as const,
+      source: "fallback" as const,
+      status: "fallback" as const,
+      response: {
+        html: "",
+        assets: { js: [], css: [] },
+        cache: { ttl: 5, tags: [] },
+        metadata: { name: "hero", version: "0", fallback: true },
+      },
+    },
+  },
+  data: {},
+  health: "unhealthy" as const,
+  hints: [],
+};
+if (failedRequiredSlotNames(unhealthyExecution)[0] !== "hero") {
+  throw new Error("failed required slot not reported");
+}
+
+// What the gateway reads back out of the composed HTML.
+const healthHtml = `<div hidden ${PAGE_HEALTH_ATTR}="unhealthy" ${PAGE_HEALTH_FAILED_ATTR}="hero"></div>`;
+const marker = readPageHealthFromHtml(healthHtml);
+if (marker?.health !== "unhealthy" || marker.failedSlots[0] !== "hero") {
+  throw new Error("health marker not round-tripped");
+}
+// A page that does not stamp the marker has NO opinion — never "unhealthy".
+if (readPageHealthFromHtml("<html></html>") !== null) {
+  throw new Error("absent marker must be null");
+}
+```
+
+## `@mvp/runtime/live` — manifest-driven realtime panels
+
+A server-rendered, non-React panel (order book, trades tape, positions table)
+stays live by subscribing to a data source and folding each frame into an
+in-place DOM patch. **The fragment declares what it subscribes to; the page only
+binds parameters.** Before this entry the page owned all three halves (which
+fragments are live, which source each needs, how to patch each one's DOM), which
+meant a fragment could not become live — or change what it listens to — without
+a page edit.
+
+- A fragment declares source-id **templates** in its manifest:
+  `subscriptions: ["book.l2.<symbol>"]`. `GET /manifest` publishes them, so a
+  new fragment version can change its own subscriptions and ship on its own.
+  This is deliberately separate from `dataDependencies` (what SSR reads once).
+- A fragment ships a `LivePanel` from its own `live` export: `fragment` (matches
+  the SSR root's `data-fragment`), `subscriptions` (passed straight from the
+  manifest), and `mount(ctx) -> { onFrame, stop? }`.
+- The page calls `startLivePanels` with the panel list, the current parameter
+  values and a `subscribe` adapter onto its data client. The driver never sees
+  the client — only resolved source ids.
+
+`ctx.remounted` is the one subtlety: it is `true` only when a parameter THAT
+PANEL binds changed, which is how a panel knows its SSR rows went stale. A panel
+on a parameter-free source (`positions`) keeps its rows across a symbol switch;
+the order book, whose rows hold the previous symbol's prices, rebuilds.
+
+```ts
+import {
+  type LivePanel,
+  resolveSourceTemplate,
+  startLivePanels,
+  templateParams,
+} from "@mvp/runtime/live";
+
+// Templates bind their `<param>` placeholders; a global source binds nothing,
+// which is what makes it survive a parameter change untouched.
+console.assert(
+  templateParams("book.l2.<symbol>").join() === "symbol",
+  "book binds symbol",
+);
+console.assert(templateParams("positions").length === 0, "positions is global");
+console.assert(
+  resolveSourceTemplate("book.l2.<symbol>", { symbol: "BTC" }) === "book.l2.BTC",
+);
+
+// What a fragment ships from its `live` export.
+const rendered: string[] = [];
+const book: LivePanel = {
+  fragment: "order-book",
+  subscriptions: ["book.l2.<symbol>"],
+  mount: ({ node, remounted }) => {
+    // `remounted` decides whether the rendered rows can seed the first diff.
+    let seeded = !remounted;
+    return {
+      onFrame(source, data) {
+        rendered.push(`${source}:${seeded ? "patch" : "rebuild"}`);
+        seeded = true;
+        node.setAttribute("data-frames", String(rendered.length));
+      },
+    };
+  },
+};
+
+// What the page supplies: the DOM, the parameters and a subscribe adapter.
+const root = document.createElement("div");
+const node = document.createElement("section");
+node.setAttribute("data-fragment", "order-book");
+root.appendChild(node);
+
+const bus = new Map<string, (data: unknown) => void>();
+const controller = startLivePanels({
+  root,
+  panels: [book],
+  params: { symbol: "BTC" },
+  subscribe: (source, onFrame) => {
+    bus.set(source, onFrame);
+    return () => bus.delete(source);
+  },
+});
+
+console.assert(controller.mounted.join() === "order-book", "panel mounted");
+bus.get("book.l2.BTC")?.({ bids: [] });
+console.assert(rendered[0] === "book.l2.BTC:patch", "seeded from SSR rows");
+
+// A parameter change re-subscribes and tells the panel its rows are stale.
+controller.setParams({ symbol: "ETH" });
+console.assert(bus.has("book.l2.ETH") && !bus.has("book.l2.BTC"), "rotated");
+bus.get("book.l2.ETH")?.({ bids: [] });
+console.assert(rendered[1] === "book.l2.ETH:rebuild", "rebuilt after switch");
+
+controller.stop();
+console.assert(bus.size === 0, "teardown cancels every subscription");
+```
+
+A panel whose fragment did not render, or rendered its fallback
+(`data-fallback`), is skipped rather than mounted — composition already degraded
+that slot and a live panel must not resurrect it. A panel that throws at mount
+or on a frame is reported through `onError` and does not take the page down.
+
 ## Accept
 
 ```

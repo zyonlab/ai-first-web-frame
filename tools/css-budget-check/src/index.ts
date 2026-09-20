@@ -44,7 +44,16 @@ type UnitCheckRow = {
   metric: "cssBytes";
   actual: number;
   budget: number;
-  status: "pass" | "fail";
+  /**
+   * `unmeasured` is NOT a pass: it means this tool found no `.css` file to
+   * measure, so the declared ceiling gated nothing. All 7 pages inject their CSS
+   * as strings through `@mvp/assets`, so every page row used to read
+   * `actual: 0 / budget: 50000 / pass` — a green row for a measurement that
+   * never happened. Reporting it honestly is the point; it is still not a
+   * failure, because for those units the ceiling is genuinely unenforceable
+   * statically (the CSS is generated at request time).
+   */
+  status: "pass" | "fail" | "unmeasured";
   note?: string;
 };
 
@@ -164,9 +173,9 @@ export async function runCssBudgetCheck(
 
 /**
  * Gates each unit's own source CSS against the `cssBytes` ceiling declared
- * in its `src/budget.ts`. Units with a ceiling but no CSS files on disk get
- * an explicit zero-actual row (inline `<style>`/CSS-in-JS is not counted —
- * said out loud instead of silently passing).
+ * in its `src/budget.ts`. A unit with a ceiling but no `.css` file on disk is
+ * reported as `unmeasured`, not `pass`: its styles are injected as strings at
+ * request time, so nothing was actually compared against the ceiling.
  */
 async function runUnitChecks(root: string): Promise<UnitCheckRow[]> {
   const checks: UnitCheckRow[] = [];
@@ -189,10 +198,15 @@ async function runUnitChecks(root: string): Promise<UnitCheckRow[]> {
       metric: "cssBytes",
       actual,
       budget: unit.cssBytes,
-      status: actual <= unit.cssBytes ? "pass" : "fail",
+      status:
+        files.length === 0
+          ? "unmeasured"
+          : actual <= unit.cssBytes
+            ? "pass"
+            : "fail",
       note:
         files.length === 0
-          ? "no .css files in unit dir; inline/injected styles are not counted"
+          ? "UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing"
           : `${files.length} css file(s), minified bytes`,
     });
   }

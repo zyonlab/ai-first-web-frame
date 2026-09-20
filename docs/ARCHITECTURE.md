@@ -17,15 +17,27 @@ flowchart TD
 
 Shell Gateway creates request context, resolves routes through `@mvp/routes`,
 forwards trace headers, applies fallback behavior, and owns global security
-headers.
+headers. It is also the single public origin, so it serves `/robots.txt` and
+`/sitemap.xml`, both derived from the route registry (parameterized routes such
+as `/product/:id` are templates, not URLs, and are excluded). Both upstream
+proxies (page HTML and `/_next/*` assets) carry an abort signal —
+`SHELL_PAGE_TIMEOUT_MS` / `SHELL_ASSET_TIMEOUT_MS`.
 
 Page apps own SEO content, metadata, page manifests
 (`src/manifest.slots.json`), and fragment slot composition. SEO-critical
 content is rendered in the initial HTML.
 
-Business fragments are SSR services with `/health`, `/metrics`, `/manifest`,
-`/assets`, and `/render`. A fragment failure returns fallback HTML and does
-not break page rendering.
+Business fragments are SSR services with `/health`, `/ready`, `/metrics`,
+`/manifest`, `/assets`, `/budget`, and `POST /render`. All of that HTTP surface
+lives in one place — `@mvp/fragment-host` — and each `fragments/*/src/server.ts`
+is a ~20-line adapter over it. `/health` and `/ready` report the manifest
+`version`, which is what lets a rollout confirm which build is live before
+promoting that version's registry channel; `pnpm verify:unit --name <fragment>`
+checks the whole single-unit chain (build → boot → version → render).
+
+A fragment failure returns fallback HTML and does not break page rendering. The
+degraded markup is identified by the fragment NAME (never by its internal
+`serviceUrl`) and its reason text is HTML-escaped.
 
 Code is layered three ways, with imports flowing strictly downward:
 

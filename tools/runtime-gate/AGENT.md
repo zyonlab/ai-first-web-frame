@@ -91,9 +91,18 @@ if (!good.ok) throw new Error("healthy page must pass");
 const names = good.checks.map((c) => c.name).join();
 if (
   names !==
-  "hydration-clean,no-react-418,assets-delivered,layout-fit,no-horizontal-overflow,interaction:orderbook→order-form-price"
+  "hydration-clean,no-react-418,assets-delivered,layout-fit,web-vitals-lcp,web-vitals-cls,web-vitals-ttfb,no-horizontal-overflow,interaction:orderbook→order-form-price"
 )
   throw new Error(`check set: ${names}`);
+// The three web-vitals checks SKIP when `webVitals` is absent (as here) or when
+// the page declares no ceiling — a metric that was never compared must never
+// read as passed. They are the enforcement for `budget.ts`'s `maxLCPMs` /
+// `maxCLS` / `maxTTFBMs`, which no gate measured before. INP is deliberately
+// not among them: it needs real interaction latency, which a headless run
+// cannot produce honestly.
+const vitals = good.checks.filter((c) => c.name.startsWith("web-vitals-"));
+if (vitals.length !== 3 || !vitals.every((c) => c.skipped === true))
+  throw new Error("unmeasured vitals must be skipped, not passed");
 if (!good.checks[5].skipped) throw new Error("skipped contract counts as ok, visibly");
 
 // The defect classes the gate exists for, in one observation.

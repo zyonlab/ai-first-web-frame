@@ -1,0 +1,30 @@
+<p class="eyebrow">指南</p>
+<h1>后端代理</h1>
+<p class="lede">已水合的岛屿用来访问<strong>自己那个后端</strong>的通道：同源、无 CORS，且片段的真实服务地址永不到达浏览器。</p>
+
+<h2 id="问题">问题</h2>
+<p>片段在 SSR 期间能访问自己的后端 —— 它是一个服务，它有 <code>@mvp/request</code>。它水合后的岛屿不能：浏览器只知道公共源站，而片段的 <code>serviceUrl</code> 是内网地址（而且必须保持在内网）。在这层存在之前，根本没有标准通道。</p>
+
+<h2 id="声明一个">声明一个</h2>
+<p>在片段的 <code>src/manifest.ts</code> 里：</p>
+<pre><code>proxy: {
+  account: "/account",                          // 相对：相对本片段的 serviceUrl 解析
+  rates:   "https://rates.internal.example/v2", // 绝对：共享的或第三方后端
+}</code></pre>
+<p><code>FragmentManifestSchema.proxy</code> 接受绝对 <code>http(s)</code> URL 或<strong>根相对路径</strong>。相对形式是对 <code>@podium/proxy</code> 的刻意偏离：片段自己的端点在每个环境里都在不同主机上，绝对的自指目标就必须把环境变量插值进一份静态 manifest。</p>
+
+<h2 id="网关挂载成什么">网关挂载成什么</h2>
+<pre><code>/_fragment/&lt;fragment&gt;/&lt;target&gt;/*   →   &lt;解析出的 base&gt;/*</code></pre>
+<p>于是岛屿在页面自己的源站上调用 <code>/_fragment/order-form/account</code>。同源、无 CORS，真实服务地址不外泄。</p>
+<p>所有 HTTP 方法都会被转发（<code>server.all</code>）。请求体<strong>原样转发</strong>而不是重新序列化成 JSON —— 早期版本做的是 <code>JSON.stringify(request.body ?? {})</code>，会破坏文本和表单请求体。</p>
+
+<h2 id="声明的-base-就是边界">声明的 base 就是边界</h2>
+<p>纯解析逻辑在 <code>packages/runtime/src/fragmentProxy.ts</code>：</p>
+<pre><code>parseFragmentProxyPath(pathname)       // -&gt; {fragment, target, rest} | null
+buildFragmentProxyUrl(base, rest, search, serviceUrl)
+resolveFragmentProxy(options)          // 整个决策</code></pre>
+<p>会逃出声明 base 的余项被<strong>拒绝</strong>，而不是被规范化掉。一个目标只有在 manifest 里声明过才可达。</p>
+<div class="note warn">
+<p><b>一个值得知道的细节</b>（如果你要直接用这些函数）：空余项<em>不能</em>补出一个尾斜杠。Fastify 把 <code>/account</code> 和 <code>/account/</code> 当作两条不同的路由，所以 <code>/_fragment/order-form/account</code> 和 <code>/_fragment/order-form/account/</code> 是两个不同的请求，而只有其中一个是你声明的那个。</p>
+</div>
+<p>超时：<code>SHELL_FRAGMENT_PROXY_TIMEOUT_MS</code>。</p>

@@ -1,0 +1,503 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ai-first-web-frame 竞品对位分析</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #eceaf0; --paper: #fcfbfd; --paper-2: #f4f2f7;
+    --ink: #1b1726; --ink-2: #453e55; --muted: #726a82;
+    --rule: #d4cfdd; --rule-soft: #e6e2ec;
+    --plum: #5b4b8a; --plum-soft: #e7e2f2;
+    --win: #3f7548; --win-soft: #e0eee2;
+    --even: #8a6a14; --even-soft: #f5ecd6;
+    --lose: #9c3550; --lose-soft: #f6dee4;
+    --shadow: 0 1px 2px rgba(27,23,38,.05), 0 10px 26px -18px rgba(27,23,38,.35);
+    --sans: "Source Sans 3", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121016; --paper: #1a1722; --paper-2: #211d2b;
+      --ink: #e4e0ec; --ink-2: #b8b1c7; --muted: #8b839c;
+      --rule: #322c40; --rule-soft: #272234;
+      --plum: #a493d8; --plum-soft: #241d38;
+      --win: #86c091; --win-soft: #16250f;
+      --even: #d5ae57; --even-soft: #2c2410;
+      --lose: #e29aad; --lose-soft: #331520;
+      --shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.85);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121016; --paper: #1a1722; --paper-2: #211d2b;
+    --ink: #e4e0ec; --ink-2: #b8b1c7; --muted: #8b839c;
+    --rule: #322c40; --rule-soft: #272234;
+    --plum: #a493d8; --plum-soft: #241d38;
+    --win: #86c091; --win-soft: #16250f;
+    --even: #d5ae57; --even-soft: #2c2410;
+    --lose: #e29aad; --lose-soft: #331520;
+    --shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.85);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 0 80px; }
+
+  .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--rule); }
+  .topbar-in { max-width: 1080px; margin: 0 auto; padding-inline: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; min-height: 46px; }
+  .topbar strong { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+  .topnav { display: flex; gap: 13px; flex-wrap: wrap; margin-left: auto; }
+  .topnav a { font-size: 13px; font-weight: 500; color: var(--muted); text-decoration: none; padding: 4px 0; border-bottom: 1.5px solid transparent; }
+  .topnav a:hover { color: var(--plum); border-bottom-color: var(--plum); }
+
+  header.hero { padding-block: 50px 30px; border-bottom: 1px solid var(--rule); }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: var(--plum); }
+  h1 { font-weight: 700; font-size: clamp(28px, 5vw, 42px); line-height: 1.13; margin: 12px 0 0; letter-spacing: -.015em; text-wrap: balance; }
+  .lede { font-size: 16.5px; color: var(--ink-2); max-width: 68ch; margin-top: 16px; }
+  .lede b { color: var(--ink); font-weight: 600; }
+
+  section { padding-block: 44px 0; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin-bottom: 20px; }
+  .sec-num { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--plum); }
+  h2 { font-weight: 600; font-size: clamp(21px, 3.1vw, 27px); margin: 0; letter-spacing: -.008em; }
+  h3 { font-weight: 600; font-size: 18px; margin: 30px 0 10px; }
+  h4 { font-weight: 600; font-size: 14.5px; margin: 0 0 6px; }
+  p { margin: 0 0 14px; max-width: 78ch; }
+  ul, ol { margin: 0 0 14px; padding-left: 1.3em; max-width: 78ch; }
+  li { margin-bottom: 6px; }
+  code { font-family: var(--mono); font-size: .86em; background: var(--paper-2); border: 1px solid var(--rule-soft); border-radius: 3px; padding: .5px 4px; word-break: break-word; }
+  strong { font-weight: 600; }
+
+  .tw { overflow-x: auto; border: 1px solid var(--rule); background: var(--paper); margin-bottom: 20px; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 600px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  th { font-weight: 600; font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: var(--paper-2); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td code { font-size: 11.5px; }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .j { font-family: var(--mono); font-size: 10.5px; padding: 2px 6px; white-space: nowrap; font-weight: 500; }
+  .j.win { background: var(--win-soft); color: var(--win); }
+  .j.even { background: var(--even-soft); color: var(--even); }
+  .j.lose { background: var(--lose-soft); color: var(--lose); }
+  .j.gap { background: var(--lose-soft); color: var(--lose); }
+  .v { font-family: var(--mono); font-size: 10px; padding: 1px 5px; background: var(--plum-soft); color: var(--plum); white-space: nowrap; }
+  .u { font-family: var(--mono); font-size: 10px; padding: 1px 5px; background: var(--paper-2); color: var(--muted); border: 1px solid var(--rule); white-space: nowrap; }
+
+  .axis { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--plum); padding: 18px 20px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .axis.gapaxis { border-left-color: var(--lose); }
+  .axis h4 { font-size: 16.5px; display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+  .axis .who { font-size: 13.5px; color: var(--muted); font-weight: 400; }
+  .axis p { font-size: 13.5px; color: var(--ink-2); }
+  .axis .lift { border-top: 1px dashed var(--rule-soft); padding-top: 10px; margin-top: 10px; font-size: 13.5px; }
+  .axis .lift b { color: var(--plum); }
+
+  .cmd { font-family: var(--mono); font-size: 12px; background: var(--paper-2); border: 1px solid var(--rule-soft); border-left: 2.5px solid var(--plum); padding: 9px 11px; overflow-x: auto; white-space: pre; margin: 8px 0 14px; }
+  blockquote { margin: 0 0 16px; padding: 12px 16px; background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--plum); font-size: 13.5px; color: var(--ink-2); max-width: 78ch; }
+  blockquote p:last-child { margin-bottom: 0; }
+  footer { margin-top: 50px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 12.5px; color: var(--muted); }
+  footer a { color: var(--plum); }
+  .src { font-size: 12.5px; color: var(--ink-2); }
+  .src li { margin-bottom: 4px; }
+</style>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <strong>ai-first-web-frame · competitive analysis</strong>
+    <nav class="topnav">
+      <a href="#method">口径</a><a href="#field">竞品</a><a href="#map">对位总表</a>
+      <a href="#axes">逐轴</a><a href="#lift">可借鉴</a><a href="#cost">成本账</a><a href="#verdict">结论</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">竞品对位分析 · 调研日 2026-09-19 · 一手资料核实</div>
+  <h1>我们自研了什么、别人已经做了什么、该借哪一段</h1>
+  <p class="lede">
+    这份报告把系统拆成 <b>8 条能力轴</b>，每条轴找到对应的开源竞品，用<b>拉取到的一手资料</b>（官方文档、GitHub、npm registry）
+    核实它们的真实功能，再和我们的实现逐项对位：谁做得更好、差在哪、可以借什么、各自的成本是多少。
+  </p>
+  <p class="lede" style="margin-top:14px">
+    <b>一句话结论</b>：在<b>片段组合</b>这条主轴上我们和 Podium 各有胜负（它更成熟、我们的调度更强）；
+    在 <b>affected / 构建门禁</b>这条轴上我们基本是在重造 Nx 的子集且缺了它最值钱的缓存；
+    在 <b>AI agent 操作面</b>这条轴上没有框架级竞品。
+    最该立刻借鉴的是 Podium 的 <code>proxy</code> 机制 —— 那是我们结构性缺失的一块。
+  </p>
+</header>
+
+<!-- ───────── 口径 ───────── -->
+<section id="method">
+  <div class="sec-head"><span class="sec-num">01</span><h2>调研口径</h2></div>
+  <p>
+    本轮抓取了下列一手来源（2026-09-19）。凡是从这些页面直接读到的事实，下文标 <span class="v">已核实</span>；
+    凭既有知识、本轮未能验证的，标 <span class="u">未核实</span>，请当作待查线索而非结论。
+  </p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>来源</th><th>取到的关键事实</th></tr></thead>
+      <tbody>
+        <tr><td><code>github.com/podium-lib/podlet</code></td><td>podlet manifest 的完整字段、version 的语义、context 默认值、<code>.proxy()</code> API</td></tr>
+        <tr><td><code>github.com/podium-lib/layout</code></td><td>layout 三件套（client / context / proxy）、<code>client.register</code> + <code>podlet.fetch</code>、<code>res.podiumSend</code>、retries / timeout 配置</td></tr>
+        <tr><td><code>github.com/podium-lib/context</code></td><td>7 个 <code>podium-*</code> 头的确切名称、<code>.register(name, parser)</code> 扩展点</td></tr>
+        <tr><td><code>github.com/podium-lib/proxy</code></td><td>proxy 的挂载路径规则、默认超时、manifest 缓存策略</td></tr>
+        <tr><td><code>registry.npmjs.org/@podium/layout</code></td><td>latest = <strong>5.4.8</strong></td></tr>
+        <tr><td><code>github.com/zalando/tailor</code></td><td>归档声明原文、fragment 属性语义</td></tr>
+        <tr><td><code>opencomponents.github.io</code> + <code>registry.npmjs.org/oc</code></td><td>registry 职责定位、CLI、语言无关性、latest = <strong>0.50.64</strong></td></tr>
+        <tr><td><code>module-federation.io</code>（guide + configure/manifest）</td><td>2.0 新增能力清单、<code>mf-manifest.json</code> 的 exposes/shared/remotes</td></tr>
+        <tr><td><code>docs.astro.build/en/guides/server-islands</code></td><td><code>server:defer</code>、<code>slot="fallback"</code>、props 加密进 URL、2048 字节与 POST 不缓存</td></tr>
+        <tr><td><code>nx.dev</code>（run-tasks + enforce-module-boundaries）</td><td><code>nx affected</code>、<code>targetDefaults</code>/<code>dependsOn</code>、缓存、<code>@nx/enforce-module-boundaries</code> 的 tags/depConstraints</td></tr>
+        <tr><td>检索（doctest / 预算门禁）</td><td>TS 侧可执行文档工具清单；Lighthouse CI + size-limit 的业界组合方式</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <blockquote>
+    <p><strong>没查到的两件事</strong>，下文按「未核实」处理：① Podium 是否有任何 channel / 金丝雀概念 —— 官方仓库与检索都未见，据其设计推测是<em>有意</em>把部署策略交给基础设施层；
+    ② OpenComponents 的 registry 是否支持发布通道（stable/canary 之类）。这两点若要作为选型依据，需要再查。</p>
+  </blockquote>
+</section>
+
+<!-- ───────── 竞品速览 ───────── -->
+<section id="field">
+  <div class="sec-head"><span class="sec-num">02</span><h2>竞品现状速览</h2></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>项目</th><th>出身</th><th>状态</th><th>它解决的问题</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Podium</strong></td><td>FINN.no / NRK（挪威）</td><td><span class="j win">活跃</span> <code>@podium/layout</code> 5.4.8 <span class="v">已核实</span></td><td>服务端把 podlet（片段）拼成 layout（页面）。podlet 可以是任何语言写的 HTTP 服务。</td></tr>
+        <tr><td><strong>OpenComponents</strong></td><td>OpenTable（2014 起）</td><td><span class="j win">活跃</span> <code>oc</code> 0.50.64 <span class="v">已核实</span></td><td>组件发布到<strong>真正的 registry 服务</strong>（REST API 存储+版本+分发），语言无关（Node/.NET/PHP/Java/Go）。</td></tr>
+        <tr><td><strong>Module Federation 2.0</strong></td><td>Webpack → 独立组织</td><td><span class="j win">活跃·事实标准</span> <span class="v">已核实</span></td><td>构建期/运行期的模块共享与版本协商。Rspack、Webpack 原生支持。</td></tr>
+        <tr><td><strong>Nx</strong></td><td>Nrwl</td><td><span class="j win">活跃</span> <span class="v">已核实</span></td><td>monorepo 的 project graph、affected、任务缓存（本地+远程）、模块边界 lint。</td></tr>
+        <tr><td><strong>Astro（Server Islands）</strong></td><td>Astro</td><td><span class="j win">活跃</span> <span class="v">已核实</span></td><td>页面主体先出、island 延迟服务端渲染并带 fallback 占位。</td></tr>
+        <tr><td><strong>Zalando Tailor</strong></td><td>Zalando / Project Mosaic</td><td><span class="j lose">已归档 2022-12-05</span> <span class="v">已核实</span></td><td>流式 layout 服务，<code>&lt;fragment&gt;</code> 标签带 <code>primary</code> / <code>async</code> / <code>fallback-src</code>，并行流式拼装。<strong>它也做性能预算</strong>。</td></tr>
+        <tr><td><strong>Hypernova / Ara Framework</strong></td><td>Airbnb / 社区</td><td><span class="u">未核实·据信已停</span></td><td>把组件名+props POST 给一个服务换回 HTML —— 和我们的 <code>POST /render</code> 形状几乎一致。</td></tr>
+        <tr><td><strong>single-spa / qiankun / Garfish / wujie / micro-app</strong></td><td>社区 / 阿里 / 字节 / 腾讯 / 京东</td><td><span class="u">未核实</span></td><td>浏览器侧微前端编排。与我们 SSR-first 的定位基本不重叠。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:13.5px;color:var(--muted)">
+    Tailor 的归档原文：<em>“This repository was archived by the owner on Dec 5, 2022. It is now read-only.”</em>
+    它的 README 没有推荐继任者。这条路有人走过且走到过尽头，是选型时值得知道的背景。
+  </p>
+</section>
+
+<!-- ───────── 对位总表 ───────── -->
+<section id="map">
+  <div class="sec-head"><span class="sec-num">03</span><h2>对位总表</h2></div>
+  <p>这是报告的骨架：我们每个子系统对应谁、谁更强、差距是什么。「自研量」是本仓库实测的源码行数（不含测试）。</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>我们的模块</th><th class="num">自研量</th><th>对位竞品</th><th>判定</th><th>一句话</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>@mvp/runtime</code> 槽位调度</td><td class="num">1,518</td>
+          <td>Podium layout / Tailor</td><td><span class="j even">各有胜负</span></td>
+          <td>Podium 更成熟稳，我们的 <strong>DAG + 数据依赖 + 每槽位流式</strong>它没有。</td>
+        </tr>
+        <tr>
+          <td><code>@mvp/fragment-host</code></td><td class="num">285</td>
+          <td><code>@podium/podlet</code></td><td><span class="j lose">他们更强</span></td>
+          <td>同一职责。Podium 多了 <code>proxy</code>、多语言 podlet、生产年限。</td>
+        </tr>
+        <tr>
+          <td><code>@mvp/request-context</code></td><td class="num">113</td>
+          <td><code>@podium/context</code></td><td><span class="j even">各有胜负</span></td>
+          <td>我们维度更多且过 Zod；<strong>但他们的 context 可注册自定义 parser，我们是固定 schema</strong>。</td>
+        </tr>
+        <tr>
+          <td><code>@mvp/registry</code> + 生命周期 CLI</td><td class="num">1,145 + 3,149</td>
+          <td>OpenComponents registry</td><td><span class="j even">各有胜负</span></td>
+          <td>OC 是真 registry 服务能跨团队分发；我们是一个 JSON 文件，但有 <strong>channel + promote/rollback + 原子写冲突重试</strong>。</td>
+        </tr>
+        <tr>
+          <td>（无）片段后端代理</td><td class="num">0</td>
+          <td><code>@podium/proxy</code></td><td><span class="j gap">结构性缺失</span></td>
+          <td><strong>我们没有这层。</strong>island 在浏览器里要调自己的后端，目前没有标准通道。</td>
+        </tr>
+        <tr>
+          <td><code>@mvp/islands</code> 版本握手</td><td class="num">508</td>
+          <td>Module Federation 2.0</td><td><span class="j lose">他们更强</span></td>
+          <td>MF 能<strong>协商并加载</strong>匹配版本；我们只能<strong>检测到不匹配然后拒绝 hydrate</strong>。</td>
+        </tr>
+        <tr>
+          <td><code>tools/release-tools</code> affected 引擎</td><td class="num">1,257</td>
+          <td>Nx affected + project graph</td><td><span class="j lose">他们更强</span></td>
+          <td>Nx 自动推断依赖图<strong>且有本地/远程任务缓存</strong>。我们每次 verify 全量跑 165s。</td>
+        </tr>
+        <tr>
+          <td>六个审计门禁</td><td class="num">2,101</td>
+          <td><code>@nx/enforce-module-boundaries</code> · size-limit · Lighthouse CI</td><td><span class="j even">各有胜负</span></td>
+          <td>我们的规则更贴业务（孤儿总线、裸 fetch、片段自建服务）；Nx 的 tags/depConstraints 表达力更强，LHCI 能测我们<strong>声明了却没在测</strong>的 LCP/INP/CLS。</td>
+        </tr>
+        <tr>
+          <td>流式槽位 / 延迟 SSR</td><td class="num">（含在 runtime）</td>
+          <td>Astro Server Islands</td><td><span class="j even">各有胜负</span></td>
+          <td>Astro 零配置但 props 走 URL（2048 字节上限、超限转 POST 且不被缓存）；我们走 POST body 无此尴尬，但要自己跑一个服务。</td>
+        </tr>
+        <tr>
+          <td><code>@mvp/mcp</code> + <code>docs:test</code> + JSON 信封 CLI</td><td class="num">537 + 445</td>
+          <td><span class="j win">无框架级竞品</span></td><td><span class="j win">我们更强</span></td>
+          <td>生态里只有<strong>分散的约定</strong>（llms.txt / AGENTS.md / MCP）和小众 doctest 工具，没有哪个框架把它们做成自带门禁。</td>
+        </tr>
+        <tr>
+          <td><code>@mvp/contracts</code> Zod 边界</td><td class="num">682</td>
+          <td>（无直接对位）</td><td><span class="j win">我们更强</span></td>
+          <td>竞品的 manifest 大多是约定而非 schema。Podium manifest 只有 7 个字段且无运行时校验层可言。</td>
+        </tr>
+        <tr>
+          <td><code>@mvp/interaction</code> + <code>store</code></td><td class="num">667</td>
+          <td>（无直接对位）</td><td><span class="j win">我们更强</span></td>
+          <td>跨片段通信在竞品里普遍留白（Podium 明确不管）。契约总线 + ACL 是我们独有的。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ───────── 逐轴 ───────── -->
+<section id="axes">
+  <div class="sec-head"><span class="sec-num">04</span><h2>逐轴深入</h2></div>
+
+  <div class="axis">
+    <h4>A · 片段组合与降级 <span class="who">↔ Podium layout / Tailor</span> <span class="j even">各有胜负</span></h4>
+    <p><strong>他们怎么做（已核实）</strong>：podlet 暴露一份 manifest，字段就七个 ——
+    <code>{ name, version, content, fallback, css, js, proxy }</code>。layout 侧
+    <code>layout.client.register({ name, uri })</code> 注册，<code>podlet.fetch(ctx)</code> 取内容，
+    <code>res.podiumSend()</code> 输出。<code>client</code> 支持 <code>retries</code>，<code>proxy</code> 支持 <code>timeout</code>。
+    降级是 podlet 自己声明一个 <code>fallback</code> 路径，layout 在失败时取它。</p>
+    <p>Tailor（已归档）走的是另一条：<code>&lt;fragment src primary async fallback-src&gt;</code> 标签 + 流式并行，
+    其中 <strong><code>primary</code> 决定整个响应的状态码</strong> —— 主片段挂了，页面就该返回它的错误码。</p>
+    <p><strong>我们怎么做</strong>：槽位声明在 <code>manifest.slots.json</code>，比 Podium 多出
+    <code>strategy</code>（四种渲染策略）、<code>cachePolicy</code>、<code>dependsOn</code>、<code>dataDependencies</code>、<code>required</code>。
+    调度器建 DAG 拓扑分层并行、每槽位独立超时与 abort、失败传播到下游、流式时每个槽位一个 promise 独立 flush。
+    <strong>这套编排能力 Podium 完全没有</strong> —— 它的 layout 就是「注册、取、拼」。</p>
+    <div class="lift"><b>可借鉴 →</b> Tailor 的 <code>primary</code> 语义。我们的 <code>required: true</code> 目前只影响
+    <code>execution.health</code>，<strong>不影响 HTTP 状态码</strong> —— 一个 required 槽位全挂的页面仍然返回 200。
+    对 SEO 和监控都不理想：爬虫会把降级页当正常内容收录。加一个「required 槽位失败 → 5xx（或 503 + Retry-After）」的可选策略，约 <strong>0.5 人日</strong>。</div>
+  </div>
+
+  <div class="axis gapaxis">
+    <h4>B · 片段的后端数据通道 <span class="who">↔ @podium/proxy</span> <span class="j gap">我们结构性缺失</span></h4>
+    <p><strong>他们怎么做（已核实）</strong>：podlet 在 manifest 里声明
+    <code>proxy: { api: 'http://backend/some/path' }</code>，layout 的 <code>@podium/proxy</code> 自动把它挂到
+    <code>{pathname}/{prefix}/{podletName}/{proxyName}/</code>，默认超时 <strong>6000ms</strong>。
+    于是 podlet 的<strong>浏览器侧代码</strong>可以请求 <code>/podium-resource/bar/api/</code>
+    —— 同源、无需 CORS、无需把片段服务地址暴露给浏览器、页面也不需要知道片段的后端在哪。</p>
+    <p><strong>我们怎么做</strong>：没有这一层。片段的服务端渲染可以用 <code>@mvp/request</code> 调后端，
+    但 <strong>island 在浏览器里想拿数据没有标准通道</strong>。现状是要么页面把数据注入进 island snapshot（一次性、不能刷新），
+    要么 island 自己知道一个后端地址（跨源，并且把内部拓扑暴露给浏览器 —— 这正是我们刚修掉的 F-11 同一类问题）。</p>
+    <p>C3 spike 的 <code>assetsUrl</code> 已经踩到过这个坑的邻居：跨源 module fetch 必须加
+    <code>Access-Control-Allow-Origin</code>，而且那是真机浏览器才发现的。代理机制能从根上消掉这类问题。</p>
+    <div class="lift"><b>可借鉴 →</b> <strong>本报告的第一优先级</strong>。在 <code>FragmentManifestSchema</code> 加一个
+    <code>proxy?: Record&lt;string, string&gt;</code>，页面侧按固定前缀挂载转发（Next 的 route handler 或 shell 网关都行）。
+    带上我们已有的超时/取消和 trace 透传，比 Podium 的版本还能更完整。估 <strong>2–3 人日</strong>。</div>
+  </div>
+
+  <div class="axis">
+    <h4>C · 请求上下文传播 <span class="who">↔ @podium/context</span> <span class="j even">各有胜负</span></h4>
+    <p><strong>他们怎么做（已核实）</strong>：七个标准头 —— <code>podium-requested-by</code>、<code>podium-debug</code>、
+    <code>podium-locale</code>、<code>podium-device-type</code>、<code>podium-mount-origin</code>、
+    <code>podium-mount-pathname</code>、<code>podium-public-pathname</code>。
+    关键是<strong>可扩展</strong>：<code>.register(name, parser)</code> 能追加自定义 parser 进上下文构造流程。</p>
+    <p><strong>我们怎么做</strong>：<code>RequestContextSchema</code> 覆盖 traceId / requestId / locale / tenant / user /
+    session / featureFlags / theme / device / experiment / userAgent / timestamp，<strong>整体过 Zod 校验</strong>，
+    并且贯通 trace。维度和严谨度都超过 Podium。</p>
+    <p><strong>差距</strong>：我们的 context 是<strong>封闭 schema</strong>。业务要加一个维度（比如 A/B 分桶、渠道来源、会员等级），
+    必须改 <code>@mvp/contracts</code> —— 而那是框架包，按分层规则业务代码碰不得。Podium 的扩展点让这件事变成本地操作。</p>
+    <div class="lift"><b>可借鉴 →</b> 给 <code>createRequestContext</code> 加一个
+    <code>extensions?: Record&lt;string, ContextParser&gt;</code>，解析结果放进
+    <code>ctx.extensions</code>（schema 用 <code>z.record(z.string())</code> 兜底），随 header 一起序列化给片段。
+    保住了「框架不认识业务词汇」的分层规则，又给了扩展口。估 <strong>1 人日</strong>。</div>
+  </div>
+
+  <div class="axis">
+    <h4>D · 注册表、版本与发布 <span class="who">↔ OpenComponents / Podium 的 version 语义</span> <span class="j even">各有胜负</span></h4>
+    <p><strong>Podium（已核实）</strong>：manifest 里的 <code>version</code> 是<strong>缓存失效信号</strong> —— 官方文档原话是
+    这个值在新版本部署时必须更新，因为 layout「uses this value to know whether to refresh the podlet's manifest and fallback content」。
+    没有 registry、没有 channel、没有 promote/rollback（<span class="u">未核实</span>：检索未见此类概念，据其设计推测是有意交给基础设施层）。</p>
+    <p><strong>OpenComponents（已核实）</strong>：有真正的 registry 服务 ——「the REST API that stores, versions, and serves components」，
+    <code>oc init</code> / <code>oc dev</code> / <code>oc publish</code>，发布时自动做资产优化和版本管理，语言无关。
+    这是「跨团队、跨仓库分发」才需要的规格。</p>
+    <p><strong>我们怎么做</strong>：<code>registry/registry.data.json</code> 一个文件 + 四个 CLI。
+    但有两样他们都没有的：<strong>channel（stable/canary/preview）+ promote/rollback 的版本历史</strong>，
+    以及<strong>原子写 + 建议锁 + 乐观内容哈希</strong>（并发写返回 <code>{"status":"conflict","retry":true}</code>）。
+    后者是为「多 agent 并行操作同一份注册表」设计的，在人类团队里几乎没人会做到这一步。</p>
+    <div class="lift"><b>判断 →</b> 现阶段<strong>不建议</strong>上 OC 那种 registry 服务。一个 JSON 文件的好处是它进 git、有 diff、
+    能被 affected 引擎内容比对从而收窄重建 —— 这恰恰是我们最值钱的性质之一。等到「跨仓库分发片段」成为真需求时再说（估 2–4 人周）。</div>
+  </div>
+
+  <div class="axis">
+    <h4>E · 客户端集成与版本协商 <span class="who">↔ Module Federation 2.0</span> <span class="j lose">他们更强</span></h4>
+    <p><strong>他们怎么做（已核实）</strong>：2.0 相对 Webpack 5 原版新增
+    <strong>Manifest</strong>、<strong>Federation Runtime</strong>、<strong>Runtime Plugins System</strong>、
+    <strong>Dynamic type prompt</strong>、<strong>Chrome Devtool</strong>。
+    <code>mf-manifest.json</code> 含 <code>exposes</code> / <code>shared</code> / <code>remotes</code>，
+    <code>remotesInfo</code> 记录所依赖的生产者模块及其 <code>matchedVersion</code>。
+    运行时已抽成独立 SDK，可以不依赖构建工具动态注册和加载远程模块。</p>
+    <p><strong>我们怎么做</strong>：island 的 C2 握手 —— 片段在 SSR HTML 里内联
+    <code>{fragment, version, contractHash}</code> 快照，页面 bundle 用
+    <code>registerIsland(name, comp, { expectedVersion, expectedContractHash, propsSchema })</code> 声明期望，
+    不匹配就<strong>完全跳过 hydration</strong>，保留 SSR HTML 作为最终静态态并告警。</p>
+    <p><strong>差距很清楚</strong>：MF 能<strong>协商并加载正确版本</strong>；我们只能<strong>检测到错位并拒绝</strong>。
+    我们的做法在「不静默出错」上是对的，但用户拿到的是一个不可交互的组件。</p>
+    <div class="lift"><b>可借鉴 →</b> 只有在重启 C3（island 独立部署）时才值得投入。那时 <code>mf-manifest.json</code> 的
+    <code>remotesInfo.matchedVersion</code> 是现成的设计参考 —— 甚至可以直接用 MF 的运行时 SDK 而不是自研加载器。
+    估 <strong>1–2 人周</strong>，且应等到「island 单独上线」真的成为需求（当前决策记录是 no-go）。</div>
+  </div>
+
+  <div class="axis">
+    <h4>F · affected 与门禁 <span class="who">↔ Nx</span> <span class="j lose">他们更强（且我们在重造）</span></h4>
+    <p><strong>他们怎么做（已核实）</strong>：<code>nx affected -t test</code> 只跑受影响项目；
+    project graph <strong>自动推断</strong>项目间依赖；<code>targetDefaults</code> + <code>dependsOn</code>（<code>^</code> 前缀表示依赖项目的同名任务）定义任务管线；
+    <strong>本地缓存 + 远程缓存</strong>。边界规则是 <code>@nx/enforce-module-boundaries</code>（ESLint 和 Oxlint 都有），
+    项目打 <code>tags</code>，用 <code>depConstraints</code> 的 <code>sourceTag</code> + <code>onlyDependOnLibsWithTags</code> 约束，
+    tag 支持通配符、正则、glob。</p>
+    <p><strong>我们怎么做</strong>：<code>tools/release-tools</code> 1,257 行自研 affected 引擎 + 六个审计 2,101 行。
+    我们独有的是<strong>注册表数据文件的内容 diff 收窄</strong>（promote 一个片段只重建它和挂载它的页面）——
+    Nx 不知道什么是 fragment registry，这条得自己写。</p>
+    <p><strong>差距</strong>：① <strong>没有任务缓存</strong>。<code>pnpm verify</code> 每次全量 165 秒，其中 build 占 100 秒；
+    Nx 的缓存能把无关改动的重跑压到几秒。② 分层规则是<strong>硬编码</strong>在审计代码里的三层，加一层要改 TypeScript；
+    Nx 的 tags/depConstraints 是声明式配置。</p>
+    <div class="lift"><b>可借鉴 →</b> 两条，优先级不同：<br>
+    <b>(1) 任务缓存</b> —— 不必迁 Nx，套一层 <strong>Turborepo</strong> 只用它的缓存与任务图即可，我们的 14 道门禁原样保留。
+    估 <strong>2 人日</strong>，收益是日常 verify 从 165s 降到秒级。这是本报告 ROI 第二高的一条。<br>
+    <b>(2) 声明式边界</b> —— 把三层硬编码改成 <code>tags</code> + <code>depConstraints</code> 风格的配置。估 <strong>2 人日</strong>，
+    收益是加领域/加层不用改审计代码。</div>
+  </div>
+
+  <div class="axis">
+    <h4>G · 延迟 SSR / islands <span class="who">↔ Astro Server Islands</span> <span class="j even">各有胜负</span></h4>
+    <p><strong>他们怎么做（已核实）</strong>：组件标 <code>server:defer</code>，构建期换成一段小脚本，
+    运行时向一个特殊 endpoint 请求并换回 HTML；占位用具名 <code>slot="fallback"</code>，随页面一起先渲染、就位后替换。
+    <strong>代价写在文档里</strong>：props 以<strong>加密字符串放进 URL query</strong>，
+    超过约 <strong>2048 字节</strong>会转成 POST，<strong>而 POST 不被浏览器缓存</strong>；
+    函数不能传，循环引用不支持。</p>
+    <p><strong>我们怎么做</strong>：<code>dynamic-ssr</code> 槽位 + <code>&lt;FragmentSlotStream&gt;</code> + <code>&lt;Suspense&gt;</code>，
+    props 走 <code>POST /render</code> 的 body，没有大小限制；每槽位独立超时、abort、DAG 依赖、fallback。</p>
+    <p><strong>本质区别</strong>：Astro 的 island 是<strong>同进程组件</strong>（零运维），我们的片段是<strong>独立 HTTP 服务</strong>（可独立部署，代价是一个服务）。
+    这是「独立渲染」和「独立部署」的分野，不是谁做得好的问题。</p>
+    <div class="lift"><b>可借鉴 →</b> Astro 把「代价」写进文档正文的做法值得学（2048 字节、POST 不缓存都是明写的）。
+    我们的 <code>docs/COMPOSITION.md</code> 已经有这个习惯。功能上没有需要抄的。</div>
+  </div>
+
+  <div class="axis">
+    <h4>H · AI agent 操作面 <span class="who">↔ 无框架级竞品</span> <span class="j win">我们更强</span></h4>
+    <p><strong>生态现状（已核实）</strong>：存在的是<strong>分散的约定</strong>而非框架能力 ——
+    <code>llms.txt</code>（文档索引约定）、<code>AGENTS.md</code>（仓库级 agent 配置格式）、
+    <strong>MCP</strong>（工具暴露协议），以及「CLI-first，MCP-second」这条正在形成共识的设计原则。</p>
+    <p>可执行文档这件事，TS 侧<strong>确实有工具</strong>（这一点要修正我此前的说法）：
+    <code>testdocs</code>（把 md 里的 ts 块当 vitest/jest 测试跑）、
+    <code>typescript-docs-verifier</code>（只验编译不执行）、
+    <code>mdoctest</code>（Python 写的跨语言工具，能 auto-fix）、
+    Effect-TS 的 doctest plugin（用 <code>import.meta.vitest</code> fence）。
+    但<strong>它们都是独立工具，没有哪个框架把它做成自己的强制门禁</strong>。</p>
+    <p><strong>我们怎么做</strong>：<code>docs:test</code>（445 行）在 <code>pnpm verify</code> 里执行全部 36 份 AGENT.md 的 38 个代码块、0 豁免；
+    <code>@mvp/mcp</code>（537 行）把发现与生命周期包成 agent 可调工具；四个生命周期 CLI 统一 JSON 信封、未知 flag 拒绝、幂等、原子写冲突重试。</p>
+    <div class="lift"><b>可借鉴 →</b> 两条轻量的：<br>
+    ① 补一份 <strong><code>AGENTS.md</code></strong>（正在成为通用约定，和现有 <code>CLAUDE.md</code> 内容大量重合，可以互相引用而非复制）。估 <strong>0.5 人日</strong>。<br>
+    ② <code>docs:test</code> 的实现可以对照 <code>testdocs</code> 看看有没有更省的路 —— 但我们的版本已经处理了跨块续写、no-run 豁免、per-package 粒度，未必划算换。</div>
+  </div>
+</section>
+
+<!-- ───────── 可借鉴清单 ───────── -->
+<section id="lift">
+  <div class="sec-head"><span class="sec-num">05</span><h2>可借鉴清单（按 ROI 排序）</h2></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>#</th><th>借什么</th><th>来源</th><th>解决什么</th><th class="num">估时</th><th>ROI</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td><strong>片段后端代理</strong><br><code>manifest.proxy</code> + 页面侧固定前缀转发</td><td><code>@podium/proxy</code></td><td>island 在浏览器里调自己后端的标准通道；消掉跨源/CORS/暴露内部地址这一整类问题</td><td class="num">2–3 d</td><td><span class="j win">最高</span></td></tr>
+        <tr><td class="num">2</td><td><strong>任务缓存</strong>（套 Turborepo，保留现有 14 道门禁）</td><td>Nx / Turborepo</td><td><code>pnpm verify</code> 165s → 无关改动秒级；直接作用于每天几十次的迭代循环</td><td class="num">2 d</td><td><span class="j win">最高</span></td></tr>
+        <tr><td class="num">3</td><td><strong>required 槽位失败影响 HTTP 状态码</strong></td><td>Tailor 的 <code>primary</code></td><td>降级页不再以 200 被爬虫收录；监控能看见真实失败率</td><td class="num">0.5 d</td><td><span class="j win">高</span></td></tr>
+        <tr><td class="num">4</td><td><strong>可扩展的请求上下文</strong><br><code>ctx.extensions</code> + 自定义 parser</td><td><code>@podium/context</code></td><td>业务加上下文维度不必改框架包，绕开分层规则的死结</td><td class="num">1 d</td><td><span class="j win">高</span></td></tr>
+        <tr><td class="num">5</td><td><strong>Lighthouse CI</strong> 接上 budget 里的 LCP/INP/CLS</td><td>Lighthouse CI</td><td>我们 <code>budget.ts</code> 里声明了 <code>maxLCPMs</code>/<code>maxINPMs</code>/<code>maxCLS</code>，但 bundle 审计自己承认「runtime-only 指标不在本门禁范围」—— 现在没有任何东西在测它们</td><td class="num">2 d</td><td><span class="j win">高</span></td></tr>
+        <tr><td class="num">6</td><td><strong>声明式分层规则</strong><br>tags + depConstraints</td><td><code>@nx/enforce-module-boundaries</code></td><td>加一层/加一个领域不用改审计 TypeScript</td><td class="num">2 d</td><td><span class="j even">中</span></td></tr>
+        <tr><td class="num">7</td><td><strong><code>AGENTS.md</code></strong></td><td>生态约定</td><td>和别家 agent 工具互通，不只服务一种 agent</td><td class="num">0.5 d</td><td><span class="j even">中</span></td></tr>
+        <tr><td class="num">8</td><td><strong>运行时版本协商</strong></td><td>MF 2.0 <code>remotesInfo.matchedVersion</code></td><td>island 从「检测到错位就拒绝」升级到「协商加载正确版本」</td><td class="num">1–2 w</td><td><span class="j lose">低（等 C3 重启）</span></td></tr>
+        <tr><td class="num">9</td><td><strong>真 registry 服务</strong></td><td>OpenComponents</td><td>跨仓库/跨团队分发片段</td><td class="num">2–4 w</td><td><span class="j lose">低（当前无此需求）</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>前五条合计约 8 人日</strong>，覆盖了一个结构性缺失（#1）、一个日常效率的数量级提升（#2）、一个 SEO/监控正确性问题（#3）、一个分层死结（#4）和一组空转的预算（#5）。</p>
+</section>
+
+<!-- ───────── 成本账 ───────── -->
+<section id="cost">
+  <div class="sec-head"><span class="sec-num">06</span><h2>自研 vs 采用的成本账</h2></div>
+  <p>把自研量按「能不能被现成方案覆盖」分三类。行数为本仓库实测（源码，不含测试）。</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>类别</th><th>模块</th><th class="num">源码行数</th><th>判断</th></tr></thead>
+      <tbody>
+        <tr><td rowspan="3"><strong>可被现成方案大幅替代</strong></td><td><code>tools/release-tools</code>（affected 引擎）</td><td class="num">1,257</td><td>Nx 覆盖大部分；注册表内容 diff 那段得留</td></tr>
+        <tr><td>六个审计门禁</td><td class="num">2,101</td><td>边界/预算类可换（Nx lint + size-limit + LHCI）；业务规则（孤儿总线、片段自建服务）得留</td></tr>
+        <tr><td><code>@mvp/fragment-host</code></td><td class="num">285</td><td>Podium podlet 覆盖，且更强</td></tr>
+        <tr><td rowspan="3"><strong>部分可替代</strong></td><td><code>@mvp/runtime</code> 槽位调度</td><td class="num">1,518</td><td>组合/降级/资产 Podium 能覆盖约六成；DAG、流式、策略枚举要自己加</td></tr>
+        <tr><td><code>@mvp/registry</code> + 生命周期 CLI</td><td class="num">1,145 + 3,149</td><td>OC 覆盖发布分发；channel/promote/rollback/并发安全是我们自己的</td></tr>
+        <tr><td><code>@mvp/request-context</code></td><td class="num">113</td><td>Podium context 覆盖大半，但我们的 Zod 校验更严</td></tr>
+        <tr><td rowspan="4"><strong>不可替代（真正的自研资产）</strong></td><td><code>@mvp/contracts</code></td><td class="num">682</td><td>竞品的 manifest 是约定不是 schema</td></tr>
+        <tr><td><code>@mvp/interaction</code> + <code>store</code> + <code>islands</code></td><td class="num">1,175</td><td>跨片段通信在竞品里普遍留白</td></tr>
+        <tr><td><code>@mvp/mcp</code> + <code>docs:test</code></td><td class="num">982</td><td>无框架级竞品</td></tr>
+        <tr><td><code>@mvp/observability</code> + <code>optimizer</code></td><td class="num">1,550</td><td>trace→优化建议的规则引擎，竞品里没有对位</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    粗略地看：<strong>约 3,600 行可被现成方案大幅替代</strong>，<strong>约 4,400 行是不可替代的自研资产</strong>，
+    其余是部分可替代。换个说法 —— 如果这是一个纯粹的微前端项目，有相当一部分工作是重复的；
+    但如果目标是「一个 AI agent 能安全高速迭代的代码库」，那不可替代的那 4,400 行正是产品本身。
+  </p>
+</section>
+
+<!-- ───────── 结论 ───────── -->
+<section id="verdict">
+  <div class="sec-head"><span class="sec-num">07</span><h2>结论</h2></div>
+  <p>
+    <strong>没有一个项目和我们完全对位</strong>，但每条轴上都有比我们成熟的东西。三种情形要分开判断：
+  </p>
+  <ul>
+    <li><strong>如果目标是交付一个微前端产品</strong> —— 理性选型是 <strong>Podium</strong>（服务端组合，活跃、生产验证、多语言片段）
+      + <strong>Nx 或 Turborepo</strong>（affected 与缓存），能省掉这里相当一部分自研。我们在 A/F 两轴上确实在重造轮子。</li>
+    <li><strong>如果目标是「AI agent 能安全高速迭代的代码库」</strong> —— 微前端只是载体，真正的产出在 H 轴，
+      那部分没有现成品可抄，自研是必要的。这也解释了 <code>llms.txt</code> 里那句
+      「Consumers are AI agents operating the lifecycle CLIs, not humans reading prose」。</li>
+    <li><strong>无论哪种目标</strong> —— 可借鉴清单的前五条（约 8 人日）都该做。它们不是「向竞品看齐」，
+      而是补我们自己的洞：一个结构性缺失、一个数量级的迭代效率、一个 SEO 正确性问题、一个分层死结、一组从来没被测过的预算。</li>
+  </ul>
+  <blockquote>
+    <p><strong>最值得记住的一条</strong>：Zalando Tailor 在 2022 年底归档，README 里没有推荐继任者。
+    这条技术路线有人走过完整的生命周期。选择走它之前，值得先想清楚我们和 Tailor 的差别在哪
+    —— 我的判断是：差别不在片段组合本身（那部分 Tailor 做得不差，甚至也做性能预算），
+    而在<strong>谁来操作它</strong>。</p>
+  </blockquote>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">08</span><h2>来源</h2></div>
+  <ul class="src">
+    <li><a href="https://github.com/podium-lib/podlet">github.com/podium-lib/podlet</a> — manifest 字段、version 语义、context 默认值、proxy API</li>
+    <li><a href="https://github.com/podium-lib/layout">github.com/podium-lib/layout</a> — layout 三件套、client/proxy/context 配置</li>
+    <li><a href="https://github.com/podium-lib/context">github.com/podium-lib/context</a> — 七个 <code>podium-*</code> 头、<code>.register()</code> 扩展点</li>
+    <li><a href="https://github.com/podium-lib/proxy">github.com/podium-lib/proxy</a> — 代理挂载路径、默认超时</li>
+    <li><a href="https://www.npmjs.com/package/@podium/layout">npm @podium/layout</a> — latest 5.4.8</li>
+    <li><a href="https://podium-lib.io/">podium-lib.io</a> — 项目主页</li>
+    <li><a href="https://github.com/zalando/tailor">github.com/zalando/tailor</a> — 归档声明、fragment 属性语义</li>
+    <li><a href="https://opencomponents.github.io/docs/intro/">opencomponents.github.io</a> — registry 定位、CLI、语言无关性</li>
+    <li><a href="https://github.com/opencomponents/oc">github.com/opencomponents/oc</a> — 仓库结构</li>
+    <li><a href="https://www.npmjs.com/package/oc">npm oc</a> — latest 0.50.64</li>
+    <li><a href="https://module-federation.io/guide/start/index.html">module-federation.io</a> — 2.0 新增能力清单</li>
+    <li><a href="https://module-federation.io/configure/manifest">module-federation.io/configure/manifest</a> — mf-manifest.json 结构</li>
+    <li><a href="https://www.infoq.com/news/2026/04/module-federation-2-stable/">InfoQ — Module Federation 2.0 Reaches Stable Release</a></li>
+    <li><a href="https://docs.astro.build/en/guides/server-islands/">docs.astro.build — Server Islands</a></li>
+    <li><a href="https://nx.dev/features/run-tasks">nx.dev — Run Tasks</a> · <a href="https://nx.dev/features/enforce-module-boundaries">Enforce Module Boundaries</a></li>
+    <li><a href="https://github.com/datisthq/testdocs">github.com/datisthq/testdocs</a> · <a href="https://www.npmjs.com/package/typescript-docs-verifier">typescript-docs-verifier</a> — TS 可执行文档工具</li>
+    <li><a href="https://sph.sh/en/posts/server-side-micro-frontend-composition/">sph.sh — Server-Side Micro-Frontend Composition Guide</a></li>
+  </ul>
+</section>
+
+<footer>
+  调研与撰写：2026-09-19。竞品事实来自上列一手页面的当日抓取；标 <span class="u">未核实</span> 的条目是本轮未能验证的线索。
+  我方数字为本仓库分支 <code>fix/framework-hardening</code> 的实测行数（源码，排除测试与 <code>dist</code>）。
+  竞品状态会变，结论有时效性 —— 作为选型依据前请重新核实版本与维护状态。
+</footer>
+</div>

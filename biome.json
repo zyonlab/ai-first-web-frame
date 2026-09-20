@@ -20,10 +20,12 @@
       "!**/dist-browser",
       "!apps/page-trade/public/spike-vendor",
       "!**/.next",
+      "!**/.turbo",
       "!**/coverage",
       "!**/test-results",
       "!**/playwright-report",
       "!.claude/worktrees",
+      "!docs/reports/*.html",
       "!reports/*.json",
       "!reports/playwright",
       "!reports/traces"

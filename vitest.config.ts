@@ -1,88 +1,18 @@
-import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+import { buildWorkspaceAliases } from "./scripts/workspaceAliases.mts";
 
-const pathFromRoot = (path: string) =>
-  fileURLToPath(new URL(path, import.meta.url));
-
+/**
+ * `@mvp/*` specifiers resolve to `src/`, not `dist/`, so tests run without a
+ * prior build. The map is DERIVED from every workspace package's
+ * `package.json#exports` (see scripts/workspaceAliases.mts) instead of being
+ * hand-maintained here: the previous hand-written list was ~110 lines, had to be
+ * edited whenever a package or a fragment subpath was added, carried
+ * domain-specific entries in a repo-root config, and had no gate proving it was
+ * complete.
+ */
 export default defineConfig({
   resolve: {
-    alias: {
-      "@mvp/assets": pathFromRoot("./packages/assets/src/index.ts"),
-      "@mvp/contracts": pathFromRoot("./packages/contracts/src/index.ts"),
-      "@mvp/data": pathFromRoot("./packages/data/src/index.ts"),
-      "@mvp/design-system": pathFromRoot(
-        "./packages/design-system/src/index.ts",
-      ),
-      "@mvp/design-tokens": pathFromRoot(
-        "./packages/design-tokens/src/index.ts",
-      ),
-      "@mvp/interaction": pathFromRoot("./packages/interaction/src/index.ts"),
-      "@mvp/islands": pathFromRoot("./packages/islands/src/index.ts"),
-      // Trade-demo patch-only fragment entry points (pure DOM-patch functions,
-      // page-trade bundles them into the realtime hydration layer).
-      "@mvp/fragment-order-book/patch": pathFromRoot(
-        "./fragments/order-book/src/ladder.ts",
-      ),
-      "@mvp/fragment-trades-feed/patch": pathFromRoot(
-        "./fragments/trades-feed/src/patch.ts",
-      ),
-      "@mvp/fragment-positions-table/patch": pathFromRoot(
-        "./fragments/positions-table/src/patch.ts",
-      ),
-      // Trade-demo island entry points (source `.tsx`, page-trade bundles them).
-      "@mvp/fragment-order-form/island": pathFromRoot(
-        "./fragments/order-form/src/island.tsx",
-      ),
-      "@mvp/fragment-market-header/island": pathFromRoot(
-        "./fragments/market-header/src/island.tsx",
-      ),
-      "@mvp/fragment-account-bar/island": pathFromRoot(
-        "./fragments/account-bar/src/island.tsx",
-      ),
-      "@mvp/fragment-chart-panel/island": pathFromRoot(
-        "./fragments/chart-panel/src/island.tsx",
-      ),
-      // Trade-demo manifest entry points (C2 version handshake §4.3.1):
-      // page-trade reads each fragment's own `version` to declare its
-      // `registerIsland` expectation.
-      "@mvp/fragment-order-form/manifest": pathFromRoot(
-        "./fragments/order-form/src/manifest.ts",
-      ),
-      "@mvp/fragment-market-header/manifest": pathFromRoot(
-        "./fragments/market-header/src/manifest.ts",
-      ),
-      "@mvp/fragment-account-bar/manifest": pathFromRoot(
-        "./fragments/account-bar/src/manifest.ts",
-      ),
-      "@mvp/fragment-chart-panel/manifest": pathFromRoot(
-        "./fragments/chart-panel/src/manifest.ts",
-      ),
-      "@mvp/observability": pathFromRoot(
-        "./packages/observability/src/index.ts",
-      ),
-      "@mvp/optimizer": pathFromRoot("./packages/optimizer/src/index.ts"),
-      "@mvp/registry": pathFromRoot("./packages/registry/src/index.ts"),
-      "@mvp/request": pathFromRoot("./packages/request/src/index.ts"),
-      "@mvp/request-context": pathFromRoot(
-        "./packages/request-context/src/index.ts",
-      ),
-      "@mvp/routes": pathFromRoot("./packages/routes/src/index.ts"),
-      "@mvp/runtime/react": pathFromRoot("./packages/runtime/src/react.tsx"),
-      "@mvp/runtime": pathFromRoot("./packages/runtime/src/index.ts"),
-      "@mvp/storage": pathFromRoot("./packages/storage/src/index.ts"),
-      "@mvp/store": pathFromRoot("./packages/store/src/index.ts"),
-      "@mvp/trade-chart": pathFromRoot("./domains/trade-chart/src/index.ts"),
-      "@mvp/trade-contracts": pathFromRoot(
-        "./domains/trade-contracts/src/index.ts",
-      ),
-      "@mvp/trade-data": pathFromRoot("./domains/trade-data/src/index.ts"),
-      "@mvp/trade-prefs": pathFromRoot("./domains/trade-prefs/src/index.ts"),
-      "@mvp/trade-theme": pathFromRoot("./domains/trade-theme/src/index.ts"),
-      "@mvp/ui/AppNav": pathFromRoot("./packages/ui/src/AppNav/index.ts"),
-      "@mvp/ui/shadcn": pathFromRoot("./packages/ui/src/shadcn/index.ts"),
-      "@mvp/ui": pathFromRoot("./packages/ui/src/index.ts"),
-      "@mvp/workers": pathFromRoot("./packages/workers/src/index.ts"),
-    },
+    alias: buildWorkspaceAliases(),
   },
   // The page apps set `jsx: "preserve"` in their tsconfig (Next.js owns the JSX
   // transform in the real build). Under Vitest we transpile the same `.tsx`

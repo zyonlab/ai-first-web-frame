@@ -28,6 +28,11 @@ export const tradesFeedManifest = {
   layoutHint: { shape: "table", fills: true },
   // Realtime data dependency: trades.<symbol> (contract C5).
   dataDependencies: ["trades.<symbol>"],
+  // Source-id TEMPLATES this fragment's browser panel subscribes to. Distinct
+  // from `dataDependencies`, which is what SSR reads: a fragment can read a
+  // source once at render time without keeping it live. `<symbol>` is bound by
+  // the page at mount time; changing it re-subscribes the panel.
+  subscriptions: ["trades.<symbol>"],
   metadata: {
     category: "trading",
     description:

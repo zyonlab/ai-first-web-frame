@@ -1,0 +1,68 @@
+<p class="eyebrow">指南</p>
+<h1>页面组合</h1>
+<p class="lede">页面声明槽位，框架去填。<strong>页面里绝不出现按片段写的接线代码。</strong></p>
+
+<h2 id="manifest-是唯一事实">manifest 是唯一事实</h2>
+<p><code>apps/&lt;page&gt;/src/manifest.slots.json</code> 是一个 JSON <strong>数组</strong>（不是 <code>{slots: [...]}</code>）：</p>
+<pre><code>[
+  {
+    "name": "promotion",
+    "fragment": "promotion-banner",
+    "channel": "stable",
+    "strategy": "cached-ssr",
+    "timeoutMs": 200,
+    "props": { "scene": "home", "campaignId": "summer" },
+    "cachePolicy": { "ttl": 60, "tags": ["promotion", "home"], "vary": ["tenant", "locale"] },
+    "required": false
+  }
+]</code></pre>
+<p>用 <code>mount-slot</code> 改它，不要手编辑 —— 一次成功的挂载会从它重新生成 <code>src/fragmentSlots.gen.ts</code>，而 <code>pnpm verify:manifest-gen</code> 在两者漂移时判失败。</p>
+<p><code>src/fragmentSlots.ts</code> 仍然手写，但很薄：它包装生成的数组，只添加静态表达不了的按请求粘合逻辑 —— <code>timeoutMs</code> 覆盖、<code>resolveData</code> 函数，或（<code>page-trade</code> 上）合并按请求变化的 <code>props.symbol</code>。</p>
+
+<h2 id="渲染槽位">渲染槽位</h2>
+<pre><code>import { FragmentSlot, PageHealthMeta } from "@mvp/runtime/react";
+
+const execution = await executeFragmentSlots({ slots, registry, ctx, dataDependencies });
+
+return (
+  &lt;main&gt;
+    &lt;FragmentSlot result={execution.slots.promotion} /&gt;
+    &lt;PageHealthMeta health={execution.health} failed={failedRequiredSlotNames(execution)} /&gt;
+  &lt;/main&gt;
+);</code></pre>
+
+<div class="cards two">
+  <div class="card t">
+    <h4><code>executeFragmentSlots</code></h4>
+    <p>一道屏障：全部解析完，你再渲染。简单。</p>
+  </div>
+  <div class="card i">
+    <h4><code>streamFragmentSlots</code></h4>
+    <p>立即返回，每个槽位一个 promise 加一个聚合 promise，外壳和每个 <code>&lt;Suspense&gt;</code> 边界可以在自己那层结束时就 flush。</p>
+    <p>前者其实就是 <code>streamFragmentSlots(options).result</code>。</p>
+  </div>
+</div>
+
+<h2 id="四种渲染策略">四种渲染策略</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>策略</th><th>行为</th></tr></thead>
+<tbody>
+<tr><td><code>static</code></td><td>不调用服务；输出 manifest 里的 <code>staticHtml</code></td></tr>
+<tr><td><code>ttl-cache</code></td><td>在新鲜期内从有界的进程内缓存返回</td></tr>
+<tr><td><code>cached-ssr</code></td><td>渲染后按 <code>cachePolicy</code> 缓存</td></tr>
+<tr><td><code>dynamic-ssr</code></td><td>每请求渲染</td></tr>
+</tbody></table></div>
+<p><code>cachePolicy.vary</code> 用上下文维度（<code>tenant</code>、<code>locale</code>、<code>props</code>）切分缓存键。缓存是有界的（<code>DEFAULT_FRAGMENT_CACHE_MAX_ENTRIES</code>），配有 <code>pruneFragmentCache</code> 和基于标签的 <code>invalidateFragmentCacheByTag</code>。</p>
+
+<h2 id="每个槽位结果都可检视">每个槽位结果都可检视</h2>
+<pre><code>type FragmentSlotResult = {
+  slot: FragmentSlotDefinition;
+  strategy: RenderStrategy;
+  source: "static" | "cache" | "network" | "fallback";
+  status: "ok" | "fallback" | "skipped-dependency";
+  // …
+};</code></pre>
+<p><code>source</code> 回答「这些字节从哪来」；<code>status</code> 回答「它成功了吗」。一个槽位可以是 <code>source: "fallback"</code> 且 <code>status: "fallback"</code>（它自己的服务挂了），也可以是 <code>status: "skipped-dependency"</code>（它依赖的东西先挂了，于是它根本没被尝试）。</p>
+
+<h2 id="demo-实际组合了什么">demo 实际组合了什么</h2>
+<p>5 个页面共 19 个槽位。<code>page-trade</code> 有 9 个（实时交易终端），<code>page-product</code> 4 个，<code>page-home</code> 3 个，<code>page-portfolio</code> 2 个，<code>page-markets</code> 1 个。<code>page-referrals</code> 和 <code>page-vaults</code> 作为应用存在，但一个片段都没组合。</p>

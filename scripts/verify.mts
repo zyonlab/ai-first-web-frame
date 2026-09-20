@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { ensureWorkspaceBuild } from "./ensure-workspace-build.mts";
 
 const commands = [
   { cmd: "pnpm", args: ["typecheck"], timeoutMs: 60_000 },
@@ -33,37 +34,19 @@ const commands = [
 
 mkdirSync("reports", { recursive: true });
 
-// Prerequisite, not a gate: verify:manifest-gen, docs:test, and some
-// packages' own test suites (e.g. packages/mcp's in-process mount-slot
-// handler test) resolve workspace `@mvp/*` deps through real
-// node_modules symlinks + package.json#exports (pointing at dist/) rather
-// than vitest's src/-aliased resolution — either because they run via
-// `tsx` directly or because they import another package's runtime code
-// in-process. On a genuinely fresh clone (no prior `pnpm build`), those
-// gates fail with ERR_MODULE_NOT_FOUND before ever reaching their own
-// logic — a real bug this comment exists to prevent from reappearing
-// (found 2026-07-12 by deleting every dist/ and re-running verify cold).
-// Same fix, same rationale, as `.github/workflows/ci.yml`'s `affected`
-// job: build only packages/+domains/ (fast tsdown builds), not the full
-// `pnpm build` gate below (which also builds every Next.js app and would
-// make this prerequisite as slow as the gate it exists to unblock).
-// Failure here exits immediately with the real build error instead of
-// letting it resurface as a confusing ERR_MODULE_NOT_FOUND three gates
-// later.
-console.log(
-  "Building packages/ + domains/ (prerequisite for the gates below)...",
-);
-const prebuild = spawnSync(
-  "pnpm",
-  ["--filter", "./packages/*", "--filter", "./domains/*", "build"],
-  { stdio: "inherit", timeout: 120_000 },
-);
-if (prebuild.status !== 0) {
-  console.error(
-    "FAIL pnpm --filter ./packages/* --filter ./domains/* build (prerequisite)",
-  );
-  process.exit(1);
-}
+// Prerequisite, not a gate: several gates resolve workspace `@mvp/*` deps
+// through real node_modules symlinks + package.json#exports (pointing at
+// dist/) rather than vitest's src/-aliased resolution — either because they
+// run via `tsx` directly or because they import another package's runtime
+// code in-process. On a fresh clone those gates fail with
+// ERR_MODULE_NOT_FOUND before reaching their own logic.
+//
+// `ensureWorkspaceBuild` is shared with `pnpm test`, `pnpm verify:manifest-gen`
+// and `pnpm docs:test`, so a cold clone now behaves the same whether you run
+// the umbrella command or one gate on its own — previously only this file had
+// the prerequisite, which is why `pnpm test` (the first "common command" in
+// CLAUDE.md) was red on a fresh checkout.
+ensureWorkspaceBuild();
 
 const results = commands.map(({ cmd, args, timeoutMs }) => {
   const startedAt = Date.now();

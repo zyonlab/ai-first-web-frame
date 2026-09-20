@@ -168,11 +168,11 @@ Exit 0 only if all pass; report written to `reports/verify-report.json`
 | 4 | `pnpm verify:manifest-gen` | every page with a non-empty `manifest.slots.json` has a fresh `fragmentSlots.gen.ts` (`mount-slot --check`; a missing gen file fails too — discovery is by `manifest.slots.json`, so deleting a gen file cannot drop a page out of the gate; slotless pages with an empty slots array are exempt-and-reported) — manifest↔runtime drift is structurally blocked |
 | 5 | `pnpm verify:demos` | `docs/DEMOS.md`'s generated capability table in sync with every page manifest's `demonstrates` array (`scripts/verify-demos.mts --check`; regenerate with `--write`) |
 | 6 | `pnpm docs:test` | every `AGENT.md` fenced TypeScript snippet is **executed** (not just typechecked) — doc drift fails like a broken test |
-| 7 | `pnpm test` | all Vitest suites (incl. each page's `tests/manifestSync.test.ts` belt-and-suspenders drift check) |
-| 8 | `pnpm build` | tsdown / next build for every package |
+| 7 | `pnpm test` | all Vitest suites, cached per package by Turborepo (a task reading outside its own package must declare those inputs — see `packages/mcp/turbo.json`) (incl. each page's `tests/manifestSync.test.ts` belt-and-suspenders drift check) |
+| 8 | `pnpm build` | tsdown / next build for every package, through Turborepo's task cache (`turbo.json`) — ~100s cold, ~0.2s warm, with deleted outputs restored from cache |
 | 9 | `pnpm audit:similarity` | no near-duplicate components |
 | 10 | `pnpm audit:css` | CSS budgets — hard gate |
-| 11 | `pnpm audit:deps` | dependency rules: no bare `fetch`, layering (`domain-code-in-framework-package`), orphan-bus (`island-bus-without-escape-hatch` — see [INTERACTION.md](./INTERACTION.md) §5) |
+| 11 | `pnpm audit:deps` | dependency rules: no bare `fetch`, layering (declarative `tags` + `depConstraints` in `dependency-audit.json` → `layer-constraint-violation`; the hard-coded `domain-code-in-framework-package` check remains the fallback for a config-less root), orphan-bus (`island-bus-without-escape-hatch` — see [INTERACTION.md](./INTERACTION.md) §5) |
 | 12 | `pnpm audit:optimizer` | optimizer conformance |
 | 13 | `pnpm audit:boundary` | client/server boundary rules |
 

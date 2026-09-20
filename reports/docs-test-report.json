@@ -1,6 +1,6 @@
 {
   "tool": "docs-test",
-  "generatedAt": "2026-07-12T10:32:29.850Z",
+  "generatedAt": "2026-09-20T08:16:46.703Z",
   "status": "pass",
   "packages": [
     {
@@ -74,6 +74,13 @@
       "noRunBlocks": 0
     },
     {
+      "agentMd": "packages/fragment-host/AGENT.md",
+      "package": "@mvp/fragment-host",
+      "status": "pass",
+      "executableBlocks": 1,
+      "noRunBlocks": 1
+    },
+    {
       "agentMd": "packages/interaction/AGENT.md",
       "package": "@mvp/interaction",
       "status": "pass",
@@ -111,22 +118,22 @@
     {
       "agentMd": "packages/registry/AGENT.md",
       "package": "@mvp/registry",
-      "status": "skipped",
-      "executableBlocks": 0,
+      "status": "pass",
+      "executableBlocks": 1,
       "noRunBlocks": 1
     },
     {
       "agentMd": "packages/request-context/AGENT.md",
       "package": "@mvp/request-context",
       "status": "pass",
-      "executableBlocks": 1,
+      "executableBlocks": 2,
       "noRunBlocks": 0
     },
     {
       "agentMd": "packages/request/AGENT.md",
       "package": "@mvp/request",
-      "status": "skipped",
-      "executableBlocks": 0,
+      "status": "pass",
+      "executableBlocks": 1,
       "noRunBlocks": 1
     },
     {
@@ -140,7 +147,7 @@
       "agentMd": "packages/runtime/AGENT.md",
       "package": "@mvp/runtime",
       "status": "pass",
-      "executableBlocks": 2,
+      "executableBlocks": 4,
       "noRunBlocks": 2
     },
     {
@@ -195,8 +202,8 @@
     {
       "agentMd": "tools/create-component/AGENT.md",
       "package": "@mvp/create-component",
-      "status": "skipped",
-      "executableBlocks": 0,
+      "status": "pass",
+      "executableBlocks": 1,
       "noRunBlocks": 2
     },
     {

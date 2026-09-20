@@ -1,6 +1,12 @@
 import type { FragmentRenderResponse } from "@mvp/contracts";
 import type { ReactElement, ReactNode } from "react";
-import type { FragmentSlotResult, FragmentSlotsExecution } from "./index";
+import {
+  type FragmentSlotResult,
+  type FragmentSlotsExecution,
+  failedRequiredSlotNames,
+  PAGE_HEALTH_ATTR,
+  PAGE_HEALTH_FAILED_ATTR,
+} from "./index";
 
 /**
  * `<FragmentSlot>` (refactor plan §3.3, adapted from Piral's extension-slot
@@ -120,4 +126,55 @@ export async function FragmentSlotStream({
 }: FragmentSlotStreamProps) {
   const response = await slotPromise;
   return renderFragmentSlotHtml(response?.html, fallback);
+}
+
+/**
+ * `<PageHealthMeta>` — stamps the page's aggregate health into the markup so the
+ * shell gateway can answer with an honest status code (see `PAGE_HEALTH_ATTR` in
+ * `./index.ts` for why a hidden `div` rather than a `<meta>`: this is an internal
+ * gateway signal, not document metadata, so it stays out of `<head>` even though
+ * React 19 would hoist a `<meta>` there).
+ *
+ * Render it once per composed page. It is `hidden`, so it emits nothing visible,
+ * contributes no layout, and adds no client JS.
+ */
+export type PageHealthMetaProps = {
+  execution: FragmentSlotsExecution;
+};
+
+export function PageHealthMeta({ execution }: PageHealthMetaProps): ReactNode {
+  const failed = failedRequiredSlotNames(execution);
+  return (
+    <div
+      hidden
+      {...{
+        [PAGE_HEALTH_ATTR]: execution.health,
+        [PAGE_HEALTH_FAILED_ATTR]: failed.join(","),
+      }}
+    />
+  );
+}
+
+/**
+ * Async counterpart for streaming pages, which only hold a promise of the
+ * aggregate. Wrap in `<Suspense fallback={null}>`: a marker that arrives late
+ * is still in the response body the gateway reads, and a page that never
+ * resolves one is simply treated as not participating.
+ */
+export async function PageHealthMetaStream({
+  execution,
+}: {
+  execution: Promise<FragmentSlotsExecution>;
+}) {
+  const resolved = await execution;
+  const failed = failedRequiredSlotNames(resolved);
+  return (
+    <div
+      hidden
+      {...{
+        [PAGE_HEALTH_ATTR]: resolved.health,
+        [PAGE_HEALTH_FAILED_ATTR]: failed.join(","),
+      }}
+    />
+  );
 }

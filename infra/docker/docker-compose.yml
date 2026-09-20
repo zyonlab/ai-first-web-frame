@@ -7,6 +7,7 @@ services:
       - "4100:4100"
     environment:
       PORT: "4100"
+      PUBLIC_SITE_ORIGIN: "http://localhost:4100"
       PAGE_HOME_URL: "http://page-home:4101"
       PAGE_PRODUCT_URL: "http://page-product:4102"
       PAGE_TRADE_URL: "http://page-trade:4103"
@@ -31,6 +32,13 @@ services:
       - "4101:4101"
     environment:
       PORT: "4101"
+      # Diagnostics (request trace, scheduler health, DAG) are off by default in
+      # production; the composed stack is what e2e and verify:runtime assert
+      # against, so it opts back in explicitly.
+      MVP_DIAGNOSTICS: "on"
+      # Public origin the page canonicals/OG URLs are built from — must match
+      # the shell origin, which is what browsers and crawlers actually hit.
+      PUBLIC_SITE_ORIGIN: "http://localhost:4100"
       PROMOTION_BANNER_URL: "http://promotion-banner:4201"
       RECOMMENDATION_WIDGET_URL: "http://recommendation-widget:4202"
     depends_on:
@@ -45,6 +53,13 @@ services:
       - "4102:4102"
     environment:
       PORT: "4102"
+      # Diagnostics (request trace, scheduler health, DAG) are off by default in
+      # production; the composed stack is what e2e and verify:runtime assert
+      # against, so it opts back in explicitly.
+      MVP_DIAGNOSTICS: "on"
+      # Public origin the page canonicals/OG URLs are built from — must match
+      # the shell origin, which is what browsers and crawlers actually hit.
+      PUBLIC_SITE_ORIGIN: "http://localhost:4100"
       PROMOTION_BANNER_URL: "http://promotion-banner:4201"
       RECOMMENDATION_WIDGET_URL: "http://recommendation-widget:4202"
     depends_on:
@@ -59,6 +74,13 @@ services:
       - "4103:4103"
     environment:
       PORT: "4103"
+      # Diagnostics (request trace, scheduler health, DAG) are off by default in
+      # production; the composed stack is what e2e and verify:runtime assert
+      # against, so it opts back in explicitly.
+      MVP_DIAGNOSTICS: "on"
+      # Public origin the page canonicals/OG URLs are built from — must match
+      # the shell origin, which is what browsers and crawlers actually hit.
+      PUBLIC_SITE_ORIGIN: "http://localhost:4100"
       MARKET_HEADER_URL: "http://market-header:4203"
       ORDER_BOOK_URL: "http://order-book:4204"
       ORDER_FORM_URL: "http://order-form:4205"
@@ -87,6 +109,13 @@ services:
       - "4104:4104"
     environment:
       PORT: "4104"
+      # Diagnostics (request trace, scheduler health, DAG) are off by default in
+      # production; the composed stack is what e2e and verify:runtime assert
+      # against, so it opts back in explicitly.
+      MVP_DIAGNOSTICS: "on"
+      # Public origin the page canonicals/OG URLs are built from — must match
+      # the shell origin, which is what browsers and crawlers actually hit.
+      PUBLIC_SITE_ORIGIN: "http://localhost:4100"
       MARKETS_TABLE_URL: "http://markets-table:4212"
     depends_on:
       - markets-table
@@ -99,6 +128,13 @@ services:
       - "4105:4105"
     environment:
       PORT: "4105"
+      # Diagnostics (request trace, scheduler health, DAG) are off by default in
+      # production; the composed stack is what e2e and verify:runtime assert
+      # against, so it opts back in explicitly.
+      MVP_DIAGNOSTICS: "on"
+      # Public origin the page canonicals/OG URLs are built from — must match
+      # the shell origin, which is what browsers and crawlers actually hit.
+      PUBLIC_SITE_ORIGIN: "http://localhost:4100"
       PORTFOLIO_SUMMARY_URL: "http://portfolio-summary:4213"
       PNL_CHART_URL: "http://pnl-chart:4214"
     depends_on:
@@ -113,6 +149,13 @@ services:
       - "4106:4106"
     environment:
       PORT: "4106"
+      # Diagnostics (request trace, scheduler health, DAG) are off by default in
+      # production; the composed stack is what e2e and verify:runtime assert
+      # against, so it opts back in explicitly.
+      MVP_DIAGNOSTICS: "on"
+      # Public origin the page canonicals/OG URLs are built from — must match
+      # the shell origin, which is what browsers and crawlers actually hit.
+      PUBLIC_SITE_ORIGIN: "http://localhost:4100"
 
   page-referrals:
     build:
@@ -122,6 +165,13 @@ services:
       - "4107:4107"
     environment:
       PORT: "4107"
+      # Diagnostics (request trace, scheduler health, DAG) are off by default in
+      # production; the composed stack is what e2e and verify:runtime assert
+      # against, so it opts back in explicitly.
+      MVP_DIAGNOSTICS: "on"
+      # Public origin the page canonicals/OG URLs are built from — must match
+      # the shell origin, which is what browsers and crawlers actually hit.
+      PUBLIC_SITE_ORIGIN: "http://localhost:4100"
 
   promotion-banner:
     build:

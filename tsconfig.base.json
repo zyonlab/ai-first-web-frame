@@ -14,8 +14,12 @@
     "types": ["node", "vitest/globals"],
     "paths": {
       "@mvp/contracts": ["./packages/contracts/src/index.ts"],
+      "@mvp/create-component/fragmentTemplate": [
+        "./tools/create-component/src/fragmentTemplate.ts"
+      ],
       "@mvp/assets": ["./packages/assets/src/index.ts"],
       "@mvp/data": ["./packages/data/src/index.ts"],
+      "@mvp/fragment-host": ["./packages/fragment-host/src/index.ts"],
       "@mvp/design-system": ["./packages/design-system/src/index.ts"],
       "@mvp/design-tokens": ["./packages/design-tokens/src/index.ts"],
       "@mvp/interaction": ["./packages/interaction/src/index.ts"],
@@ -28,6 +32,7 @@
       "@mvp/routes": ["./packages/routes/src/index.ts"],
       "@mvp/runtime": ["./packages/runtime/src/index.ts"],
       "@mvp/runtime/react": ["./packages/runtime/src/react.tsx"],
+      "@mvp/runtime/seo": ["./packages/runtime/src/seo.ts"],
       "@mvp/storage": ["./packages/storage/src/index.ts"],
       "@mvp/store": ["./packages/store/src/index.ts"],
       "@mvp/trade-chart": ["./domains/trade-chart/src/index.ts"],

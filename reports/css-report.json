@@ -120,8 +120,8 @@
       "metric": "cssBytes",
       "actual": 0,
       "budget": 10000,
-      "status": "pass",
-      "note": "no .css files in unit dir; inline/injected styles are not counted"
+      "status": "unmeasured",
+      "note": "UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing"
     },
     {
       "scope": "fragment",
@@ -129,8 +129,8 @@
       "metric": "cssBytes",
       "actual": 0,
       "budget": 10000,
-      "status": "pass",
-      "note": "no .css files in unit dir; inline/injected styles are not counted"
+      "status": "unmeasured",
+      "note": "UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing"
     },
     {
       "scope": "fragment",
@@ -147,8 +147,8 @@
       "metric": "cssBytes",
       "actual": 0,
       "budget": 50000,
-      "status": "pass",
-      "note": "no .css files in unit dir; inline/injected styles are not counted"
+      "status": "unmeasured",
+      "note": "UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing"
     },
     {
       "scope": "page",
@@ -156,8 +156,8 @@
       "metric": "cssBytes",
       "actual": 0,
       "budget": 50000,
-      "status": "pass",
-      "note": "no .css files in unit dir; inline/injected styles are not counted"
+      "status": "unmeasured",
+      "note": "UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing"
     },
     {
       "scope": "page",
@@ -165,8 +165,8 @@
       "metric": "cssBytes",
       "actual": 0,
       "budget": 50000,
-      "status": "pass",
-      "note": "no .css files in unit dir; inline/injected styles are not counted"
+      "status": "unmeasured",
+      "note": "UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing"
     },
     {
       "scope": "page",
@@ -174,8 +174,8 @@
       "metric": "cssBytes",
       "actual": 0,
       "budget": 50000,
-      "status": "pass",
-      "note": "no .css files in unit dir; inline/injected styles are not counted"
+      "status": "unmeasured",
+      "note": "UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing"
     },
     {
       "scope": "page",
@@ -183,8 +183,8 @@
       "metric": "cssBytes",
       "actual": 0,
       "budget": 50000,
-      "status": "pass",
-      "note": "no .css files in unit dir; inline/injected styles are not counted"
+      "status": "unmeasured",
+      "note": "UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing"
     },
     {
       "scope": "page",
@@ -192,8 +192,8 @@
       "metric": "cssBytes",
       "actual": 0,
       "budget": 50000,
-      "status": "pass",
-      "note": "no .css files in unit dir; inline/injected styles are not counted"
+      "status": "unmeasured",
+      "note": "UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing"
     },
     {
       "scope": "page",
@@ -201,8 +201,8 @@
       "metric": "cssBytes",
       "actual": 0,
       "budget": 50000,
-      "status": "pass",
-      "note": "no .css files in unit dir; inline/injected styles are not counted"
+      "status": "unmeasured",
+      "note": "UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing"
     }
   ],
   "findings": []

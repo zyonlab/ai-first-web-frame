@@ -1,0 +1,42 @@
+<p class="eyebrow">参考</p>
+<h1>端口</h1>
+<p class="lede">22 个服务。已核对每个片段的源码默认值与 <code>infra/docker/docker-compose.yml</code> 一致。</p>
+
+<h2 id="网关与页面">网关与页面</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>端口</th><th>服务</th><th>包</th></tr></thead>
+<tbody>
+<tr><td>4100</td><td>网关 —— 唯一的对外源站</td><td><code>@mvp/shell-gateway</code></td></tr>
+<tr><td>4101</td><td>page-home</td><td><code>@mvp/page-home</code></td></tr>
+<tr><td>4102</td><td>page-product（<code>/</code> 重定向到 <code>/product/123</code>）</td><td><code>@mvp/page-product</code></td></tr>
+<tr><td>4103</td><td>page-trade</td><td><code>@mvp/page-trade</code></td></tr>
+<tr><td>4104</td><td>page-markets</td><td><code>@mvp/page-markets</code></td></tr>
+<tr><td>4105</td><td>page-portfolio</td><td><code>@mvp/page-portfolio</code></td></tr>
+<tr><td>4106</td><td>page-vaults</td><td><code>@mvp/page-vaults</code></td></tr>
+<tr><td>4107</td><td>page-referrals</td><td><code>@mvp/page-referrals</code></td></tr>
+</tbody></table></div>
+
+<h2 id="片段服务">片段服务</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>端口</th><th>片段</th><th>被组合进</th></tr></thead>
+<tbody>
+<tr><td>4201</td><td>promotion-banner</td><td>page-home、page-product</td></tr>
+<tr><td>4202</td><td>recommendation-widget</td><td>page-home、page-product</td></tr>
+<tr><td>4203</td><td>market-header</td><td>page-trade</td></tr>
+<tr><td>4204</td><td>order-book</td><td>page-trade</td></tr>
+<tr><td>4205</td><td>order-form</td><td>page-trade</td></tr>
+<tr><td>4206</td><td>trades-feed</td><td>page-trade</td></tr>
+<tr><td>4207</td><td>account-bar</td><td>page-trade</td></tr>
+<tr><td>4208</td><td>positions-table</td><td>page-trade</td></tr>
+<tr><td>4209</td><td>open-orders</td><td>page-trade</td></tr>
+<tr><td>4210</td><td>funding-bar</td><td>page-trade</td></tr>
+<tr><td>4211</td><td>chart-panel</td><td>page-trade</td></tr>
+<tr><td>4212</td><td>markets-table</td><td>page-markets</td></tr>
+<tr><td>4213</td><td>portfolio-summary</td><td>page-portfolio</td></tr>
+<tr><td>4214</td><td>pnl-chart</td><td>page-portfolio</td></tr>
+</tbody></table></div>
+<p>另外：<code>pnpm reports</code> 在 <b>4300</b> 提供 <code>docs/reports/</code>，<code>pnpm docs:serve</code> 在 <b>4301</b> 提供这份文档（均可用 <code>--port</code> 改）。</p>
+
+<h2 id="分配规则">分配规则</h2>
+<p>片段端口从 4201 起。<code>register-fragment</code> 扫描已用端口并分配下一个空闲值，除非给了 <code>--port</code>；已被 compose 服务占用的端口会被拒绝。脚手架在写新 <code>server.ts</code> 的端口时做同样的事。</p>
+<p><code>PORT</code> 在运行时覆盖监听端口，网关和任何片段宿主都适用。</p>

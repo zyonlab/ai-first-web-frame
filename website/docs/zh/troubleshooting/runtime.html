@@ -1,0 +1,68 @@
+<p class="eyebrow">排错</p>
+<h1>运行时</h1>
+
+<h2 id="某个槽位渲染了降级内容">某个槽位渲染了降级内容</h2>
+<p>先读槽位结果，它把不同情况区分开：</p>
+<div class="table-wrap"><table>
+<thead><tr><th><code>status</code></th><th><code>source</code></th><th>含义</th></tr></thead>
+<tbody>
+<tr><td><code>fallback</code></td><td><code>fallback</code></td><td>片段自己的渲染失败或超时</td></tr>
+<tr><td><code>skipped-dependency</code></td><td><code>fallback</code></td><td>它依赖的东西先失败了，所以它<b>根本没被尝试</b></td></tr>
+<tr><td><code>ok</code></td><td><code>cache</code></td><td>来自进程内缓存，不是网络</td></tr>
+</tbody></table></div>
+<p>然后按顺序排查：</p>
+<ol>
+<li>服务起来了吗？<code>curl localhost:&lt;port&gt;/health</code>。</li>
+<li>注册表能解析出槽位要的那个通道吗？<code>curl -s localhost:4100/manifest/fragments | jq '.fragments["&lt;name&gt;"]'</code> —— 这个端点反映的是<strong>应用环境变量覆盖之后</strong>的状态，所以它回答「实际会调哪个 URL」。</li>
+<li>那个片段上有这个 <code>channel</code> 吗？指向片段所没有的通道会<strong>静默地</strong>解析成降级内容 —— 没有构建期检查。14 个片段里有 12 个只有 <code>canary</code>。</li>
+<li>超时？把槽位的 <code>timeoutMs</code> 和片段的真实延迟比一比。</li>
+</ol>
+
+<h2 id="页面返回-503">页面返回 503</h2>
+<p>某个<strong>必需</strong>槽位失败了。主体仍然是降级后的页面 —— 读标记：</p>
+<pre><code>curl -s localhost:4100/trade/BTC | grep -o 'data-mvp-page-health="[^"]*"'
+curl -s localhost:4100/trade/BTC | grep -o 'data-failed-slots="[^"]*"'</code></pre>
+<p>需要拿回上游状态码时用 <code>SHELL_REQUIRED_FAILURE_STATUS=0</code> 关掉这层翻译。</p>
+
+<h2 id="某个岛屿不水合">某个岛屿不水合</h2>
+<div class="note good">
+<p>这<strong>通常是握手在正常工作</strong>，不是 bug。装一个 handler 把原因读出来：</p>
+</div>
+<pre><code>configureIslandRuntime({ onSnapshotMismatch: (info) =&gt; console.warn(info) });
+// {island, expected, actual, reason}</code></pre>
+<div class="table-wrap"><table>
+<thead><tr><th>原因</th><th>怎么修</th></tr></thead>
+<tbody>
+<tr><td><code>version-mismatch</code></td><td>已部署的片段版本 ≠ 页面注册时期望的版本</td></tr>
+<tr><td><code>contract-hash-mismatch</code></td><td>同一版本下载荷契约变了 —— 升版本</td></tr>
+<tr><td><code>invalid-snapshot</code></td><td>内联 JSON 不满足 <code>IslandSnapshotSchema</code></td></tr>
+<tr><td><code>invalid-props</code></td><td>快照 props 通不过岛屿的 <code>propsSchema</code> —— 通常是新加了必填 prop，而旧 SSR 输出不带它</td></tr>
+</tbody></table></div>
+<p>给岛屿的 <code>propsSchema</code> 加必填字段，对所有旧片段构建都是破坏性变更。先滚动发布片段，或把字段设为可选并给默认值。</p>
+
+<h2 id="某个实时面板收不到帧">某个实时面板收不到帧</h2>
+<ol>
+<li>SSR 节点存在吗？有没有带 <code>data-fallback</code>？驱动会刻意跳过降级节点。</li>
+<li>面板在页面的面板数组里吗？</li>
+<li>解析出的 source id 存在吗？<code>resolveSourceTemplate</code> 在缺少被绑定参数时会<strong>抛错</strong>，而不是去订阅一个含字面量 <code>&lt;symbol&gt;</code> 的 id —— 看到这个错误，说明页面没有提供片段声明的某个参数。</li>
+<li>模板是真实的 source id 吗？<code>apps/page-trade/src/liveContract.test.ts</code> 会让解析不出的模板在构建期失败，能在运行前抓住 <code>book.12.&lt;symbol&gt;</code> 这类拼写错误。</li>
+</ol>
+
+<h2 id="切换币对时行没了">切换币对时行没了</h2>
+<p>对 <code>order-book</code> 和 <code>trades-feed</code> 而言这是<strong>预期行为</strong> —— 它们绑定了 <code>&lt;symbol&gt;</code>，所以会被标记 <code>remounted</code> 并重建。如果 <code>positions-table</code> 也被清空了，说明有人给了它一个带参数的订阅；<code>positions</code> 必须保持无参数，这正是它的行能存活下来的原因。</p>
+
+<h2 id="trace">Trace</h2>
+<p>每次 <code>/render</code> 开一个 span；<code>traceId</code> 来自 <code>ctx.traceId</code>，没有就生成一个。导出是「发了就不管」的，所以慢的接收端不会阻塞响应。用 <code>TRACE_SAMPLE_RATE</code> 和 <code>@mvp/observability</code> 里的导出器（OTLP JSON、文件、控制台）配置。<code>reports/traces/</code> 下的 trace 快照正是 <code>audit:optimizer</code> 读取的东西 —— 一份都没有时，它的调度提示就无米下炊。</p>
+
+<h2 id="指标">指标</h2>
+<p>网关和每个片段都有 <code>GET /metrics</code>，Prometheus 文本格式。HTTP 指标来自 <code>createHttpMetrics</code>；<code>recordWebVital</code> 接受客户端上报的 vitals。</p>
+
+<h2 id="看起来像-bug-的正常现象">看起来像 bug 的正常现象</h2>
+<div class="note">
+<ul>
+<li><b>你在 <code>&lt;body&gt;</code> 里渲染的 <code>&lt;meta&gt;</code> 出现在了 <code>&lt;head&gt;</code>。</b>React 19 会提升文档元数据。这是预期的。</li>
+<li><b><code>reports/</code> 在 <code>pnpm verify</code> 之后变了。</b>它是机器产物，每次都重写。手写的那份在 <code>docs/reports/</code>。</li>
+<li><b>e2e 结果毫无意义。</b><code>pnpm build</code> 是不是在 <code>pnpm dev</code> 服务期间跑了？重启栈。</li>
+<li><b><code>pnpm e2e</code> 的浏览器用例全挂在 "Executable doesn't exist"。</b>跑 <code>pnpm exec playwright install chromium</code>。</li>
+</ul>
+</div>

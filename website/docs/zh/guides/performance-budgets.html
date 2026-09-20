@@ -1,0 +1,59 @@
+<p class="eyebrow">指南</p>
+<h1>性能预算</h1>
+<p class="lede">每个单元都声明预算。其中一部分由 <code>pnpm verify</code> 强制，一部分只由一个独立的运行时闸门强制，还有一部分<strong>哪里都没人管</strong>。这一篇把它们分清楚。</p>
+
+<div class="note warn">
+<p>把这个差别写在最前面，是因为顶层那句「预算是硬闸门」只对 schema 的一部分成立。</p>
+</div>
+
+<h2 id="声明">声明</h2>
+<p>每个单元一份 <code>src/budget.ts</code>，由 <code>PerformanceBudgetSchema</code> 校验，<code>scope</code> 取 <code>component</code> | <code>fragment</code> | <code>page</code> | <code>shell</code>。</p>
+<pre><code>export const orderBookBudget = loadDefaultBudget("fragment", "order-book");</code></pre>
+
+<h2 id="到底哪些被强制">到底哪些被强制</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>字段</th><th>作用域</th><th>由谁强制</th><th>属于 <code>pnpm verify</code>？</th></tr></thead>
+<tbody>
+<tr><td><code>jsBytes</code></td><td>component、fragment、page</td><td><code>audit:bundle</code></td><td><b>是</b></td></tr>
+<tr><td><code>cssBytes</code></td><td>fragment、page</td><td><code>audit:css</code></td><td><b>是</b></td></tr>
+<tr><td><code>maxTTFBMs</code></td><td>page</td><td><code>pnpm verify:runtime</code></td><td>否 —— 需要一个活的 URL</td></tr>
+<tr><td><code>maxLCPMs</code></td><td>page</td><td><code>pnpm verify:runtime</code></td><td>否</td></tr>
+<tr><td><code>maxCLS</code></td><td>page</td><td><code>pnpm verify:runtime</code></td><td>否</td></tr>
+<tr><td><code>rscPayloadBytes</code></td><td>page</td><td>—</td><td>否（运行时才可测，已被承认）</td></tr>
+<tr><td><code>maxNetworkRequests</code></td><td>page</td><td>—</td><td><b>无人管</b></td></tr>
+<tr><td><code>maxINPMs</code></td><td>page</td><td>—</td><td><b>无人管</b></td></tr>
+<tr><td><code>maxFragmentLatencyMs</code></td><td>fragment</td><td>—</td><td><b>无人管</b></td></tr>
+<tr><td><code>maxRenderMs</code></td><td>fragment</td><td>—</td><td><b>无人管</b></td></tr>
+<tr><td><code>maxMemoryMB</code></td><td>fragment</td><td>—</td><td><b>无人管</b></td></tr>
+</tbody></table></div>
+<p>也就是说：11 个字段里 2 个闸住构建，另 3 个只在你对一个运行中的栈执行独立检查时才闸住，剩下 5 个是文档。见 <a href="../known-limitations.html#f11">F11</a>。</p>
+<p>对工具公平地说一句：<code>audit:bundle</code> 在自己的输出里就说清楚了边界 —— <code>reports/bundle-report.json</code> 带一个 <code>notes</code> 数组声明运行时指标不在闸门内，还有一个 <code>unmeasured</code> 列表逐条说明为何跳过。</p>
+
+<h2 id="被测的那几个是怎么测的">被测的那几个是怎么测的</h2>
+<ul>
+<li><b>片段 <code>jsBytes</code></b> —— 该片段客户端入口经 esbuild 压缩后的体积，<code>react</code>、<code>react-dom</code>、<code>@mvp/*</code> 全部 external。共享 vendor 算在消费它的页面头上，不向每个片段重复计费。没有客户端入口的片段测得 <code>0</code>。</li>
+<li><b>页面 <code>jsBytes</code></b> —— 从 <code>.next</code> 构建 manifest 读出的首屏客户端 JS，gzip 后字节。</li>
+<li><b><code>cssBytes</code></b> —— 由 <code>audit:css</code> 从源 CSS 计算，同时报告总量/无用/重复字节、全局选择器数和 <code>!important</code> 数量。</li>
+</ul>
+
+<h2 id="当前余量">当前余量</h2>
+<p>取自最近一次 <code>pnpm verify</code>（<code>reports/bundle-report.json</code>）：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>单元</th><th>jsBytes</th><th>预算</th><th>余量</th></tr></thead>
+<tbody>
+<tr><td>page-trade</td><td>204,932</td><td>220,000</td><td>15,068</td></tr>
+<tr><td>page-home</td><td>127,697</td><td>180,000</td><td>52,303</td></tr>
+<tr><td>page-product</td><td>108,025</td><td>180,000</td><td>71,975</td></tr>
+<tr><td>page-referrals</td><td>102,530</td><td>110,000</td><td><b>7,470</b></td></tr>
+<tr><td>page-vaults</td><td>102,530</td><td>110,000</td><td><b>7,470</b></td></tr>
+<tr><td>page-markets / page-portfolio</td><td>102,530</td><td>180,000</td><td>77,470</td></tr>
+</tbody></table></div>
+<p><code>page-referrals</code> 和 <code>page-vaults</code> 预算最紧，而且它们一个片段都没组合，所以那 102 KB 是框架基线。给这两个页面加一个岛屿就需要改预算。</p>
+<p>作为参照：React 18.3 → 19.3 的升级，在其余未被改动的六个页面上让首屏 JS 变动了 −129 到 +19 字节 —— 基本中性。</p>
+
+<h2 id="预算失败时">预算失败时</h2>
+<p>缩小客户端入口、把逻辑移到 SSR，或者拆分片段。<strong>把 <code>budget.ts</code> 里的数字调大是一个决定，不是一个修复</strong> —— 在提交信息里写清楚为什么。</p>
+
+<h2 id="运行时闸门">运行时闸门</h2>
+<pre><code>pnpm verify:runtime --url http://localhost:4100/trade/BTC --json</code></pre>
+<p>对照页面预算检查 <code>web-vitals-lcp</code>、<code>web-vitals-cls</code>、<code>web-vitals-ttfb</code>。某项指标采集不到时报 <b>skip</b> 而不是静默通过 —— 所以「没测到」是可见的。<strong>没有 INP 检查</strong>，尽管每个页面都声明了 <code>maxINPMs</code>。</p>

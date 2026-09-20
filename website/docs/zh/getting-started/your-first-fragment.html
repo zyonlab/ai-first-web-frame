@@ -1,0 +1,76 @@
+<p class="eyebrow">上手</p>
+<h1>第一个片段</h1>
+<p class="lede">完整循环：脚手架 → 实现 → 注册 → 挂载 → 验证 → 晋级。每个命令都打印带 <code>status</code> 字段的 JSON 信封，<strong>失败时不写任何文件</strong>。</p>
+
+<figure class="figure">
+<!--@figure:user-journey-->
+<figcaption><b>每个阶段都有一个机器可判定的验收信号。</b>这不是为了好看 —— 这是让整条流程能被 agent 驱动的前提。</figcaption>
+</figure>
+
+<h2 id="1-脚手架">1 · 脚手架</h2>
+<pre><code>pnpm --filter @mvp/create-component start -- PricePanel --type fragment</code></pre>
+<p>输入 PascalCase，产出 <code>fragments/price-panel/</code>，<strong>11 个文件</strong>：</p>
+<pre><code>src/server.ts        src/render.ts       src/manifest.ts   src/budget.ts
+src/fixtures.ts      src/render.test.ts  tests/server.test.ts
+package.json         tsconfig.json       Dockerfile        README.md</code></pre>
+<p>验收：<code>"status": "created"</code> 且 <code>files.length === 11</code>。</p>
+<p>生成出来的单元<strong>直接就能跑</strong>：<code>src/server.ts</code> 是 <code>@mvp/fragment-host</code> 上约 20 行的适配器，端口取 4201 之后第一个空闲值，Dockerfile 真的能构建。<strong>不要手写片段服务器</strong> —— <code>audit:deps</code> 的 <code>fragment-server-not-hosted</code> 规则会判失败。</p>
+<div class="note"><p><code>--type ui</code> 则产出 <code>packages/ui/src/&lt;Name&gt;/</code>，8 个文件。同一个命令，两种形状。</p></div>
+
+<h2 id="2-先写测试再实现">2 · 先写测试，再实现</h2>
+<pre><code>$EDITOR fragments/price-panel/src/render.test.ts   # 先扩测试
+$EDITOR fragments/price-panel/src/render.ts
+pnpm --filter @mvp/fragment-price-panel test</code></pre>
+<p><code>render.ts</code> 收 <code>{props, ctx}</code>，返回 <code>{html, assets, cache, metadata}</code>。标记要自包含：片段的 CSS 随自己的 <code>&lt;style data-fragment-style="..."&gt;</code> 一起出货，且类名必须能从源码里被引用到，否则 <code>audit:css</code> 会把它算成无用字节。</p>
+
+<h2 id="3-注册">3 · 注册</h2>
+<pre><code>pnpm exec tsx scripts/register-fragment.mts \
+  --name price-panel --version 0.1.0 \
+  --service-url http://localhost:4203 \
+  --channel canary --with-compose</code></pre>
+<p>完整 flag 集（取自脚本自己的白名单，<code>scripts/register-fragment.mts</code>）：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Flag</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>--name</code></td><td>kebab-case 片段名</td></tr>
+<tr><td><code>--version</code></td><td>该通道应解析到的版本</td></tr>
+<tr><td><code>--service-url</code></td><td>必须能解析为 URL</td></tr>
+<tr><td><code>--manifest-url</code></td><td>默认 <code>&lt;service-url&gt;/manifest</code></td></tr>
+<tr><td><code>--assets-url</code></td><td>可选；用于岛屿 JS 由别处提供的片段</td></tr>
+<tr><td><code>--channel</code></td><td><code>stable</code> | <code>canary</code> | <code>preview</code></td></tr>
+<tr><td><code>--port</code></td><td>compose 端口；已被占用的端口会被拒绝</td></tr>
+<tr><td><code>--with-compose</code></td><td>同时把服务写进 <code>infra/docker/docker-compose.yml</code></td></tr>
+</tbody></table></div>
+<p>验收：<code>"status": "registered"</code>。原样重跑会打印 <code>"action": "unchanged"</code> —— 脚本是幂等的。</p>
+<p>运行时覆盖：<code>PRICE_PANEL_URL=https://…</code> 无需写注册表即可为该片段改写 <code>serviceUrl</code>/<code>manifestUrl</code>。（但它<strong>不</strong>改写 <code>assetsUrl</code> —— <a href="../known-limitations.html#f2">F2</a>。）</p>
+
+<h2 id="4-挂载到页面槽位">4 · 挂载到页面槽位</h2>
+<pre><code>pnpm exec tsx scripts/mount-slot.mts \
+  --page page-home --slot pricePanel --fragment price-panel \
+  --strategy dynamic-ssr --channel canary --timeout-ms 200</code></pre>
+<p>完整 flag 集：<code>--page</code> <code>--slot</code> <code>--fragment</code> <code>--strategy</code> <code>--channel</code> <code>--timeout-ms</code> <code>--props</code> <code>--static-html</code> <code>--cache-policy</code> <code>--data-dependencies</code> <code>--depends-on</code> <code>--required</code> <code>--remove</code> <code>--check</code> <code>--allow-unregistered</code></p>
+<ul>
+<li><code>--depends-on</code> 让本槽位排在另一个槽位<strong>之后</strong>；<code>--data-dependencies</code> 指的是页面数据源注册表里的条目。见<a href="../guides/slot-scheduling.html">槽位调度</a>。</li>
+<li><code>--required</code> 让本槽位失败时页面变 <code>unhealthy</code> → 网关返回 <code>503</code>。</li>
+<li>挂载一个未注册的片段会<strong>失败</strong>（<code>"status": "failed"</code>，不写文件）。先注册，或用 <code>--allow-unregistered</code> 告警后继续。<code>--remove</code> 不受此限制。</li>
+</ul>
+<p>验收：<code>"status": "mounted"</code> 且 <code>warnings</code> 为空。</p>
+<div class="note warn">
+<p>成功的挂载/卸载会同时从 manifest 重新生成 <code>apps/&lt;page&gt;/src/fragmentSlots.gen.ts</code>。<b>不要手改那个文件。</b><code>mount-slot --page &lt;page&gt; --check</code> 不写任何文件、只校验生成文件是否同步；<code>pnpm verify:manifest-gen</code> 对每个页面都跑一遍，并且是 <code>pnpm verify</code> 的一部分。</p>
+</div>
+
+<h2 id="5-验证">5 · 验证</h2>
+<pre><code>pnpm verify                            # 14 道闸门，整个仓库
+pnpm verify:unit --name price-panel    # 该单元能构建、能启动、版本自洽</code></pre>
+<p>不要带着失败的审计或预算出货。</p>
+
+<h2 id="6-晋级与回滚">6 · 晋级，以及回滚</h2>
+<pre><code>pnpm exec tsx scripts/promote-fragment.mts --name price-panel
+# "status":"promoted"，带 from/to 版本
+
+pnpm exec tsx scripts/rollback-fragment.mts --name price-panel [--to 0.1.0]
+# "status":"rolled-back"</code></pre>
+<p>晋级会把上一个 <code>stable</code> 记进该条目的 <code>versions</code> 历史，并追加到 <code>registry/releases.json</code>（只追加）。不带 <code>--to</code> 的回滚恢复到晋级时记录的版本；没有记录目标时干净地失败 —— 从未晋级过的片段就是这种情况。</p>
+
+<h2 id="并发">并发</h2>
+<p>四个生命周期脚本都以原子方式写入（临时文件 + rename），外加 <code>&lt;file&gt;.lock</code> 咨询锁和乐观内容哈希校验。若另一个进程在你加载之后改过该文件，你会拿到 <code>{"status": "conflict", "retry": true}</code>、exit 1、不写文件。原样重跑即可。</p>

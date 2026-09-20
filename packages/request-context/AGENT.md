@@ -73,6 +73,46 @@ const headers = serializeContext(ctx);
 console.log(headers["x-tenant"]); // "acme"
 ```
 
+## Custom context dimensions (`extensions`)
+
+`RequestContextSchema` is otherwise closed: adding a dimension would mean editing
+`@mvp/contracts`, a framework package the layering rule forbids product code from
+touching. `extensions` is the escape hatch — the schema-validated equivalent of
+`@podium/context`'s `.register(name, parser)`.
+
+```ts
+import {
+  createRequestContext,
+  getContextExtension,
+  serializeContext,
+} from "@mvp/request-context";
+
+// The framework never learns what "abBucket" means.
+const page = createRequestContext({
+  headers: { "x-ab-bucket": "B", "x-tenant": "acme" },
+  extensions: {
+    abBucket: (read) => read("x-ab-bucket"),
+    channel: (read) => read("x-channel"), // absent → omitted, not ""
+  },
+});
+if (getContextExtension(page, "abBucket") !== "B") throw new Error("not parsed");
+if (getContextExtension(page, "channel") !== undefined) {
+  throw new Error("absent dimension must be omitted");
+}
+
+// Propagated to fragments as one header per dimension…
+const forwarded = serializeContext(page);
+if (forwarded["x-mvp-ctx-abbucket"] !== "B") throw new Error("not serialized");
+
+// …and recovered by the fragment's own context with no parser declared.
+const fragment = createRequestContext({ headers: forwarded });
+if (fragment.extensions.abbucket !== "B") throw new Error("not round-tripped");
+if (fragment.tenant !== "acme") throw new Error("standard fields lost");
+```
+
+Names are lower-cased (they become HTTP headers). A locally declared parser
+overrides an inbound value, so the edge closest to the request wins.
+
 ## Accept
 
 ```

@@ -1,0 +1,68 @@
+<p class="eyebrow">上手</p>
+<h1>AI 接入</h1>
+<p class="lede">这是唯一一条没有框架级竞品的能力轴，所以值得具体说清楚<strong>存在什么</strong>，而不是泛泛地说「对 AI 友好」。</p>
+
+<h2 id="四个机制">四个机制</h2>
+
+<h3 id="1-仓库根部一份操作手册">1 · 仓库根部一份操作手册</h3>
+<p><code>CLAUDE.md</code> 是 agent 的入口：硬规则、目录地图、带每步验收标准的片段生命周期、常用命令，以及一张按脚本实际打印的字符串索引的失败恢复表。<code>AGENTS.md</code> 是它的<strong>符号链接</strong>，所以两者不可能漂移。</p>
+
+<h3 id="2-每个包一份被-ci-执行的-agentmd">2 · 每个包一份 AGENT.md，且被 CI 执行</h3>
+<p>每个 <code>packages/*</code> 和 <code>domains/*</code> 目录都带一份 <code>AGENT.md</code>，含<em>入口点</em>小节、可用示例和<em>验收</em>块。其中的 <code>ts</code>/<code>tsx</code> 代码块会被 <code>pnpm docs:test</code> <strong>运行</strong>，而它是 <code>pnpm verify</code> 14 道闸门之一。</p>
+<pre><code>pnpm docs:test        # 36 份 AGENT.md，41 个可执行块，7 个标记为 no-run</code></pre>
+<p>需要示意而非运行的块标记为 <code>```ts no-run</code>，报告单独计数（<code>noRunBlocks</code>）—— 所以「我们跳过了它」是可见的，而不是静默的。一个不再编译或不再断言的示例就是一次红色构建。</p>
+<div class="note good">
+<p><b>这是让其余一切可信的机制。</b>agent 读到的文档，是 CI 刚刚证明过还能跑的文档。</p>
+</div>
+
+<h3 id="3-八个-mcp-工具">3 · 八个 MCP 工具</h3>
+<p><code>pnpm mcp</code> 启动服务（<code>packages/mcp/src/server.ts</code>）。</p>
+<div class="table-wrap"><table>
+<thead><tr><th>工具</th><th>包装的是</th></tr></thead>
+<tbody>
+<tr><td><code>scaffold_component</code></td><td><code>@mvp/create-component</code></td></tr>
+<tr><td><code>register_fragment</code></td><td><code>scripts/register-fragment.mts</code></td></tr>
+<tr><td><code>mount_slot</code></td><td><code>scripts/mount-slot.mts</code>（含 <code>--remove</code> / <code>--check</code>）</td></tr>
+<tr><td><code>promote_fragment</code></td><td><code>scripts/promote-fragment.mts</code></td></tr>
+<tr><td><code>rollback_fragment</code></td><td><code>scripts/rollback-fragment.mts</code></td></tr>
+<tr><td><code>affected</code></td><td>affected 计划图引擎</td></tr>
+<tr><td><code>query_registry</code></td><td>单元依赖图</td></tr>
+<tr><td><code>affected_units</code></td><td>给定变更单元 id，返回需重新验证的闭包</td></tr>
+</tbody></table></div>
+<p>前六个直接委托给人类也在用的同一批 CLI，所以只有一份实现、一套语义 —— 工具的<em>行为</em>不可能偏离被记录的命令，只有它的<em>描述</em>可能，而那正是 <a href="../known-limitations.html#f12">F12</a> 曾经发生过的事。</p>
+<p><code>packages/mcp/src/validate.ts</code> 另提供 <code>findSchemaViolation</code>，用于拿导出的契约校验一份载荷。</p>
+
+<h3 id="4-结构化的-cli-输出与带类型的失败">4 · 结构化的 CLI 输出与带类型的失败</h3>
+<p>每个生命周期 CLI 打印带 <code>status</code> 的 JSON，且状态词表是<strong>封闭的</strong>：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>脚本</th><th>状态</th></tr></thead>
+<tbody>
+<tr><td><code>register-fragment</code></td><td><code>registered</code> · <code>conflict</code> · <code>failed</code></td></tr>
+<tr><td><code>mount-slot</code></td><td><code>mounted</code> · <code>conflict</code> · <code>failed</code></td></tr>
+<tr><td><code>promote-fragment</code></td><td><code>promoted</code> · <code>unchanged</code> · <code>conflict</code> · <code>failed</code></td></tr>
+<tr><td><code>rollback-fragment</code></td><td><code>rolled-back</code> · <code>unchanged</code> · <code>conflict</code> · <code>failed</code></td></tr>
+<tr><td><code>verify-manifest-gen</code></td><td><code>fresh</code> · <code>stale</code> · <code>exempt</code> · <code>failed</code></td></tr>
+<tr><td><code>verify-unit</code></td><td><code>ok</code> · <code>passed</code> · <code>skipped</code> · <code>failed</code></td></tr>
+</tbody></table></div>
+<p>未知 flag 会被<strong>拒绝</strong>而不是忽略：每个脚本把自己的白名单交给 <code>unknownFlagError</code>，后者返回带 <code>did you mean --&lt;flag&gt;?</code> 的建议。像 <code>--chanel canary</code> 这样的拼写错误，以前会被静默丢弃、脚本按默认值继续；现在是 <code>{"status":"failed"}</code> 且不写文件。</p>
+<p>全部审计规则码见<a href="../reference/diagnostics.html">诊断码</a>。</p>
+
+<h2 id="推荐的-agent-循环">推荐的 agent 循环</h2>
+<ol>
+<li>读 <code>CLAUDE.md</code>，再读你要改的那个包的 <code>AGENT.md</code>。</li>
+<li>动手改。</li>
+<li><code>pnpm --filter &lt;pkg&gt; test</code> 走紧循环。</li>
+<li>宣布完成之前跑 <code>pnpm verify</code>，并且读 <code>reports/*.json</code>，不要只看退出码。</li>
+<li>如果改的是片段，再跑一次 <code>pnpm verify:unit --name &lt;fragment&gt;</code>。</li>
+</ol>
+
+<h2 id="目前仍会浪费-agent-时间的地方">目前仍会浪费 agent 时间的地方</h2>
+<div class="note bad">
+<p>如实记录，因为这些正是 agent 现在只能靠猜的地方：</p>
+<ul>
+<li>有两个 flag 只存在于代码里，手册没写（<a href="../known-limitations.html#f4">F4</a>）。</li>
+<li>建议性的优化器报告里，19 个槽位中有 10 个带着<em>确信但错误</em>的建议（<a href="../known-limitations.html#f1">F1</a>）—— agent 照 <code>recommendation</code> 执行会把实时面板搞坏。</li>
+<li>仓库根的 <code>reports/</code> 和 <code>docs/reports/</code> 是两样东西，名字却很像。</li>
+<li>没有任何测试比对「文档里写的文件数」和「脚手架实际产出」，所以这类漂移会再次静默发生（<a href="../known-limitations.html#f12">F12</a>）。</li>
+</ul>
+</div>

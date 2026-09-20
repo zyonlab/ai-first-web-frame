@@ -1,0 +1,37 @@
+<h1 id="slot-scheduling">Slot scheduling</h1>
+<p>The scheduler is the part with no Podium equivalent: slots and data dependencies form one directed graph, which is executed in topological layers.</p>
+<figure class="figure">
+<!--@figure:slot-dag-->
+<figcaption><b>Failure is local, and "skipped" is not "tried and failed".</b> Everything downstream of a failed node is never attempted and reports <code>skipped-dependency</code> — which is what lets you see where the fault actually started.</figcaption>
+</figure>
+<h2 id="two-kinds-of-edge">Two kinds of edge</h2>
+<p><strong><code>dependsOn</code></strong> — slot-to-slot. "Render <code>orderForm</code> after <code>accountBar</code>." Use it when one slot's render genuinely needs another's outcome.</p>
+<p><strong><code>dataDependencies</code></strong> — slot-to-data. Names entries in the page's data-source registry that must resolve before the slot runs. Two slots naming the same id share one resolution.</p>
+<p>Both feed the same plan. Neither is a statement about cacheability — a slot with no <code>dependsOn</code> is not therefore static, which is exactly the mistake the advisory optimizer currently makes (<a href="../known-limitations.html#f1">F1</a>).</p>
+<h2 id="inspecting-a-plan-without-running-it">Inspecting a plan without running it</h2>
+<pre><code class="lang-ts">import { createSlotDataExecutionPlan } from "@mvp/runtime";
+
+const plan = createSlotDataExecutionPlan({ slots, dataDependencies });
+// plan.levels : ScheduledNode[][]  — each level runs in parallel
+// plan.hints  : SchedulerHint[]</code></pre>
+<p>Useful in a test or a lint rule: assert the plan has the shape you intended before shipping the manifest.</p>
+<h2 id="hints">Hints</h2>
+<p>The planner reports three kinds of smell (<code>SchedulerHintKind</code>):</p>
+<div class="table-wrap"><table><thead><tr><th>Kind</th><th>Meaning</th></tr></thead><tbody><tr><td><code>long-serial-chain</code></td><td>the graph has a deep path that will dominate latency</td></tr><tr><td><code>unnecessary-barrier</code></td><td>something forces a wait that the declared edges do not require</td></tr><tr><td><code>duplicate-data-resolution</code></td><td>the same data id resolved more than once</td></tr></tbody></table></div>
+<p>Hints are advisory: they travel in <code>execution.hints</code> and in the optimizer report. They do not fail a build.</p>
+<h2 id="execution-semantics">Execution semantics</h2>
+<ol>
+<li>Levels run in parallel; level <em>n+1</em> starts when level <em>n</em> has settled.</li>
+<li>Each slot gets its own timeout — <code>slot.timeoutMs</code>, or the page default. On expiry the slot becomes its declared fallback; the rest of the page is unaffected.</li>
+<li>If a node fails, everything downstream of it is <strong>not attempted</strong> and reports <code>status: "skipped-dependency"</code> — distinct from "tried and failed".</li>
+<li><code>execution.health</code> rolls up: any failed <strong>required</strong> slot ⇒ <code>unhealthy</code>; any other failure ⇒ <code>degraded</code>; otherwise <code>ok</code>.</li>
+</ol>
+<p>Failure is always local. There is no path by which one slot's exception aborts the response.</p>
+<h2 id="streaming">Streaming</h2>
+<pre><code class="lang-ts">const { slots, result } = streamFragmentSlots(options);
+// slots.&lt;name&gt; : Promise&lt;FragmentRenderResponse&gt;  — resolves when ITS level settles
+// result       : Promise&lt;FragmentSlotsExecution&gt;  — resolves when everything settles</code></pre>
+<p>Every per-slot promise <strong>resolves</strong> — it never rejects. A failed or skipped slot resolves to the same fallback response the barrier API would have produced, so a <code>&lt;Suspense&gt;</code> boundary never needs a try/catch.</p>
+<p>This is what lets a page flush its shell and its fast slots before a slow slot finishes, instead of holding the whole response for the slowest one.</p>
+<h2 id="timeouts">Timeouts</h2>
+<p><code>withTimeout(promise, ms, onTimeout?)</code> is the primitive. It is deliberately not built on <code>AbortSignal.timeout</code>, which is missing in some test DOM environments — the portable fallback is why the gateway's timeout helper exists as <code>createUpstreamTimeout()</code>.</p>

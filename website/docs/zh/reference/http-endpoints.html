@@ -1,0 +1,54 @@
+<p class="eyebrow">参考</p>
+<h1>HTTP 端点</h1>
+
+<h2 id="片段服务8-条路由">片段服务 — 8 条路由</h2>
+<p>14 个片段提供的正是这 8 条，因为它们来自 <code>@mvp/fragment-host</code> 而不是各自的服务代码。</p>
+<div class="table-wrap"><table>
+<thead><tr><th>方法</th><th>路径</th><th>响应</th></tr></thead>
+<tbody>
+<tr><td>GET</td><td><code>/</code></td><td>该服务自身端点的 HTML 索引，外加一次实时示例渲染</td></tr>
+<tr><td>GET</td><td><code>/health</code></td><td><code>{status:"ok", service, version, uptimeMs}</code></td></tr>
+<tr><td>GET</td><td><code>/ready</code></td><td>与 <code>/health</code> 完全相同的载荷</td></tr>
+<tr><td>GET</td><td><code>/metrics</code></td><td>Prometheus 文本（<code>PROMETHEUS_CONTENT_TYPE</code>）</td></tr>
+<tr><td>GET</td><td><code>/manifest</code></td><td>片段 manifest，原样返回</td></tr>
+<tr><td>GET</td><td><code>/assets</code></td><td><code>manifest.assets</code></td></tr>
+<tr><td>GET</td><td><code>/budget</code></td><td>该单元的性能预算</td></tr>
+<tr><td>POST</td><td><code>/render</code></td><td><code>{html, assets, cache, metadata}</code></td></tr>
+</tbody></table></div>
+<p><code>/health</code> 里的 <code>version</code> 是<strong>已部署的 manifest 版本</strong> —— 这正是一次发布能在晋级通道之前断言「是哪个构建在应答」的依据。</p>
+<div class="note warn">
+<p><code>/health</code> 和 <code>/ready</code> 是<strong>同一个 handler</strong>。这个宿主里不区分存活与就绪；如果你需要区分，那是一个待补的缺口，不是一个待发现的精妙设计。</p>
+</div>
+
+<h3 id="post-render"><code>POST /render</code></h3>
+<p>请求 <code>{ctx, props}</code>。两层校验：严格的 <code>FragmentRenderRequestSchema</code>，然后是 <code>ctx</code> 为 partial 且可选的宽容信封，最后才 <code>400</code>：</p>
+<pre><code>{ "error": { "code": "invalid-render-request", "issues": [ … ] } }</code></pre>
+<p>响应：</p>
+<pre><code>{
+  "html": "&lt;style data-fragment-style=\"order-book\"&gt;…&lt;/style&gt;…",
+  "assets": { "js": ["/assets/order-book.client.js"], "css": ["/assets/order-book.css"] },
+  "cache":  { "ttl": 0, "tags": ["book", "book:BTC"] },
+  "metadata": { "name": "order-book", "version": "0.1.0" }
+}</code></pre>
+<p>片段可以通过 <code>extraRoutes</code> 增加路由，但上面 8 条是固定的。</p>
+
+<h2 id="网关对外源站">网关 — 对外源站</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>方法</th><th>路径</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>GET</td><td><code>/health</code></td><td>网关存活</td></tr>
+<tr><td>GET</td><td><code>/metrics</code></td><td>Prometheus 文本</td></tr>
+<tr><td>GET</td><td><code>/robots.txt</code></td><td>由站点源站生成</td></tr>
+<tr><td>GET</td><td><code>/sitemap.xml</code></td><td>由路由注册表生成</td></tr>
+<tr><td>GET</td><td><code>/manifest/routes</code></td><td>路由注册表，JSON</td></tr>
+<tr><td>GET</td><td><code>/manifest/fragments</code></td><td><b>解析后的</b>片段注册表（已应用环境变量覆盖）</td></tr>
+<tr><td>GET</td><td><code>/_shell/theme</code></td><td>主题选择端点</td></tr>
+<tr><td>GET</td><td><code>/_shell/locale</code></td><td>语言选择端点</td></tr>
+<tr><td>ALL</td><td><code>/_fragment/&lt;fragment&gt;/&lt;target&gt;/*</code></td><td>片段后端代理</td></tr>
+<tr><td>GET</td><td><code>/_next/*</code></td><td>Next.js 资源透传</td></tr>
+<tr><td>GET</td><td><code>/*</code></td><td>路由解析 → 代理到拥有该路由的页面应用</td></tr>
+</tbody></table></div>
+<div class="note good">
+<p><code>/manifest/fragments</code> 是排查槽位指向错误最快的工具：它返回的是<strong>应用环境变量覆盖之后</strong>的注册表，所以它回答的是「这个槽位实际会去调哪个地址」。</p>
+</div>
+<p>超时：<code>SHELL_PAGE_TIMEOUT_MS</code>、<code>SHELL_ASSET_TIMEOUT_MS</code>、<code>SHELL_FRAGMENT_PROXY_TIMEOUT_MS</code>。必需槽位失败时的状态码：<code>SHELL_REQUIRED_FAILURE_STATUS</code>（<code>0</code> 关闭）。</p>

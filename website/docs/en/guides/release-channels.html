@@ -1,0 +1,43 @@
+<h1 id="release-channels">Release channels</h1>
+<p><code>stable</code> | <code>canary</code> | <code>preview</code>. A slot names a channel; the registry resolves it to a version and a <code>serviceUrl</code> <strong>per request</strong>, so going live with a new fragment build needs no page rebuild.</p>
+<figure class="figure">
+<!--@figure:release-channels-->
+<figcaption><b>Step three is the point of <code>/health</code> reporting the manifest version.</b> A rollout can confirm which build is answering <em>before</em> promoting the channel production reads.</figcaption>
+</figure>
+<h2 id="the-registry-file">The registry file</h2>
+<p><code>registry/registry.data.json</code>, validated on load by <code>FragmentRegistrySchema</code>:</p>
+<pre><code class="lang-json">{
+  "fragments": {
+    "promotion-banner": {
+      "stable":  { "version": "0.1.0", "serviceUrl": "http://localhost:4201",
+                   "manifestUrl": "http://localhost:4201/manifest" },
+      "canary":  { "version": "0.2.0-beta.1", "serviceUrl": "http://localhost:4201", "…": "…" },
+      "versions": { "0.1.0": { "…": "…" } }
+    }
+  }
+}</code></pre>
+<p><code>versions</code> is the history that makes rollback possible. <code>registry/releases.json</code> is an append-only log of promotions.</p>
+<p>Never hand-edit either file. Use the CLIs — they write atomically behind an advisory lock with an optimistic content-hash check, and print <code>{"status":"conflict","retry":true}</code> instead of clobbering a concurrent change.</p>
+<h2 id="the-rollout">The rollout</h2>
+<pre><code class="lang-sh"># 1. deploy the image (your platform's job)
+# 2. point canary at the new version
+pnpm exec tsx scripts/register-fragment.mts --name order-book --version 0.2.0 \
+  --service-url http://order-book.internal --channel canary
+# 3. confirm WHICH build is answering
+curl -s http://order-book.internal/health   # {"status":"ok","version":"0.2.0",…}
+# 4. promote
+pnpm exec tsx scripts/promote-fragment.mts --name order-book
+# 5. if wrong, go back
+pnpm exec tsx scripts/rollback-fragment.mts --name order-book</code></pre>
+<p>Step 3 is the point of having <code>/health</code> report the manifest version: a rollout can verify the deployed artifact before promoting the channel that production reads.</p>
+<h2 id="repointing-without-a-registry-write">Repointing without a registry write</h2>
+<p><code>&lt;FRAGMENT_NAME&gt;_URL</code> overrides the target at runtime — <code>ORDER_BOOK_URL</code>, <code>PRICE_PANEL_URL</code> (<code>fragmentEnvVarName</code> uppercases and replaces non-alphanumerics). The value must parse as a URL or registry load throws with the offending variable named.</p>
+<p>The override rewrites <code>serviceUrl</code> and <code>manifestUrl</code>. It does <strong>not</strong> rewrite <code>assetsUrl</code> — <a href="../known-limitations.html#f2">F2</a>.</p>
+<h2 id="resolution">Resolution</h2>
+<pre><code class="lang-ts">import { resolveFragment } from "@mvp/runtime";
+resolveFragment(registry, "order-book", "canary");   // by channel
+resolveFragment(registry, "order-book", "0.1.0");    // by exact version
+// -&gt; { version, serviceUrl, manifestUrl } | null</code></pre>
+<p><code>null</code> means not registered on that channel. A slot pointing at a channel the fragment does not have resolves to the slot's fallback — quietly. There is no build-time check that every slot's channel exists in the registry.</p>
+<h2 id="state-of-the-demo">State of the demo</h2>
+<p>Worth knowing before you take the lifecycle at face value: <strong>12 of the 14 fragments have only a <code>canary</code> entry.</strong> Only <code>promotion-banner</code> (stable + canary) and <code>recommendation-widget</code> (stable) carry <code>stable</code>, and every <code>page-trade</code>, <code>page-markets</code> and <code>page-portfolio</code> slot mounts <code>channel: "canary"</code>. The promote path is exercised on 2 of 14 units (<a href="../known-limitations.html#f6">F6</a>). <code>recommendation-widget</code> additionally has no <code>versions</code> history, so <code>rollback-fragment</code> correctly refuses it for lack of a recorded target.</p>

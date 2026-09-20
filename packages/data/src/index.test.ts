@@ -20,6 +20,7 @@ const ctx: RequestContext = {
   tenant: "tenant-a",
   featureFlags: {},
   experiment: { bucket: "a" },
+  extensions: {},
   theme: "system",
   device: "desktop",
   user: { id: "user-1" },

@@ -1,0 +1,30 @@
+<h1 id="contracts-first">Contracts first</h1>
+<p><code>packages/contracts/src/index.ts</code> exports <strong>35 Zod schemas</strong> plus <strong>6 pre-generated JSON Schemas</strong>. Every boundary in the system is one of them.</p>
+<h2 id="what-is-covered">What is covered</h2>
+<div class="table-wrap"><table><thead><tr><th>Area</th><th>Schemas</th></tr></thead><tbody><tr><td>Render wire format</td><td><code>FragmentRenderRequestSchema</code>, <code>FragmentRenderRequestEnvelopeSchema</code>, <code>FragmentRenderResponseSchema</code></td></tr><tr><td>Manifests</td><td><code>FragmentManifestSchema</code>, <code>PageManifestSchema</code>, <code>ComponentManifestSchema</code>, <code>ComponentMetadataSchema</code></td></tr><tr><td>Registry</td><td><code>FragmentRegistrySchema</code>, <code>FragmentRegistryEntrySchema</code>, <code>ReleaseManifestSchema</code>, <code>RouteManifestSchema</code></td></tr><tr><td>Context</td><td><code>RequestContextSchema</code></td></tr><tr><td>Islands</td><td><code>IslandSnapshotSchema</code></td></tr><tr><td>Interaction</td><td><code>InteractionContractSchema</code></td></tr><tr><td>Data</td><td><code>DataDependencySchema</code>, <code>DataFreshnessSchema</code>, <code>DataPrivacySchema</code></td></tr><tr><td>Caching / policy</td><td><code>CachePolicySchema</code>, <code>RequestPolicySchema</code>, <code>StoragePolicySchema</code>, <code>CookiePolicySchema</code>, <code>ApiEndpointPolicySchema</code></td></tr><tr><td>Assets</td><td><code>AssetManifestSchema</code>, <code>AssetResourceSchema</code>, <code>ScriptAssetSchema</code>, <code>FontManifestSchema</code>, <code>I18nManifestSchema</code>, <code>ThemeManifestSchema</code></td></tr><tr><td>Budgets</td><td><code>PerformanceBudgetSchema</code></td></tr><tr><td>Optimizer</td><td><code>OptimizationFindingSchema</code>, <code>OptimizationEvidenceSchema</code>, <code>OptimizationFindingLocationSchema</code></td></tr><tr><td>Workers</td><td><code>WorkerManifestSchema</code></td></tr><tr><td>Enums</td><td><code>RenderStrategySchema</code>, <code>ReleaseChannelSchema</code></td></tr></tbody></table></div>
+<h2 id="the-four-enums-worth-memorising">The four enums worth memorising</h2>
+<pre><code>RenderStrategy   static | ttl-cache | cached-ssr | dynamic-ssr
+ReleaseChannel   stable | canary | preview
+DataFreshness    static | build-time | isr | request-time | near-realtime | realtime | client-local
+DataPrivacy      public | tenant | user-segment | user-private</code></pre>
+<p><code>DataFreshness</code> × <code>DataPrivacy</code> is the grid that decides where a piece of data may be cached and for how long. <code>user-private</code> data must never land in a shared cache entry — which is why <code>cachePolicy.vary</code> exists and why <code>@mvp/storage</code> has <code>requiredPartitionKeysForPrivacy</code> and <code>assertStoragePolicy</code>.</p>
+<h2 id="for-non-typescript-consumers">For non-TypeScript consumers</h2>
+<pre><code class="lang-ts">import { toJsonSchema, FragmentManifestJsonSchema } from "@mvp/contracts";
+
+toJsonSchema(SomeSchema, "SomeSchema");   // draft-07, optionally $ref-wrapped</code></pre>
+<p>Six schemas ship pre-generated so a tool that speaks only JSON Schema can validate the same contracts a TypeScript consumer gets via <code>z.infer</code>: fragment manifest, page manifest, fragment registry, render request, render response, request context.</p>
+<h2 id="parsing-at-the-boundary">Parsing at the boundary</h2>
+<pre><code class="lang-ts">import { parseFragmentRenderRequest, parseFragmentRenderResponse } from "@mvp/contracts";
+
+const parsed = parseFragmentRenderRequest(body);
+// { ok: true, request, strict: boolean } | { ok: false, issues }</code></pre>
+<p><code>parseFragmentRenderRequest</code> is <strong>two-tier</strong> by design: strict schema first, then a lenient envelope where <code>ctx</code> is <code>.partial().optional()</code>, and <code>400</code> only when both fail. <code>strict</code> tells the caller which tier matched — a signal that is currently produced and then ignored everywhere (<a href="../known-limitations.html#f14">F14</a>).</p>
+<h2 id="budgets-as-contracts">Budgets as contracts</h2>
+<pre><code class="lang-ts">import { loadDefaultBudget, mergeBudget, assertBudget, createBudgetReport } from "@mvp/contracts";</code></pre>
+<p><code>assertBudget</code> throws on a violation; <code>createBudgetReport</code> returns a structured comparison. Note that a schema field existing does not mean a gate reads it — see <a href="../guides/performance-budgets.html">performance budgets</a>.</p>
+<h2 id="where-schemas-are-not-the-answer">Where schemas are not the answer</h2>
+<p>Two deliberate exceptions:</p>
+<ol>
+<li><strong>Business vocabulary.</strong> Do not widen <code>RequestContextSchema</code>; use <code>ctx.extensions</code>.</li>
+<li><strong>Interaction payloads.</strong> Those schemas live in the <em>domain</em> layer (<code>domains/trade-contracts/src/slices.ts</code>) next to the channel ids, not in <code>@mvp/contracts</code> — the framework provides <code>InteractionContractSchema</code> as the shape a contract must have, and the domain supplies the contracts.</li>
+</ol>

@@ -1,0 +1,31 @@
+<h1 id="minimum-deployable-unit">Minimum deployable unit</h1>
+<p>The claim is that a fragment ships on its own. This page is what makes it checkable rather than architectural.</p>
+<h2 id="the-executable-form-of-the-claim">The executable form of the claim</h2>
+<pre><code class="lang-sh">pnpm verify:unit --name order-book</code></pre>
+<p>What it does, in order:</p>
+<ol>
+<li>builds only that unit's dependency closure — <code>pnpm --filter @mvp/fragment-order-book... build</code> → <code>dist/server.js</code>;</li>
+<li>boots the built artifact (not the source);</li>
+<li>asserts <code>/health</code>, <code>/ready</code> and <code>/manifest</code> all report the <strong>same manifest version</strong>;</li>
+<li>asserts <code>POST /render</code>-backed output carries that version;</li>
+<li>checks the unit's registry channels.</li>
+</ol>
+<p>JSON envelope out; exit 0 only when every step passed. Flags: <code>--name</code>, <code>--port</code>, <code>--filter</code>, <code>--skip-build</code>. Statuses: <code>ok</code> · <code>passed</code> · <code>skipped</code> · <code>failed</code>.</p>
+<p>Step 3 is the load-bearing one. If <code>/health</code> reported a hardcoded string, a rollout could not tell which build answered, and "deploy then promote" would be faith rather than procedure.</p>
+<h2 id="the-packaging-form">The packaging form</h2>
+<p>One Dockerfile per fragment, <code>fragments/&lt;name&gt;/Dockerfile</code>, with <code>EXPOSE &lt;port&gt;</code>. Any registry or orchestrator can build and run it. Deployment itself is deliberately not implemented here — every organisation already has one.</p>
+<h2 id="going-live-without-a-page-rebuild">Going live without a page rebuild</h2>
+<pre><code>build image  -&gt;  register-fragment --channel canary  -&gt;  check /health version  -&gt;  promote-fragment</code></pre>
+<p>Pages resolve <code>serviceUrl</code> and version from <code>registry/registry.data.json</code> <strong>per request</strong>, so no page artifact changes. <code>&lt;FRAGMENT_NAME&gt;_URL</code> repoints a fragment at runtime without even a registry write.</p>
+<p><code>rollback-fragment</code> restores the version recorded at promote time.</p>
+<h2 id="what-independent-does-and-does-not-cover">What "independent" does and does not cover</h2>
+<p><strong>Covered.</strong> Server-side markup, data access, CSS, fallback, budget, backend proxy targets, SSR data dependencies, browser subscriptions, and the version those are published under. All of it is in the fragment, all of it reaches the page through the registry and <code>GET /manifest</code>.</p>
+<p><strong>Not covered — and this is the honest boundary:</strong></p>
+<ul>
+<li><strong>Client code must be statically imported by the page.</strong> A React island is registered in the page's island registry; a live panel is listed in the page's panel array. There is no runtime module loading, so adding a <em>new</em> interactive fragment is a two-line page change. Changing what an existing one does — including what it subscribes to — is not.</li>
+<li><strong>Island assets do not follow an env override.</strong> <code>&lt;FRAGMENT&gt;_URL</code> moves <code>serviceUrl</code> and <code>manifestUrl</code> but not <code>assetsUrl</code> (<a href="../known-limitations.html#f2">F2</a>).</li>
+<li><strong>Shared vendor is the page's.</strong> A fragment's <code>jsBytes</code> is measured with <code>react</code>/<code>@mvp/*</code> external. Two fragments cannot independently choose incompatible React versions; the repository enforces a single declared range.</li>
+<li><strong>Nothing exercises a non-Node fragment.</strong> The <code>POST /render</code> contract is language-neutral and the JSON Schemas are published for exactly that reason, but there is no non-Node fragment in the tree, so treat multi-language as untested rather than supported.</li>
+</ul>
+<h2 id="counting">Counting</h2>
+<p>22 deployable units: 1 shell gateway, 7 page apps, 14 fragment services. Ports 4100, 4101–4107, 4201–4214 — see <a href="../reference/ports.html">reference/ports</a>.</p>

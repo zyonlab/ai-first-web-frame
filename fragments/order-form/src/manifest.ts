@@ -49,6 +49,21 @@ export const orderFormManifest = {
     css: ["/assets/order-form.css"],
   },
   budget: orderFormBudget,
+  /**
+   * Browser-reachable data endpoint for this fragment's island.
+   *
+   * The SSR render seeds the margin preview once; after hydration the island
+   * needs to re-read it, and it cannot call this service directly — in compose
+   * and k8s `order-form` is an internal DNS name the browser cannot resolve, and
+   * exposing it would leak internal topology (the same class of problem as
+   * naming a fallback by `serviceUrl`).
+   *
+   * The relative form resolves against this fragment's own registry
+   * `serviceUrl`, so it is correct in every environment without interpolating an
+   * env var into a static manifest. The shell gateway mounts it at
+   * `/_fragment/order-form/account`.
+   */
+  proxy: { account: "/account" },
   consumes: {
     slices: [
       "trade.active-symbol",

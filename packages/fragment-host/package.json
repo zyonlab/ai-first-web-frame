@@ -1,0 +1,43 @@
+{
+  "name": "@mvp/fragment-host",
+  "version": "0.1.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "AGENT.md"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/proxicat/ai-first-web-frame.git",
+    "directory": "packages/fragment-host"
+  },
+  "homepage": "https://github.com/proxicat/ai-first-web-frame#readme",
+  "scripts": {
+    "test": "pnpm -w exec vitest run packages/fragment-host/src",
+    "test:watch": "pnpm -w exec vitest packages/fragment-host/src",
+    "build": "tsdown src/index.ts --format esm --platform node --dts",
+    "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mvp/contracts": "workspace:*",
+    "@mvp/observability": "workspace:*",
+    "fastify": "^4.28.1"
+  },
+  "devDependencies": {
+    "tsdown": "^0.11.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

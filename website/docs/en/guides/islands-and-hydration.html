@@ -1,0 +1,41 @@
+<h1 id="islands-and-hydration">Islands and hydration</h1>
+<p>A fragment ships SSR HTML plus an inline JSON snapshot. The page hydrates a React island over that markup — but only if a version handshake passes.</p>
+<figure class="figure">
+<!--@figure:hydration-handshake-->
+<figcaption><b>For a mismatch, skipping IS the success case.</b> The page keeps working: server-rendered, readable, indexable, just not interactive there. What must never happen is mounting a component against props it does not understand.</figcaption>
+</figure>
+<h2 id="the-markup-contract">The markup contract</h2>
+<pre><code class="lang-html">&lt;div data-island="orderForm"&gt;
+  &lt;script type="application/json" data-island-props="orderForm"&gt;
+    {"props":{…},"slice":"trade.order-draft","fragment":"order-form",
+     "version":"0.1.0","contractHash":"…"}
+  &lt;/script&gt;
+  &lt;!-- server-rendered markup --&gt;
+&lt;/div&gt;</code></pre>
+<p><code>IslandSnapshotSchema</code>: <code>props</code> (record, defaults <code>{}</code>), and optional <code>slice</code>, <code>fragment</code>, <code>version</code>, <code>contractHash</code>.</p>
+<h2 id="registering-and-hydrating">Registering and hydrating</h2>
+<pre><code class="lang-ts">import { registerIsland, hydrateIslands } from "@mvp/islands";
+import { OrderFormIsland, OrderFormIslandPropsSchema } from "@mvp/fragment-order-form/island";
+
+registerIsland("orderForm", OrderFormIsland, {
+  expect: { fragment: "order-form", version: "0.1.0" },
+  propsSchema: OrderFormIslandPropsSchema,
+});
+
+hydrateIslands(document);   // finds every [data-island], mounts what passes</code></pre>
+<p>Other entry points: <code>mountIsland</code> (one node), <code>readIslandSnapshot</code>, <code>getIsland</code>, <code>clearIslandRegistry</code>, <code>configureIslandRuntime</code>.</p>
+<h2 id="the-handshake-and-what-failure-means">The handshake, and what failure means</h2>
+<p>Hydration is skipped — leaving the SSR markup untouched — for four distinct reasons (<code>SnapshotMismatchInfo.reason</code>):</p>
+<div class="table-wrap"><table><thead><tr><th>Reason</th><th>Cause</th></tr></thead><tbody><tr><td><code>version-mismatch</code></td><td>snapshot <code>version</code> ≠ the page's expected version</td></tr><tr><td><code>contract-hash-mismatch</code></td><td>the payload contract changed under the same version</td></tr><tr><td><code>invalid-snapshot</code></td><td>the JSON does not satisfy <code>IslandSnapshotSchema</code></td></tr><tr><td><code>invalid-props</code></td><td>snapshot props fail the island's own <code>propsSchema</code></td></tr></tbody></table></div>
+<p><strong>Skipping is the success case for a mismatch.</strong> The page keeps working: server-rendered, readable, indexable, just not interactive in that one spot. What must never happen is mounting a component against props it does not understand — an order form that hydrates without the instrument's tick size and lot size would accept orders the exchange rejects.</p>
+<p>Install a handler to observe it:</p>
+<pre><code class="lang-ts">configureIslandRuntime({
+  onSnapshotMismatch: (info) =&gt; reportDrift(info),  // {island, expected, actual, reason}
+});</code></pre>
+<p>This is the honest limit of the design versus Module Federation: MF <em>negotiates</em> and loads a matching version; we only <em>detect</em> and decline. There is no runtime remote loading here.</p>
+<h2 id="adding-a-required-prop-is-a-breaking-change">Adding a required prop is a breaking change</h2>
+<p>If you add a required field to an island's <code>propsSchema</code>, every SSR snapshot produced by an older fragment build fails <code>invalid-props</code> and those islands stop hydrating — by design. Either bump the version and roll the fragment first, or make the field optional with a safe default.</p>
+<p>This is not theoretical: adding three required fields to the order form's props schema made a hand-built test snapshot stop hydrating, which is exactly the production behaviour you want when an old fragment meets a new page bundle.</p>
+<h2 id="budget">Budget</h2>
+<p>Islands are the main client-JS cost. Each fragment's <code>jsBytes</code> budget is measured as a minified esbuild bundle of its client entry with <code>react</code>, <code>react-dom</code> and <code>@mvp/*</code> <strong>external</strong> — shared vendor is charged to the consuming page, not to each fragment. <code>audit:bundle</code> enforces it.</p>
+<p>Four islands currently exceed the advisory <code>large-client-component</code> size guideline (<a href="../known-limitations.html#f10">F10</a>).</p>

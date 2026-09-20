@@ -1,0 +1,74 @@
+<p class="eyebrow">指南</p>
+<h1>实时订阅</h1>
+<p class="lede">一个不用 React 也能保持最新的服务端渲染面板：订阅数据源，把每一帧折叠成原地 DOM 补丁。<strong>片段声明自己听什么；页面只提供参数值。</strong></p>
+
+<figure class="figure">
+<!--@figure:realtime-flow-->
+<figcaption><b>声明落在拥有这个事实的一侧。</b>页面仍然需要静态 import 每个面板（这里没有运行时模块加载），但「一个已有片段改变自己订阅什么」现在完全不需要动页面 —— 而那正是与部署相关的那一半。</figcaption>
+</figure>
+
+<h2 id="为什么这么设计">为什么这么设计</h2>
+<p>第一版把这些全放在页面里：哪些片段是活的、每个需要哪个 source id、以及怎么给每个打 DOM 补丁 —— <code>apps/page-trade/src/realtime.ts</code> 里约 540 行。于是一个片段<em>不改页面就无法变成实时的</em>，也无法改变自己订阅什么。这直接违背了「片段是部署最小单位」这条主张。</p>
+
+<h2 id="1-在片段-manifest-里声明">1 · 在片段 manifest 里声明</h2>
+<pre><code>// fragments/order-book/src/manifest.ts
+dataDependencies: ["book.l2.&lt;symbol&gt;"],   // SSR 读一次
+subscriptions:    ["book.l2.&lt;symbol&gt;"],   // 浏览器持续开着</code></pre>
+<p>这些是既有 <code>&lt;param&gt;</code> 词汇下的 <strong>source id 模板</strong>。<code>GET /manifest</code> 会发布它们，所以一个新版片段可以改变自己听什么，并独立出货。</p>
+<p>没有占位符的模板（<code>positions</code>）是全局数据源。</p>
+
+<h2 id="2-片段提供一个-livepanel">2 · 片段提供一个 <code>LivePanel</code></h2>
+<pre><code>// fragments/order-book/src/live.ts
+import type { LivePanel } from "@mvp/runtime/live";
+import { orderBookManifest } from "./manifest";
+
+export const orderBookLivePanel: LivePanel = {
+  fragment: orderBookManifest.name,          // 对应 SSR 根节点的 data-fragment
+  subscriptions: orderBookManifest.subscriptions,
+  mount({ node, params, remounted }) {
+    let prev = remounted ? null : ladderFromDom(node, params.symbol, depth);
+    return {
+      onFrame(_source, data) { /* diff 后原地打补丁 */ },
+      stop() { /* 可选 */ },
+    };
+  },
+};</code></pre>
+<p>在片段的 <code>package.json</code> 里以 <code>./live</code> 导出。</p>
+
+<h2 id="3-页面只提供参数和一个-client">3 · 页面只提供参数和一个 client</h2>
+<pre><code>import { startLivePanels } from "@mvp/runtime/live";
+
+const controller = startLivePanels({
+  root,
+  panels: TRADE_LIVE_PANELS,
+  params: { symbol },
+  subscribe: (source, onFrame) =&gt; client.subscribe(source, (e) =&gt; onFrame(e.data)),
+  onParamsChange: (next) =&gt; { client = makeClient([next.symbol]); },
+});
+
+controller.setParams({ symbol: "ETH" });
+controller.stop();</code></pre>
+<p>驱动<strong>从不接触</strong>数据 client，只看到解析后的 source id。</p>
+
+<h2 id="remounted-是最微妙的一点">`remounted` 是最微妙的一点</h2>
+<p>参数变化时，所有面板都会被拆掉重挂（数据 client 是按 symbol 集合构造的，部分替换会让某些面板留在过期 client 上）。<strong>不</strong>一致的是 <code>remounted</code>：只有绑定了<em>确实变化过</em>的参数的面板才为 <code>true</code>。</p>
+<p>这就是面板判断自己的 SSR DOM 是否还可信的依据：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>面板</th><th>订阅</th><th>切换币对时</th></tr></thead>
+<tbody>
+<tr><td><code>order-book</code></td><td><code>book.l2.&lt;symbol&gt;</code></td><td><code>remounted: true</code> → 整梯重建；已渲染的行还是上一个币对的价格</td></tr>
+<tr><td><code>trades-feed</code></td><td><code>trades.&lt;symbol&gt;</code></td><td><code>remounted: true</code> → 清空成交流</td></tr>
+<tr><td><code>positions-table</code></td><td><code>positions</code></td><td><code>remounted: false</code> → <b>行保留</b>；持仓是账户级的，不随界面上的币对变化</td></tr>
+</tbody></table></div>
+<p>以前这条规则手写在页面里。现在它是从声明推导出来的。</p>
+
+<h2 id="降级">降级</h2>
+<p>片段没有渲染、或渲染了降级内容（带 <code>data-fallback</code>）的面板会被<strong>跳过</strong>而不是挂载 —— 组合层已经判定那个槽位降级了，订阅不该把它复活。在 mount 或处理帧时抛错的面板经 <code>onError</code> 上报并被丢弃，页面其余部分照常存活。</p>
+
+<h2 id="辅助函数">辅助函数</h2>
+<p><code>templateParams(template)</code> → 该模板绑定的参数名。</p>
+<p><code>resolveSourceTemplate(template, params)</code> → 具体 id；缺少被绑定的参数时<strong>抛错</strong>，而不是去订阅一个含字面量 <code>&lt;symbol&gt;</code>、永远收不到帧的 id。</p>
+<p>补丁面板共用的 DOM 薄层：<code>panelDocument</code>、<code>setFieldText</code>、<code>fieldText</code>、<code>parseFieldNumber</code>、<code>cssEscapeAttr</code>。</p>
+
+<h2 id="让页面和片段保持诚实">让页面和片段保持诚实</h2>
+<p><code>apps/page-trade/src/liveContract.test.ts</code> 会在以下情况让构建失败：某个面板声明的模板解析不出已知的 source id，或者它绑定了页面无法提供的参数 —— 后者会挂载一个静默地永远收不到帧的面板。</p>

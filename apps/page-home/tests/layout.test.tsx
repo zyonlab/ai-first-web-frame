@@ -1,36 +1,61 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import RootLayout from "../app/layout";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * page-home's layout is the storefront variant: no AppNav, no cookie-driven
- * theming (both by design — the trade-suite pages own that pattern; see
- * page-markets/tests/layout.test.tsx). What it MUST do is wire the
- * `@mvp/assets` plane: collected theme CSS + i18n message descriptors into
- * <head>, children into <body>.
+ * page-home's layout wires the `@mvp/assets` plane (collected theme CSS + i18n
+ * message descriptors into <head>, children into <body>) and — since the SEO
+ * fix — resolves `<html lang>`/`data-theme` from the request cookies like the
+ * five trade-suite pages already did. It used to hard-code `lang="en"` while
+ * injecting zh-CN copy, which is a self-contradicting language signal.
  */
-function renderLayout(): string {
-  return renderToStaticMarkup(
-    RootLayout({ children: createElement("main", { "data-page": "home" }) }),
-  );
+
+let cookieHeader = "";
+
+vi.mock("next/headers", () => ({
+  headers: async () =>
+    new Headers(cookieHeader ? { cookie: cookieHeader } : {}),
+}));
+
+async function renderLayout(): Promise<string> {
+  const { default: RootLayout } = await import("../app/layout");
+  const element = await RootLayout({
+    children: createElement("main", { "data-page": "home" }),
+  });
+  return renderToStaticMarkup(element);
 }
 
 describe("page-home layout", () => {
-  it("renders the html shell with lang and system theme", () => {
-    const html = renderLayout();
-    expect(html).toContain('lang="en"');
-    expect(html).toContain('data-theme="system"');
+  beforeEach(() => {
+    cookieHeader = "";
+  });
+
+  it("renders the html shell with the resolved lang and theme", async () => {
+    const html = await renderLayout();
+    expect(html).toContain('lang="en-US"');
+    expect(html).toContain('data-theme="dark"');
     expect(html).toContain('<main data-page="home">');
   });
 
-  it("injects the collected theme CSS from @mvp/assets", () => {
-    const html = renderLayout();
+  it("reflects the locale cookie in <html lang>", async () => {
+    cookieHeader = "mvp_locale=zh";
+    const html = await renderLayout();
+    expect(html).toContain('lang="zh-CN"');
+  });
+
+  it("honors an explicit light theme cookie", async () => {
+    cookieHeader = "mvp_theme=light";
+    const html = await renderLayout();
+    expect(html).toContain('data-theme="light"');
+  });
+
+  it("injects the collected theme CSS from @mvp/assets", async () => {
+    const html = await renderLayout();
     expect(html).toContain("--mvp-page-accent:#0f766e");
   });
 
-  it("injects both i18n message descriptors from @mvp/assets", () => {
-    const html = renderLayout();
+  it("injects both i18n message descriptors from @mvp/assets", async () => {
+    const html = await renderLayout();
     expect(html).toContain("MVP Storefront Home");
     expect(html).toContain("MVP 商城首页");
   });

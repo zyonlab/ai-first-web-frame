@@ -32,7 +32,16 @@ type AuditIssue = {
     | "server-safe-browser-global"
     | "client-only-dependency-in-server"
     | "domain-code-in-framework-package"
-    | "island-bus-without-escape-hatch";
+    | "island-bus-without-escape-hatch"
+    // The gateway legitimately uses raw fetch (dynamic upstream origins), but a
+    // raw fetch with no cancellation is a hang on the single entry point.
+    | "fetch-without-timeout"
+    // A fragment that hand-rolls its own HTTP server instead of delegating to
+    // @mvp/fragment-host — the duplication this repo just finished removing.
+    | "fragment-server-not-hosted"
+    // Declarative layering (tags + depConstraints); replaces the hard-coded
+    // `domain-code-in-framework-package` check when a config supplies them.
+    | "layer-constraint-violation";
   severity: "warn" | "fail";
   file?: string;
   packageName?: string;
@@ -65,8 +74,16 @@ export function runDependencyAudit(
   const issues: AuditIssue[] = [];
   issues.push(...auditPackageVersions(root, config));
   issues.push(...auditSourceImports(root, config));
-  issues.push(...auditPackageLayering(root));
+  // Declarative layering when the repo ships depConstraints; the original
+  // hard-coded three-layer check remains the behaviour for a config-less root
+  // (which is what the unit tests construct).
+  issues.push(
+    ...(config.depConstraints.length > 0
+      ? auditDeclarativeLayering(root, config.tags, config.depConstraints)
+      : auditPackageLayering(root)),
+  );
   issues.push(...auditIslandBusEscapeHatch(root));
+  issues.push(...auditFragmentServerHost(root));
 
   const report: DependencyReport = {
     tool: "dependency-audit",
@@ -85,11 +102,30 @@ export function runDependencyAudit(
   return report;
 }
 
+/**
+ * Declarative layering, modelled on `@nx/enforce-module-boundaries`.
+ *
+ * The layering rule used to be three hard-coded directory names inside
+ * `auditPackageLayering`, so adding a layer (or a second domain group) meant
+ * editing this TypeScript. Nx expresses the same idea as data: units carry
+ * `tags`, and `depConstraints` say which tags a tagged unit may depend on.
+ *
+ * `tags` keys are `<group>/<name>` globs (`packages/*`, `domains/trade-*`);
+ * `onlyDependOnLibsWithTags` accepts `*` to mean "anything". A unit with no tag
+ * is unconstrained, which is why `tools/*` needs no entry.
+ */
+export type DepConstraint = {
+  sourceTag: string;
+  onlyDependOnLibsWithTags: string[];
+};
+
 function readConfig(root: string): {
   forbiddenPackages: string[];
   clientOnlyPackages: string[];
   browserCapablePackages: string[];
   largePackages: Record<string, number>;
+  tags: Record<string, string[]>;
+  depConstraints: DepConstraint[];
 } {
   const path = join(root, "dependency-audit.json");
   if (!existsSync(path)) {
@@ -98,6 +134,8 @@ function readConfig(root: string): {
       clientOnlyPackages: DEFAULT_CLIENT_ONLY,
       browserCapablePackages: DEFAULT_BROWSER_CAPABLE,
       largePackages: DEFAULT_LARGE_PACKAGES,
+      tags: {},
+      depConstraints: [],
     };
   }
   const value = readJson<Record<string, unknown>>(path);
@@ -115,6 +153,13 @@ function readConfig(root: string): {
       typeof value.largePackages === "object" && value.largePackages
         ? (value.largePackages as Record<string, number>)
         : DEFAULT_LARGE_PACKAGES,
+    tags:
+      typeof value.tags === "object" && value.tags
+        ? (value.tags as Record<string, string[]>)
+        : {},
+    depConstraints: Array.isArray(value.depConstraints)
+      ? (value.depConstraints as DepConstraint[])
+      : [],
   };
 }
 
@@ -282,6 +327,17 @@ function auditSourceImports(
           "business code must use @mvp/request or @mvp/data instead of raw fetch",
       });
     }
+    if (isGatewayCodeFile(relativeFile)) {
+      const uncancellable = fetchCallsWithoutSignal(source);
+      if (uncancellable > 0) {
+        issues.push({
+          code: "fetch-without-timeout",
+          severity: "fail",
+          file: relativeFile,
+          detail: `${uncancellable} gateway fetch call(s) pass no \`signal\` — add AbortSignal.timeout(ms) so a hung upstream cannot hold the request open`,
+        });
+      }
+    }
   }
   return issues;
 }
@@ -347,6 +403,124 @@ function classifyLayeringTarget(
     if (packageNamesByLayer[layer].includes(specifier)) return layer;
   }
   return undefined;
+}
+
+/** Workspace groups scanned for taggable units. */
+const TAGGABLE_GROUPS = ["apps", "domains", "fragments", "packages", "tools"];
+
+type TaggedUnit = {
+  /** `packages/runtime` */
+  dir: string;
+  /** `@mvp/runtime`, when the unit publishes a name. */
+  packageName?: string;
+  tags: string[];
+};
+
+/** Matches a `<group>/<name>` glob with a single trailing `*` wildcard. */
+function matchesUnitGlob(pattern: string, dir: string): boolean {
+  if (pattern === dir) return true;
+  if (!pattern.includes("*")) return false;
+  const [prefix, suffix = ""] = pattern.split("*");
+  return dir.startsWith(prefix) && dir.endsWith(suffix);
+}
+
+export function collectTaggedUnits(
+  root: string,
+  tags: Record<string, string[]>,
+): TaggedUnit[] {
+  const units: TaggedUnit[] = [];
+  for (const group of TAGGABLE_GROUPS) {
+    const base = join(root, group);
+    if (!existsSync(base)) continue;
+    for (const entry of readdirSync(base)) {
+      const dir = `${group}/${entry}`;
+      const manifestPath = join(base, entry, "package.json");
+      if (!existsSync(manifestPath)) continue;
+      const unitTags = Object.entries(tags)
+        .filter(([pattern]) => matchesUnitGlob(pattern, dir))
+        .flatMap(([, value]) => value);
+      units.push({
+        dir,
+        packageName: readJson<{ name?: string }>(manifestPath).name,
+        tags: [...new Set(unitTags)],
+      });
+    }
+  }
+  return units;
+}
+
+/** Which tagged unit an import specifier resolves to, if any. */
+function unitForSpecifier(
+  root: string,
+  file: string,
+  specifier: string,
+  units: TaggedUnit[],
+): TaggedUnit | undefined {
+  if (specifier.startsWith(".")) {
+    const target = relativePosix(root, resolve(dirname(file), specifier));
+    return units.find((unit) => target.startsWith(`${unit.dir}/`));
+  }
+  // `@mvp/runtime/react` must match the `@mvp/runtime` unit too.
+  return units.find(
+    (unit) =>
+      unit.packageName !== undefined &&
+      (specifier === unit.packageName ||
+        specifier.startsWith(`${unit.packageName}/`)),
+  );
+}
+
+export function auditDeclarativeLayering(
+  root: string,
+  tags: Record<string, string[]>,
+  depConstraints: DepConstraint[],
+): AuditIssue[] {
+  const issues: AuditIssue[] = [];
+  const units = collectTaggedUnits(root, tags);
+  const constrained = units.filter((unit) => unit.tags.length > 0);
+
+  for (const unit of constrained) {
+    const applicable = depConstraints.filter((constraint) =>
+      unit.tags.includes(constraint.sourceTag),
+    );
+    if (applicable.length === 0) continue;
+    // `*` short-circuits: a unit allowed to depend on anything needs no scan.
+    if (
+      applicable.some((constraint) =>
+        constraint.onlyDependOnLibsWithTags.includes("*"),
+      )
+    ) {
+      continue;
+    }
+    const allowed = new Set(
+      applicable.flatMap((constraint) => constraint.onlyDependOnLibsWithTags),
+    );
+    const files = walkFiles(join(root, unit.dir), isSourceFile);
+    for (const file of files) {
+      const relativeFile = relativePosix(root, file);
+      if (isKnownLeak(relativeFile)) continue;
+      const source = readFileSync(file, "utf8");
+      for (const specifier of parseImports(source)) {
+        const target = unitForSpecifier(root, file, specifier, units);
+        if (!target || target.dir === unit.dir) continue;
+        // An untagged target is unconstrained infrastructure, not a violation.
+        if (target.tags.length === 0) continue;
+        if (target.tags.some((tag) => allowed.has(tag))) continue;
+        issues.push({
+          code: "layer-constraint-violation",
+          severity: "fail",
+          file: relativeFile,
+          detail: `a unit tagged "${unit.tags.join(", ")}" may only depend on units tagged ${[
+            ...allowed,
+          ]
+            .map((tag) => `"${tag}"`)
+            .join(
+              " or ",
+            )} — "${specifier}" is tagged "${target.tags.join(", ")}"`,
+        });
+      }
+    }
+  }
+  return issues;
 }
 
 function auditPackageLayering(root: string): AuditIssue[] {
@@ -443,6 +617,41 @@ function pageForPath(path: string): string | undefined {
   );
 }
 
+/**
+ * Every fragment's `src/server.ts` must delegate to `@mvp/fragment-host`.
+ *
+ * That HTTP layer was copy-pasted 14 times (130–188 lines each, ≈90% identical,
+ * already drifting) before it was extracted. `pnpm audit:similarity` could never
+ * see it — it only fingerprints `.tsx` — and widening that audit to `.ts` turned
+ * out to be pure noise (see the rationale in
+ * `tools/component-similarity-check/src/index.ts`). So the guard against the
+ * duplication coming back is this precise rule instead: hand-rolling a Fastify
+ * server inside a fragment fails the build.
+ *
+ * Detection is deliberately narrow: a `server.ts` that imports the host passes,
+ * whatever else it does (order-form legitimately adds an extra route). Only a
+ * fragment that does NOT import the host is flagged.
+ */
+export function auditFragmentServerHost(root: string): AuditIssue[] {
+  const issues: AuditIssue[] = [];
+  const fragmentsDir = join(root, "fragments");
+  if (!existsSync(fragmentsDir)) return issues;
+  for (const name of readdirSync(fragmentsDir)) {
+    const serverFile = join(fragmentsDir, name, "src", "server.ts");
+    if (!existsSync(serverFile)) continue;
+    const source = readFileSync(serverFile, "utf8");
+    if (source.includes("@mvp/fragment-host")) continue;
+    issues.push({
+      code: "fragment-server-not-hosted",
+      severity: "fail",
+      file: relativePosix(root, serverFile),
+      detail:
+        "fragment server must delegate to @mvp/fragment-host (createFragmentServer) instead of hand-rolling routes/metrics/trace export",
+    });
+  }
+  return issues;
+}
+
 function isBusinessCodeFile(path: string): boolean {
   return (
     /^apps\/page-[^/]+\/(app|src)\//.test(path) ||
@@ -450,10 +659,52 @@ function isBusinessCodeFile(path: string): boolean {
   );
 }
 
+/**
+ * The composition gateway is not "business code" — it proxies dynamic upstream
+ * origins resolved from the route registry, which `@mvp/request`'s static
+ * endpoint policies cannot express, so raw `fetch` is legitimate there. What is
+ * NOT legitimate is a raw `fetch` with no cancellation: Node's fetch has no
+ * default timeout and Fastify adds none, so one hung upstream holds a request
+ * open on the single component every request passes through. This rule exists
+ * because the original `isBusinessCodeFile` scope silently exempted exactly
+ * that file.
+ */
+function isGatewayCodeFile(path: string): boolean {
+  return /^apps\/shell-gateway\/src\//.test(path);
+}
+
 function hasRawFetch(source: string): boolean {
   // Match only real code: `fetch(` in a comment or a log/doc string is not a
   // raw network call (same false-positive class as browserGlobals).
   return /\bfetch\s*\(/.test(stripCommentsAndStrings(source));
+}
+
+/**
+ * Finds `fetch(...)` calls whose argument list carries no `signal:`. Scans to
+ * the matching close paren so a multi-line init object is covered; comments and
+ * strings are stripped first, same heuristic as the rest of this file.
+ */
+export function fetchCallsWithoutSignal(source: string): number {
+  const code = stripCommentsAndStrings(source);
+  const pattern = /\bfetch\s*\(/g;
+  let count = 0;
+  let match: RegExpExecArray | null = pattern.exec(code);
+  while (match !== null) {
+    let depth = 0;
+    let index = match.index + match[0].length - 1;
+    for (; index < code.length; index += 1) {
+      const char = code[index];
+      if (char === "(") depth += 1;
+      else if (char === ")") {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    const args = code.slice(match.index, index + 1);
+    if (!/\bsignal\s*:/.test(args)) count += 1;
+    match = pattern.exec(code);
+  }
+  return count;
 }
 
 function normalizeImportTarget(

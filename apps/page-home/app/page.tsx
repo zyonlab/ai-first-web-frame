@@ -1,4 +1,5 @@
-import { FragmentSlotStream } from "@mvp/runtime/react";
+import { FragmentSlotStream, PageHealthMetaStream } from "@mvp/runtime/react";
+import { isDiagnosticsEnabled } from "@mvp/runtime/seo";
 import { headers } from "next/headers";
 import { Suspense } from "react";
 import {
@@ -114,9 +115,30 @@ export default async function HomePage() {
         <p>{homeSeoCopy.description}</p>
         <p>{homeSeoCopy.body}</p>
       </section>
+      {/*
+        Aggregate health as a hidden marker the shell gateway reads, so a page whose
+        REQUIRED slot is down answers 503 instead of a 200 full of degraded
+        markup (Tailor's `primary` semantic — see PAGE_HEALTH_ATTR in
+        @mvp/runtime). Own Suspense boundary: it needs the full aggregate, and
+        must never delay the shell or the slots.
+      */}
       <Suspense fallback={null}>
-        <SchedulerDiagnostics aggregate={stream.aggregate} />
+        <PageHealthMetaStream execution={stream.execution} />
       </Suspense>
+      {/*
+        Internal diagnostics (scheduler health, per-slot strategy/source, the
+        request-trace dependency graph) are DEV/E2E affordances, not page
+        content: they used to render unconditionally, putting internal timings
+        and topology into every production response as visible <h2> sections.
+        `isDiagnosticsEnabled()` keeps them on outside production and requires
+        an explicit MVP_DIAGNOSTICS=on in production — which the compose stack
+        sets, so the e2e and runtime-gate assertions still see them.
+      */}
+      {isDiagnosticsEnabled() && (
+        <Suspense fallback={null}>
+          <SchedulerDiagnostics aggregate={stream.aggregate} />
+        </Suspense>
+      )}
       {/*
         `stream.slotPromises` is now `Record<string, Promise<FragmentRenderResponse>>`
         (@mvp/runtime's own generic shape — see fragmentSlots.ts). Dot access

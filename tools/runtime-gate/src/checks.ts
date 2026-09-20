@@ -44,6 +44,26 @@ export type RuntimeObservation = {
   paneSource?: PaneSource;
   /** Document horizontal overflow in px (0 = none). */
   horizontalOverflowPx: number;
+  /**
+   * Core Web Vitals measured in the real browser, plus the page's declared
+   * ceilings.
+   *
+   * These are the budget fields that had NO enforcement anywhere:
+   * `audit:bundle` says so itself ("Runtime-only budget metrics … are not
+   * gated by this audit"), so `maxLCPMs` / `maxCLS` / `maxTTFBMs` sat in every
+   * page's `budget.ts` as documentation. This is the plane where they can
+   * actually be measured, next to the other browser-only checks.
+   *
+   * `undefined` for a metric means "not measured" and is reported as skipped —
+   * never silently passed. INP is deliberately absent: it needs real user
+   * interaction latency, which a headless run cannot produce honestly.
+   */
+  webVitals?: {
+    lcpMs?: number;
+    cls?: number;
+    ttfbMs?: number;
+    budget?: { maxLCPMs?: number; maxCLS?: number; maxTTFBMs?: number };
+  };
   /** Optional interaction-contract result (e.g. order-book → order-form price).
    * `skipped: true` means the contract doesn't apply to this page (e.g. no
    * order-book present) — reported explicitly rather than omitted, so a
@@ -134,6 +154,44 @@ export function evaluateRuntime(
       ? `worst pane void ${Math.round(worstVoid.void)}px @ ${worstVoid.area} (source: ${paneSource}, max ${thresholds.maxPaneVoidPx})`
       : "no panes measured (tried [data-area], [data-fragment])",
   });
+
+  // Core Web Vitals against the page's own declared budget. A metric with no
+  // measurement or no ceiling is SKIPPED, so "nothing was compared" never
+  // reads as "passed".
+  for (const [name, measured, ceiling, unit] of [
+    [
+      "web-vitals-lcp",
+      obs.webVitals?.lcpMs,
+      obs.webVitals?.budget?.maxLCPMs,
+      "ms",
+    ],
+    ["web-vitals-cls", obs.webVitals?.cls, obs.webVitals?.budget?.maxCLS, ""],
+    [
+      "web-vitals-ttfb",
+      obs.webVitals?.ttfbMs,
+      obs.webVitals?.budget?.maxTTFBMs,
+      "ms",
+    ],
+  ] as Array<[string, number | undefined, number | undefined, string]>) {
+    if (measured === undefined || ceiling === undefined) {
+      checks.push({
+        name,
+        ok: true,
+        skipped: true,
+        detail:
+          measured === undefined
+            ? "not measured in this run"
+            : `measured ${measured}${unit} but the page declares no ceiling`,
+      });
+      continue;
+    }
+    const rounded = unit === "ms" ? Math.round(measured) : measured;
+    checks.push({
+      name,
+      ok: measured <= ceiling,
+      detail: `${rounded}${unit} vs budget ${ceiling}${unit}`,
+    });
+  }
 
   // No horizontal page overflow.
   checks.push({

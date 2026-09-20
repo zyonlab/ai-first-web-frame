@@ -1,9 +1,23 @@
 #!/usr/bin/env node
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type CliOptions, parseArgs } from "../../_shared/args";
 import { ensureDir, findWorkspaceRoot, writeText } from "../../_shared/fs";
+import {
+  type FragmentTemplateInput,
+  fragmentBudget,
+  fragmentDockerfile,
+  fragmentFixtures,
+  fragmentManifest,
+  fragmentPackageJson,
+  fragmentReadme,
+  fragmentRender,
+  fragmentRenderTest,
+  fragmentServer,
+  fragmentServerTest,
+  fragmentTsconfig,
+} from "./fragmentTemplate";
 
 export type CreateComponentResult = {
   status: "created" | "failed";
@@ -93,6 +107,36 @@ function createUiComponent(
   return { status: "created", type: "ui", name, files };
 }
 
+/**
+ * Lowest fragment service port. `register-fragment --with-compose` allocates
+ * from the same base, so a scaffold and its compose service agree by default.
+ */
+const FIRST_FRAGMENT_PORT = 4201;
+
+/**
+ * Next free fragment port: scans every existing `fragments/*\/src/server.ts`
+ * for its `DEFAULT_PORT` and returns the first unused value from
+ * {@link FIRST_FRAGMENT_PORT}. A scaffolded fragment is runnable immediately,
+ * without the author having to discover which ports are taken.
+ */
+export function nextFragmentPort(root: string): number {
+  const dir = join(root, "fragments");
+  const used = new Set<number>();
+  if (existsSync(dir)) {
+    for (const name of readdirSync(dir)) {
+      const server = join(dir, name, "src", "server.ts");
+      if (!existsSync(server)) continue;
+      const match = /DEFAULT_PORT\s*=\s*(\d{4,5})/.exec(
+        readFileSync(server, "utf8"),
+      );
+      if (match) used.add(Number(match[1]));
+    }
+  }
+  let port = FIRST_FRAGMENT_PORT;
+  while (used.has(port)) port += 1;
+  return port;
+}
+
 function createFragment(
   root: string,
   name: string,
@@ -100,17 +144,28 @@ function createFragment(
 ): CreateComponentResult {
   const kebab = toKebab(name);
   const dir = join(root, "fragments", kebab);
-  const files = [
-    join(dir, "src", "server.ts"),
-    join(dir, "src", "render.tsx"),
-    join(dir, "src", "manifest.ts"),
-    join(dir, "src", "budget.ts"),
-    join(dir, "src", "fixtures.ts"),
-    join(dir, "src", "render.test.tsx"),
-    join(dir, "package.json"),
-    join(dir, "Dockerfile"),
-    join(dir, "README.md"),
+  const input: FragmentTemplateInput = {
+    name,
+    kebab,
+    camel: camel(name),
+    port: nextFragmentPort(root),
+  };
+  // Every file a fragment needs to run, build, be typechecked and be tested —
+  // the generated unit answers /render and produces an image as scaffolded.
+  const generated: Array<[string, string]> = [
+    [join(dir, "src", "server.ts"), fragmentServer(input)],
+    [join(dir, "src", "render.ts"), fragmentRender(input)],
+    [join(dir, "src", "manifest.ts"), fragmentManifest(input)],
+    [join(dir, "src", "budget.ts"), fragmentBudget(input)],
+    [join(dir, "src", "fixtures.ts"), fragmentFixtures(input)],
+    [join(dir, "src", "render.test.ts"), fragmentRenderTest(input)],
+    [join(dir, "tests", "server.test.ts"), fragmentServerTest(input)],
+    [join(dir, "package.json"), fragmentPackageJson(input)],
+    [join(dir, "tsconfig.json"), fragmentTsconfig()],
+    [join(dir, "Dockerfile"), fragmentDockerfile(input)],
+    [join(dir, "README.md"), fragmentReadme(input)],
   ];
+  const files = generated.map(([file]) => file);
   const collision = files.find((file) => existsSync(file));
   if (collision && !force)
     return {
@@ -121,39 +176,8 @@ function createFragment(
       error: `${collision} already exists`,
     };
   ensureDir(join(dir, "src"));
-  writeText(
-    files[0],
-    `import { render${name} } from "./render";\n\nexport { render${name} };\n`,
-  );
-  writeText(
-    files[1],
-    `export function render${name}() {\n  return { html: "<section data-fragment=\\"${kebab}\\">${name}</section>", assets: { js: [], css: [] }, cache: { ttl: 60, tags: ["${kebab}"] }, metadata: { name: "${kebab}", version: "0.1.0" } };\n}\n`,
-  );
-  writeText(
-    files[2],
-    `import { type FragmentManifest, loadDefaultBudget } from "@mvp/contracts";\n\n// \`satisfies FragmentManifest\` gives compile-time checking against the\n// contract schema; \`layoutHint\` is a repo convention outside the schema, so\n// the intersection keeps excess-property checking happy.\nexport const manifest = {\n  name: "${kebab}",\n  version: "0.1.0",\n  owner: "generated",\n  renderMode: "ssr",\n  renderStrategy: "dynamic-ssr",\n  fallback: "<section>${name}</section>",\n  assets: { js: [], css: [] },\n  // Adjust shape/minHeight/fills to this fragment's real rendered geometry\n  // (shape: "bar" | "ladder" | "table" | "chart" | "panel"; see LayoutHint in tools/release-tools/src/unit-graph.ts).\n  layoutHint: { shape: "panel", minHeight: 120, fills: false },\n  budget: loadDefaultBudget("fragment", "${kebab}"),\n} satisfies FragmentManifest & { layoutHint: Record<string, unknown> };\n`,
-  );
-  writeText(
-    files[3],
-    `import { loadDefaultBudget } from "@mvp/contracts";\n\nexport const budget = loadDefaultBudget("fragment", "${kebab}");\n`,
-  );
-  writeText(
-    files[4],
-    `export const fixtures = { basic: { ctx: {}, props: {} } };\n`,
-  );
-  writeText(
-    files[5],
-    `import { describe, expect, it } from "vitest";\nimport { render${name} } from "./render";\n\ndescribe("${kebab}", () => {\n  it("renders HTML", () => {\n    expect(render${name}().html).toContain("${kebab}");\n  });\n});\n`,
-  );
-  writeText(
-    files[6],
-    `{"name":"@mvp/fragment-${kebab}","version":"0.1.0","type":"module","private":true,"scripts":{"test":"vitest run src","build":"tsdown src/server.ts --format esm --platform node --dts","start":"node dist/server.js"},"dependencies":{"@mvp/contracts":"workspace:*","fastify":"^4.28.1"},"devDependencies":{"tsdown":"^0.11.0"}}\n`,
-  );
-  writeText(
-    files[7],
-    `FROM node:22-alpine\nWORKDIR /app\nCMD ["node", "dist/server.js"]\n`,
-  );
-  writeText(files[8], `# ${name}\n\nGenerated SSR fragment skeleton.\n`);
+  ensureDir(join(dir, "tests"));
+  for (const [file, content] of generated) writeText(file, content);
   return { status: "created", type: "fragment", name, files };
 }
 

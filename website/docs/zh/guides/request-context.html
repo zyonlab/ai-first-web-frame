@@ -1,0 +1,48 @@
+<p class="eyebrow">指南</p>
+<h1>请求上下文</h1>
+<p class="lede">一个经校验的对象随每次渲染同行，跨进程边界时以 HTTP 头形式传播。</p>
+
+<h2 id="形状">形状</h2>
+<p><code>RequestContextSchema</code>（<code>@mvp/contracts</code>），必填字段在前：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>字段</th><th>类型</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>traceId</code></td><td>string，≥8</td><td>把片段的 span 串到同一次页面请求上</td></tr>
+<tr><td><code>requestId</code></td><td>string，≥4</td><td></td></tr>
+<tr><td><code>locale</code></td><td>string，≥2</td><td></td></tr>
+<tr><td><code>tenant</code></td><td>string，≥1</td><td></td></tr>
+<tr><td><code>featureFlags</code></td><td>record</td><td><b>必填</b>，可以是 <code>{}</code></td></tr>
+<tr><td><code>timestamp</code></td><td>ISO datetime</td><td></td></tr>
+<tr><td><code>experiment</code></td><td>record&lt;string&gt;</td><td>默认 <code>{}</code></td></tr>
+<tr><td><code>theme</code></td><td><code>light</code>|<code>dark</code>|<code>system</code></td><td>默认 <code>system</code></td></tr>
+<tr><td><code>device</code></td><td><code>mobile</code>|<code>tablet</code>|<code>desktop</code>|<code>bot</code>|<code>unknown</code></td><td>默认 <code>unknown</code></td></tr>
+<tr><td><code>userAgent</code></td><td>string</td><td>默认 <code>""</code></td></tr>
+<tr><td><code>user</code>、<code>session</code>、<code>ip</code></td><td>可选</td><td></td></tr>
+<tr><td><code>extensions</code></td><td>record&lt;string&gt;</td><td>默认 <code>{}</code> —— 见下</td></tr>
+</tbody></table></div>
+<pre><code>import { createRequestContext } from "@mvp/request-context";
+const ctx = createRequestContext({ headers: { "x-locale": "en-US", "x-tenant": "acme" } });</code></pre>
+<p>访问器：<code>getLocale</code>、<code>getTenant</code>、<code>getTraceId</code>、<code>getUser</code>、<code>getFeatureFlags</code>、<code>getContextExtension</code>。</p>
+
+<h2 id="加一个维度而不动框架">加一个维度，而不动框架</h2>
+<p>错误做法是去加宽 <code>RequestContextSchema</code> —— 那是一个框架包，而分层规则禁止产品代码修改它，所以「加个字段」就等于为了业务需要去加宽框架。</p>
+<p>正确做法是 <code>extensions</code>：</p>
+<pre><code>const ctx = createRequestContext({
+  headers,
+  extensions: { abBucket: "b", acquisitionChannel: "paid-search", tier: "gold" },
+});
+
+getContextExtension(ctx, "abBucket"); // "b"</code></pre>
+<p>值是字符串，因为它们要跨 HTTP 边界。每一个以 <code>x-mvp-ctx-&lt;name&gt;</code> 传播（<code>CONTEXT_EXTENSION_HEADER_PREFIX</code>）。</p>
+<p>这是 <code>@podium/context</code> 的 <code>.register(name, parser)</code> 扩展点的 schema 校验版等价物。</p>
+
+<h2 id="跨线传输">跨线传输</h2>
+<pre><code>import { serializeContext, deserializeContext } from "@mvp/request-context";
+const headers = serializeContext(ctx);   // -&gt; 扁平的头记录
+const ctx2 = deserializeContext(headers);</code></pre>
+
+<h2 id="上下文与缓存">上下文与缓存</h2>
+<p>槽位上的 <code>cachePolicy.vary</code> 指名切分其缓存键的上下文维度。输出依赖 <code>tenant</code> 的片段<strong>必须</strong>声明 <code>vary: ["tenant"]</code>，否则两个租户会共享同一条缓存。<code>createFragmentCacheKey</code> 负责构键，<code>createDataKey</code> 对数据源做同样的事。</p>
+
+<h2 id="宽容层">宽容层</h2>
+<p><code>POST /render</code> 接受<strong>部分</strong>上下文：<code>parseFragmentRenderRequest</code> 先试严格 schema，再试一个 <code>ctx</code> 为 <code>.partial().optional()</code> 的信封，两者都失败才返回 <code>400</code>。用 curl 手工测服务时很方便；至于为什么你目前观测不到线上流量是否落在那一层，见 <a href="../known-limitations.html#f14">F14</a>。</p>

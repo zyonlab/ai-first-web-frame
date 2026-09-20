@@ -1,0 +1,64 @@
+<p class="eyebrow">参考</p>
+<h1>清单（Manifest）</h1>
+<p class="lede">三种 manifest，全部经 Zod 校验。</p>
+
+<h2 id="片段-manifest">片段 manifest — <code>fragments/&lt;name&gt;/src/manifest.ts</code></h2>
+<p><code>FragmentManifestSchema</code> 的字段：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>字段</th><th>类型</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>name</code></td><td>string</td><td>kebab-case；与标记里的 <code>data-fragment</code> 对应</td></tr>
+<tr><td><code>version</code></td><td>string</td><td>由 <code>/health</code>、<code>/ready</code>、<code>/manifest</code> 报告</td></tr>
+<tr><td><code>owner</code></td><td>string</td><td>团队</td></tr>
+<tr><td><code>renderMode</code></td><td><code>ssr</code> | <code>edge-ssr</code></td><td></td></tr>
+<tr><td><code>renderStrategy</code></td><td><code>RenderStrategy</code></td><td>默认 <code>dynamic-ssr</code></td></tr>
+<tr><td><code>cachePolicy</code></td><td>可选</td><td><code>{ttl, tags, vary}</code></td></tr>
+<tr><td><code>fallback</code></td><td>string</td><td>失败时替换上去的 HTML</td></tr>
+<tr><td><code>assets</code></td><td><code>{js: string[], css: string[]}</code></td><td></td></tr>
+<tr><td><code>proxy</code></td><td>record</td><td>绝对 URL <b>或</b> <code>/</code> 开头的路径；默认 <code>{}</code></td></tr>
+<tr><td><code>subscriptions</code></td><td>string[]</td><td>浏览器面板持续订阅的 source id 模板；默认 <code>[]</code></td></tr>
+<tr><td><code>budget</code></td><td><code>PerformanceBudget</code></td><td>必须是 <code>scope: "fragment"</code></td></tr>
+</tbody></table></div>
+<p>线上的 manifest 还带着 schema 未建模的字段 —— <code>endpoint</code>、<code>dependsOn</code>、<code>dataDependencies</code>、<code>consumes</code>、<code>produces</code>、<code>layoutHint</code>、<code>metadata</code>。<code>GET /manifest</code> <strong>原样</strong>返回对象，所以这些字段确实会到达消费方；单元图加载器用 <code>FragmentManifestSchema.passthrough()</code> 校验，所以它们能通过校验而不被剥离。</p>
+<div class="note warn">
+<p>关于这层校验有两件事要知道：</p>
+<p><b>宿主并不做校验。</b><code>createFragmentServer</code> 把 <code>manifest</code> 的类型写成 <code>FragmentManifestLike</code> —— 只有 <code>{name, version, assets}</code> —— 并且从不解析它。schema 强制发生在 <code>tools/release-tools/src/load-graph.ts</code>，只在你使用图/affected 工具（<code>pnpm graph</code>、<code>pnpm affected:graph</code>）时才跑，<strong>不属于</strong> 14 道 <code>pnpm verify</code> 闸门中的任何一道。当前 14 份真实 manifest 全部通过（<code>pnpm graph</code> 能加载 72 个单元）。</p>
+<p><b>那些 passthrough 字段是约定，不是契约。</b>尤其 <code>consumes.slices</code> / <code>produces.slices</code> 喂给单元图的 slice 边，而没有任何东西把它们与权威的频道清单对账 —— 一个没有 manifest 提及的已声明频道，对这张图是不可见的（<a href="../known-limitations.html#f15">F15</a>）。</p>
+</div>
+
+<h2 id="页面-manifest槽位">页面 manifest — 槽位</h2>
+<p><code>apps/&lt;page&gt;/src/manifest.slots.json</code> 是一个 JSON <strong>数组</strong>（不是 <code>{slots: […]}</code>）。每一项：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>字段</th><th>类型</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>name</code></td><td>string</td><td>槽位 id，页面内唯一</td></tr>
+<tr><td><code>fragment</code></td><td>string</td><td>注册表里的名字</td></tr>
+<tr><td><code>channel</code></td><td><code>ReleaseChannel</code></td><td>可选</td></tr>
+<tr><td><code>strategy</code></td><td><code>RenderStrategy</code></td><td>可选</td></tr>
+<tr><td><code>timeoutMs</code></td><td>int ≥ 0</td><td>可选</td></tr>
+<tr><td><code>props</code></td><td>record</td><td>可选</td></tr>
+<tr><td><code>staticHtml</code></td><td>string</td><td>可选；<code>strategy: "static"</code> 使用</td></tr>
+<tr><td><code>cachePolicy</code></td><td><code>{ttl, tags, vary}</code></td><td>可选</td></tr>
+<tr><td><code>dependsOn</code></td><td>string[]</td><td>其他<b>槽位</b>名；默认 <code>[]</code></td></tr>
+<tr><td><code>dataDependencies</code></td><td>string[]</td><td>页面数据源 id；默认 <code>[]</code></td></tr>
+<tr><td><code>required</code></td><td>boolean</td><td>可选；<code>true</code> ⇒ 失败会让页面 <code>unhealthy</code></td></tr>
+</tbody></table></div>
+<p><code>reserved: true</code> 出现在 <code>page-product</code> 的 <code>price-panel</code> 槽位上。它<strong>不在</strong> <code>PageManifestSchema</code> 里 —— 这是一个约定，把该槽位排除在代码生成之外、保持手工渲染。那个槽位同时指向一个注册表里不存在的片段，所以它从不渲染；这是设计如此，但只能靠读 <code>CLAUDE.md</code> 才能发现。</p>
+<p>更外层的页面 manifest（<code>PageManifestSchema</code>）还有 <code>route</code>、<code>renderMode</code>（<code>ssr</code>|<code>ssg</code>|<code>isr</code>|<code>hybrid</code>）、<code>revalidateSeconds</code>、<code>seo: {title, description}</code>、<code>demonstrates</code>（<code>docs/DEMOS.md</code> 由它生成的能力索引）和一个页面级 <code>budget</code>。</p>
+
+<h3 id="生成的运行时形态">生成的运行时形态</h3>
+<p>每次成功的 <code>mount-slot</code> 都会从该 JSON 重新生成 <code>apps/&lt;page&gt;/src/fragmentSlots.gen.ts</code>（一个 <code>FragmentSlotDefinition[]</code>）。<strong>不要编辑它。</strong><code>mount-slot --page &lt;p&gt; --check</code> 校验新鲜度；<code>pnpm verify:manifest-gen</code> 在 <code>pnpm verify</code> 内对所有页面执行。此外每个页面的 <code>manifestSync.test.ts</code> 还会跑 <code>diffManifestAgainstRuntime</code> 作为第二道独立检查。</p>
+
+<h2 id="注册表">注册表 — <code>registry/registry.data.json</code></h2>
+<pre><code>{ "fragments": { "&lt;name&gt;": {
+    "stable":  { "version", "serviceUrl", "manifestUrl", "assetsUrl?" },
+    "canary":  { … }, "preview": { … },
+    "versions": { "&lt;version&gt;": { … } }
+} } }</code></pre>
+<p><code>serviceUrl</code> 必须能解析为 URL。<code>versions</code> 是晋级/回滚历史。<code>registry/releases.json</code> 是只追加的晋级日志。</p>
+
+<h2 id="组件-manifest">组件 manifest — <code>@mvp/ui</code></h2>
+<p><code>ComponentManifestSchema</code> = <code>{metadata, budget（scope "component"）, assets}</code>，其中 <code>ComponentMetadataSchema</code> 是 <code>{category, serverSafe, propsSchema, description}</code>。<code>serverSafe</code> 是服务端/客户端边界审计要读的字段。</p>
+
+<h2 id="给非-typescript-消费方的-json-schema">给非 TypeScript 消费方的 JSON Schema</h2>
+<p><code>FragmentManifestJsonSchema</code>、<code>PageManifestJsonSchema</code>、<code>FragmentRegistryJsonSchema</code>、<code>FragmentRenderRequestJsonSchema</code>、<code>FragmentRenderResponseJsonSchema</code>、<code>RequestContextJsonSchema</code> —— 预生成导出（draft-07）。其他导出的 Zod schema 可按需用 <code>toJsonSchema(schema, name?)</code> 转换。</p>

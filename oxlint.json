@@ -4,5 +4,5 @@
     "node": true,
     "es2022": true
   },
-  "ignorePatterns": ["dist", ".next", "coverage", "node_modules"]
+  "ignorePatterns": ["dist", ".next", "coverage", "node_modules", ".turbo"]
 }

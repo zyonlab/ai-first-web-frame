@@ -3,10 +3,15 @@ dist/
 dist-browser/
 .next/
 coverage/
+.turbo/
+**/.turbo/
 playwright-report/
 test-results/
 reports/playwright/
 reports/traces/
+# Per-unit trace output: the pattern above is anchored to the repo root, so each
+# service's own reports/traces/ needs the recursive form.
+**/reports/traces/
 .DS_Store
 
 # C3 spike (docs/ARCHITECTURE_REFACTOR_PLAN.md §4.3.3): generated shared

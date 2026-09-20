@@ -1,0 +1,385 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>合约交易场景能力对照</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #e8ecea; --paper: #fbfdfc; --paper-2: #f0f4f2;
+    --ink: #13201b; --ink-2: #39514a; --muted: #6a827a;
+    --rule: #ccd8d3; --rule-soft: #e0e8e5;
+    --teal: #0f6b57; --teal-soft: #dcefe8;
+    --amber: #92600d; --amber-soft: #f6ecd6;
+    --rose: #9b2f45; --rose-soft: #f7dee3;
+    --shadow: 0 1px 2px rgba(19,32,27,.05), 0 10px 26px -18px rgba(19,32,27,.32);
+    --sans: "Inter Tight", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c1210; --paper: #141d19; --paper-2: #1a2621;
+      --ink: #dde8e3; --ink-2: #aec2ba; --muted: #7e948c;
+      --rule: #293933; --rule-soft: #1f2d28;
+      --teal: #5fc0a3; --teal-soft: #0f2b23;
+      --amber: #d8ad5c; --amber-soft: #2c2311;
+      --rose: #e094a4; --rose-soft: #331520;
+      --shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.85);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c1210; --paper: #141d19; --paper-2: #1a2621;
+    --ink: #dde8e3; --ink-2: #aec2ba; --muted: #7e948c;
+    --rule: #293933; --rule-soft: #1f2d28;
+    --teal: #5fc0a3; --teal-soft: #0f2b23;
+    --amber: #d8ad5c; --amber-soft: #2c2311;
+    --rose: #e094a4; --rose-soft: #331520;
+    --shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 30px -20px rgba(0,0,0,.85);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding-inline: 20px; padding-block: 0 80px; }
+  .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--rule); }
+  .topbar-in { max-width: 1060px; margin: 0 auto; padding-inline: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; min-height: 46px; }
+  .topbar strong { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+  .topnav { display: flex; gap: 13px; flex-wrap: wrap; margin-left: auto; }
+  .topnav a { font-size: 13px; font-weight: 500; color: var(--muted); text-decoration: none; padding: 4px 0; border-bottom: 1.5px solid transparent; }
+  .topnav a:hover { color: var(--teal); border-bottom-color: var(--teal); }
+  header.hero { padding-block: 50px 30px; border-bottom: 1px solid var(--rule); }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: var(--teal); }
+  h1 { font-weight: 700; font-size: clamp(28px, 5vw, 42px); line-height: 1.12; margin: 12px 0 0; letter-spacing: -.02em; text-wrap: balance; }
+  .lede { font-size: 16.5px; color: var(--ink-2); max-width: 70ch; margin-top: 16px; }
+  .lede b { color: var(--ink); font-weight: 600; }
+  section { padding-block: 44px 0; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin-bottom: 20px; }
+  .sec-num { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--teal); }
+  h2 { font-weight: 600; font-size: clamp(21px, 3.1vw, 27px); margin: 0; letter-spacing: -.01em; }
+  h3 { font-weight: 600; font-size: 18px; margin: 30px 0 10px; }
+  h4 { font-weight: 600; font-size: 15px; margin: 0 0 6px; }
+  p { margin: 0 0 14px; max-width: 78ch; }
+  ul, ol { margin: 0 0 14px; padding-left: 1.3em; max-width: 78ch; }
+  li { margin-bottom: 6px; }
+  code { font-family: var(--mono); font-size: .86em; background: var(--paper-2); border: 1px solid var(--rule-soft); border-radius: 3px; padding: .5px 4px; word-break: break-word; }
+  strong { font-weight: 600; }
+  .tw { overflow-x: auto; border: 1px solid var(--rule); background: var(--paper); margin-bottom: 20px; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 620px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  th { font-weight: 600; font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: var(--paper-2); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td code { font-size: 11.5px; }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .t { font-family: var(--mono); font-size: 10.5px; padding: 2px 6px; white-space: nowrap; font-weight: 500; }
+  .t.yes { background: var(--teal-soft); color: var(--teal); }
+  .t.part { background: var(--amber-soft); color: var(--amber); }
+  .t.no { background: var(--rose-soft); color: var(--rose); }
+  .card { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--teal); padding: 17px 19px; margin-bottom: 13px; box-shadow: var(--shadow); }
+  .card.gap { border-left-color: var(--rose); }
+  .card.warn { border-left-color: var(--amber); }
+  .card h4 { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+  .card p { font-size: 13.5px; color: var(--ink-2); }
+  .card p:last-child { margin-bottom: 0; }
+  .ev { font-family: var(--mono); font-size: 11.5px; color: var(--muted); display: block; border-top: 1px dashed var(--rule-soft); padding-top: 8px; margin-top: 9px; word-break: break-word; }
+  .cmd { font-family: var(--mono); font-size: 12px; background: var(--paper-2); border: 1px solid var(--rule-soft); border-left: 2.5px solid var(--teal); padding: 10px 12px; overflow-x: auto; white-space: pre; margin: 8px 0 14px; line-height: 1.6; }
+  blockquote { margin: 0 0 16px; padding: 12px 16px; background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--teal); font-size: 13.5px; color: var(--ink-2); max-width: 78ch; }
+  blockquote p:last-child { margin-bottom: 0; }
+  .flow { background: var(--paper); border: 1px solid var(--rule); padding: 18px 20px; margin-bottom: 18px; box-shadow: var(--shadow); }
+  .flow-cap { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .step { display: grid; grid-template-columns: 26px 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--rule-soft); }
+  .step:first-of-type { border-top: 0; }
+  .step .n { font-family: var(--mono); font-size: 12px; color: var(--teal); font-weight: 500; }
+  .step .b { font-size: 13.5px; color: var(--ink-2); }
+  .step .b b { color: var(--ink); }
+  footer { margin-top: 50px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 12.5px; color: var(--muted); }
+</style>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <strong>ai-first-web-frame · trading domain</strong>
+    <nav class="topnav">
+      <a href="#react">React 特性</a><a href="#data">数据分区</a><a href="#share">跨组件共享</a>
+      <a href="#timing">创建时机</a><a href="#design">设计系统</a><a href="#gaps">缺口</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">合约交易场景 · 能力对照 · 2026-09-20</div>
+  <h1>你问的四件事，分别落在系统的哪一层</h1>
+  <p class="lede">
+    把问题按<b>合约交易页</b>（<code>apps/page-trade</code>，9 个片段槽位）这个真实场景展开：
+    React 新特性支持到哪、数据怎么按实时性分区、跨层与跨微组件怎么共享、不同创建时机怎么处理、设计系统能不能独立交给 UI 组维护。
+    每条都指到具体文件，并标出<b>已支持 / 部分支持 / 缺口</b>。
+  </p>
+  <p class="lede" style="margin-top:14px">
+    <b>先给结论</b>：数据分区与跨组件共享这块是这个系统<b>最成熟</b>的部分 —— 五档新鲜度 × 四档隐私 × 契约总线已经成体系，
+    你举的六类交易数据<b>全部已有对应的 source 定义</b>。React 侧是 <b>18.3 + Next 15</b>，流式和选择性水合都有，但<b>吃不到 React 19 的新能力</b>。
+    设计系统<b>已经是独立三层</b>，可以直接交给 UI 组维护。最大的缺口在<b>实时数据的跨片段分发</b>与<b>交易约束的强制执行</b>。
+  </p>
+</header>
+
+<!-- ───────── React ───────── -->
+<section id="react">
+  <div class="sec-head"><span class="sec-num">01</span><h2>React 特性支持度</h2></div>
+  <p>版本是 <strong>React 18.3.1 + Next 15.3.4</strong>。Next 15 本身支持 React 19，但这个仓库<strong>锁在 18.3</strong>，所以能力边界很清楚：</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>能力</th><th>状态</th><th>在交易页的体现</th></tr></thead>
+      <tbody>
+        <tr><td><strong>SSR 流式 / Suspense 分块</strong></td><td><span class="t yes">已支持</span></td><td><code>streamFragmentSlots</code> 每槽位一个 promise，<code>&lt;FragmentSlotStream&gt;</code> + <code>&lt;Suspense&gt;</code> 谁先好谁先 flush。<strong>但交易页有意不用</strong> —— 它的 <code>trade-nav.test.tsx</code> 用纯 <code>react-dom/server</code> 渲染页面，而那跑不了 Next RSC 运行时之外的 async Server Component。首页/markets/portfolio/product 四页在用。</td></tr>
+        <tr><td><strong>Server Components</strong></td><td><span class="t yes">已支持</span></td><td>页面与诊断区块都是 async Server Component；片段本身是独立 HTTP 服务，不走 RSC 而走 <code>POST /render</code> 返回 HTML 串。</td></tr>
+        <tr><td><strong>选择性水合（islands）</strong></td><td><span class="t yes">已支持</span></td><td><code>@mvp/islands</code>：片段 SSR 出 <code>&lt;div data-island="orderForm"&gt;</code>，页面 bundle 注册组件后 <code>hydrateIslands()</code> 只水合这些节点。交易页 4 个 island：market-header / chart-panel / account-bar / order-form。</td></tr>
+        <tr><td><strong>脱水 / 再水合（dehydrate → hydrate）</strong></td><td><span class="t yes">已支持</span></td><td>这正是 island snapshot 机制：片段把 props 序列化进内联 <code>&lt;script type="application/json" data-island-props&gt;</code>，客户端 <code>mountIsland</code> 解析 + Zod 校验后再 <code>createRoot().render()</code>。等价于 react-query 的 dehydrate/hydrate，但带<strong>版本握手</strong>。</td></tr>
+        <tr><td><strong>水合失配的处理</strong></td><td><span class="t yes">强于常规</span></td><td>快照带 <code>{fragment, version, contractHash}</code>，页面用 <code>registerIsland(name, comp, { expectedVersion, expectedContractHash, propsSchema })</code> 声明期望。不匹配<strong>完全跳过水合</strong>（不建 root），SSR HTML 保持为最终静态态 + warn + <code>onSnapshotMismatch</code> 回调。</td></tr>
+        <tr><td><strong>React 19：<code>use()</code>、Actions、<code>useOptimistic</code>、<code>useFormStatus</code></strong></td><td><span class="t no">不支持</span></td><td>下单的乐观更新目前靠 <code>@mvp/interaction</code> 的 <code>defineMutation</code> + slice store 手写，不是 <code>useOptimistic</code>。</td></tr>
+        <tr><td><strong>React 19：<code>&lt;meta&gt;/&lt;link&gt;</code> 自动提升到 head</strong></td><td><span class="t no">不支持</span></td><td>这条刚踩到过：页面组件里渲染 <code>&lt;meta&gt;</code> 会落在 <code>&lt;body&gt;</code>（实测），所以页面健康标记改用了 <code>&lt;div hidden data-mvp-page-health&gt;</code>。</td></tr>
+        <tr><td><strong>React 19 Compiler</strong></td><td><span class="t no">不支持</span></td><td>—</td></tr>
+        <tr><td><strong>部分预渲染（Next PPR）</strong></td><td><span class="t no">未启用</span></td><td>所有组合页都是 <code>export const dynamic = "force-dynamic"</code>。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card warn">
+    <h4>升 React 19 的代价 <span class="t part">评估</span></h4>
+    <p>主要卡点是 <code>page-trade</code> 的测试策略：它用 <code>react-dom/server</code> 直接渲染页面来做断言，这条路在 React 19 下仍然跑不了 async Server Component。
+    升级本身（18.3 → 19）对 island 运行时影响不大（<code>createRoot</code>/<code>hydrateRoot</code> API 未变），收益是 <code>useOptimistic</code>（下单/撤单的乐观 UI 天然契合）、meta 自动提升、以及 Actions 简化表单提交。
+    建议把它当成一条独立的技术债，而不是顺手做。</p>
+  </div>
+</section>
+
+<!-- ───────── 数据分区 ───────── -->
+<section id="data">
+  <div class="sec-head"><span class="sec-num">02</span><h2>全局业务数据分区：实时 / 非实时</h2></div>
+  <p>
+    分区不是靠约定，而是<strong>写进契约并在定义期强制校验</strong>的。每个数据源声明两个正交维度：
+  </p>
+  <div class="cmd">DataFreshnessSchema = static | build-time | isr | request-time | near-realtime | realtime | client-local
+DataPrivacySchema   = public | tenant | user-segment | user-private</div>
+  <p>
+    <code>defineDataSource()</code> 在<strong>模块加载时</strong>就跑 <code>safeParse</code>，所以下面这些不变式是会抛 <code>DataDependencyError</code> 的，不是文档里的建议：
+  </p>
+  <ul>
+    <li><strong>user-private 的数据不能是 static</strong> —— 用户持仓不可能被静态缓存</li>
+    <li><strong>realtime 的数据不能配 TTL 缓存</strong> —— 盘口配 ttl 是自相矛盾</li>
+    <li><strong>subscription 类型的源必须是 realtime</strong></li>
+  </ul>
+
+  <h3>你举的六类交易数据，系统里的现状</h3>
+  <p>全部<strong>已有定义</strong>（<code>domains/trade-data/src/tradeSources.ts</code>，850 行），id 由 <code>sourceIds</code> 统一构造，禁止手拼字符串：</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>你说的数据</th><th>source id</th><th>freshness</th><th>privacy</th><th>怎么送达</th></tr></thead>
+      <tbody>
+        <tr><td><strong>K 线（接近实时）</strong></td><td><code>candles.&lt;sym&gt;.&lt;interval&gt;</code></td><td class="num">near-realtime</td><td class="num">public</td><td>SSR 首帧 + 客户端订阅补帧</td></tr>
+        <tr><td>K 线历史（引导）</td><td><code>candles.history.&lt;sym&gt;.&lt;interval&gt;</code></td><td class="num">isr</td><td class="num">public</td><td>TTL 缓存，跨用户复用</td></tr>
+        <tr><td><strong>用户账户资产</strong></td><td><code>account</code> / <code>balances</code></td><td class="num">request-time<br>+ realtime 补丁</td><td class="num">user-private</td><td>SSR 每请求读 + 水合后实时 patch</td></tr>
+        <tr><td><strong>持仓（实时）</strong></td><td><code>positions</code></td><td class="num">realtime</td><td class="num">user-private</td><td><code>subscribeData</code> 订阅</td></tr>
+        <tr><td><strong>挂单（实时）</strong></td><td><code>orders</code></td><td class="num">realtime</td><td class="num">user-private</td><td><code>subscribeData</code> 订阅</td></tr>
+        <tr><td><strong>盘口 / 成交流</strong></td><td><code>book.l2.&lt;sym&gt;</code> / <code>trades.&lt;sym&gt;</code></td><td class="num">realtime</td><td class="num">public</td><td>订阅 + DOM patch（非 React 重渲染）</td></tr>
+        <tr><td>行情头 / 资金费</td><td><code>ticker.&lt;sym&gt;</code> / <code>funding.&lt;sym&gt;</code></td><td class="num">near-realtime</td><td class="num">public</td><td>短 TTL <code>cached-ssr</code> + 订阅</td></tr>
+        <tr><td><strong>币对基础信息</strong><br>（tick/lot/小数位/最大杠杆）</td><td><code>symbol.meta.&lt;sym&gt;</code></td><td class="num">isr（ttl 300s）</td><td class="num">public</td><td>TTL 缓存，按 <code>symbol:&lt;S&gt;</code> tag 失效</td></tr>
+        <tr><td><strong>杠杆/风险阶梯</strong></td><td><code>leverage.tiers.&lt;sym&gt;</code></td><td class="num">static（ttl 86400s）</td><td class="num">public</td><td>长缓存</td></tr>
+        <tr><td>市场列表</td><td><code>markets.index</code></td><td class="num">near-realtime</td><td class="num">public</td><td>—</td></tr>
+        <tr><td>会话/钱包</td><td><code>session.wallet</code></td><td class="num">request-time</td><td class="num">user-private</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    <strong>你关心的「不同币对不同限制」已经有了</strong>：<code>SymbolMetadata = { symbol, tickSize, lotSize, priceDecimals, sizeDecimals, maxLeverage }</code>，
+    外加 <code>LeverageTier = { maxLeverage, maxNotional, maintenanceMarginRate }</code> 的阶梯。
+    它们是 <strong>isr / static</strong> 档，所以和实时盘口走完全不同的缓存路径，符合直觉。
+  </p>
+  <p style="color:var(--muted);font-size:13.5px">
+    注：<strong>最小开单数量</strong>目前用 <code>lotSize</code> 表达；如果业务上「最小下单量」与「数量步长」是两个值，需要扩 <code>SymbolMetadata</code>（见 §06 缺口 3）。
+  </p>
+</section>
+
+<!-- ───────── 跨组件共享 ───────── -->
+<section id="share">
+  <div class="sec-head"><span class="sec-num">03</span><h2>跨层 / 跨微组件的数据共享</h2></div>
+  <p>你描述的两个场景，系统用的是<strong>两条完全不同的通道</strong>，选哪条取决于「水合前还是水合后」。</p>
+
+  <div class="flow">
+    <div class="flow-cap">场景 A · 顶层提供数据 → 跨层最底层微组件消费（服务端，水合前）</div>
+    <div class="step"><span class="n">1</span><span class="b">页面在 <code>manifest.slots.json</code> 里给槽位声明 <b><code>dataDependencies: ["account"]</code></b>。order-form / account-bar / positions-table 三个槽位都声明了同一个 <code>account</code>。</span></div>
+    <div class="step"><span class="n">2</span><span class="b">调度器建 DAG：<code>data:account</code> 成为一个节点，三个 <code>slot:*</code> 节点依赖它。拓扑分层后 <b>data 先于 slot 执行</b>。</span></div>
+    <div class="step"><span class="n">3</span><span class="b">页面的 <code>resolveData(id)</code> 回调用 <code>createDataClient</code> 读一次；三个槽位<b>共享这一次解析</b>（请求级去重，调度器还会发 <code>duplicate-data-resolution</code> 提示）。</span></div>
+    <div class="step"><span class="n">4</span><span class="b">片段通过 <code>POST /render</code> 的 <code>props</code> 拿到结果 —— <b>不需要逐层透传</b>，页面和片段之间没有 React 组件树，是 HTTP 边界。</span></div>
+    <div class="step"><span class="n">5</span><span class="b">失败传播：<code>account</code> 节点失败，三个下游槽位一起变 <code>skipped-dependency</code> 并降级；required 的那个还会让页面答 503。</span></div>
+  </div>
+  <p style="font-size:13.5px;color:var(--muted)">
+    这条路径解决的正是「跨层」问题：传统 React 里要 context 或 props drilling，这里是<strong>声明式依赖 + 调度器编排</strong>，深度无关。
+  </p>
+
+  <div class="flow">
+    <div class="flow-cap">场景 B · 微组件 A 产出 → 微组件 B 消费（客户端，水合后）</div>
+    <div class="step"><span class="n">1</span><span class="b">频道在 <code>domains/trade-contracts/src/slices.ts</code> 里<b>冻结声明</b>：<code>TRADE_ACTIVE_SYMBOL</code>、<code>TRADE_ORDER_DRAFT_PRICE</code>、<code>TRADE_LEVERAGE</code>、<code>TRADE_HOVERED_PRICE</code>、<code>TRADE_CHART_INTERVAL</code>、<code>TRADE_BOOK_GROUPING</code> 等 7 个。</span></div>
+    <div class="step"><span class="n">2</span><span class="b">每个频道的契约指定 <b>唯一 publisher + subscriber 白名单 + payloadSchema</b>。非 publisher 发布会抛 <code>InteractionContractError</code> —— 这是 ACL，不是约定。</span></div>
+    <div class="step"><span class="n">3</span><span class="b">页面<b>只创建一个</b> <code>createSliceStore</code> 和一个 <code>createInteractionBus</code>（<code>apps/page-trade/src/tradeStore.ts</code>，模块级 memo），在水合引导时注入每个 island。</span></div>
+    <div class="step"><span class="n">4</span><span class="b">真实流：点盘口某一档 → order-book 发布 <code>TRADE_ORDER_DRAFT_PRICE</code> → order-form 订阅并填入价格。跨两个<b>独立部署的片段</b>，靠共享总线。</span></div>
+    <div class="step"><span class="n">5</span><span class="b">SSR 状态的接续：<code>initialTradeSlices</code> 是 store 的种子（<code>symbol: "BTC"</code>、<code>leverage: 1</code>…），所以水合前后状态连续。</span></div>
+  </div>
+
+  <div class="card gap">
+    <h4>这里有个必须知道的陷阱：孤儿总线 <span class="t no">已被门禁拦截</span></h4>
+    <p><code>createInteractionBus</code> 实例<strong>彼此隔离</strong>。island 自己 new 一个总线，publish/subscribe 本地都通，但对页面的共享总线完全不可见 —— <strong>没有报错、没有警告，就是一条死链路</strong>。历史上 account-bar 就因此收不到 order-form 的杠杆变更。</p>
+    <p>正确写法是 <code>props.bus ?? 自建 fallback</code>（fallback 只为片段独立渲染/测试存在）。<code>audit:deps</code> 的 <code>island-bus-without-escape-hatch</code> 规则会 fail 掉任何没留逃生口的 <code>island.tsx</code>。</p>
+    <span class="ev">docs/INTERACTION.md §5 · tools/dependency-audit/src/index.ts</span>
+  </div>
+
+  <h3>实时数据的分发：现状与缺口</h3>
+  <p>
+    <code>@mvp/data</code> 提供 <code>subscribeData(id, handler)</code> + 可插拔 <code>SubscriptionTransport</code>，
+    <code>domains/trade-data</code> 提供确定性的 mock 实时传输（种子 PRNG 生成帧）。
+    但<strong>订阅是在页面层集中起的</strong>（<code>apps/page-trade/src/realtime.ts</code>，542 行），它订阅 <code>book.l2</code> / <code>trades</code> / <code>positions</code>，然后<strong>直接 patch DOM</strong>（不是 React 重渲染）。
+  </p>
+  <div class="card gap">
+    <h4>缺口：片段无法自己声明「我要订阅什么」 <span class="t no">缺口</span></h4>
+    <p>槽位可以声明 <code>dataDependencies</code>（一次性读），但<strong>没有对应的 <code>subscriptions</code> 声明</strong>。所以「某个微组件产出全局实时数据、另一个微组件消费」目前必须由<strong>页面代码手工编排</strong>：页面知道要订哪些源、知道要 patch 哪些 DOM 选择器。片段自己是被动的。</p>
+    <p>后果：新增一个需要实时数据的片段，要改页面的 <code>realtime.ts</code> —— 这违背了「挂载一个片段不用改页面」的设计目标。详见 §06 缺口 1。</p>
+  </div>
+</section>
+
+<!-- ───────── 创建时机 ───────── -->
+<section id="timing">
+  <div class="sec-head"><span class="sec-num">04</span><h2>数据在不同时机创建怎么处理</h2></div>
+  <p>系统在<strong>三个独立的轴</strong>上表达时机，很容易混淆，先分清：</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>轴</th><th>取值</th><th>决定什么</th><th>声明在哪</th></tr></thead>
+      <tbody>
+        <tr><td><strong>槽位渲染策略</strong></td><td><code>static</code> / <code>ttl-cache</code> / <code>cached-ssr</code> / <code>dynamic-ssr</code></td><td>页面要不要、何时去调这个<strong>片段服务</strong></td><td><code>manifest.slots.json</code></td></tr>
+        <tr><td><strong>数据新鲜度</strong></td><td>七档（static…realtime）</td><td>这份<strong>数据</strong>能缓存多久、能不能订阅</td><td><code>defineDataSource</code> 的 dependency</td></tr>
+        <tr><td><strong>缓存键维度</strong></td><td><code>vary: [tenant, locale, experiment, device, props]</code></td><td>缓存按什么<strong>分区</strong></td><td><code>cachePolicy</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>合约交易页的实际编排</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>槽位</th><th>片段</th><th>渲染策略</th><th>为什么</th></tr></thead>
+      <tbody>
+        <tr><td><code>marketHeader</code></td><td>market-header</td><td><code>cached-ssr</code> ttl 5s<br><strong>required</strong></td><td>行情头准实时但可短缓存；required → 它挂了整页答 503</td></tr>
+        <tr><td><code>chart</code></td><td>chart-panel</td><td><code>ttl-cache</code> ttl 60s</td><td>K 线首帧可缓存，实时补帧走订阅</td></tr>
+        <tr><td><code>fundingBar</code></td><td>funding-bar</td><td><code>cached-ssr</code> ttl 30s</td><td>资金费变化慢</td></tr>
+        <tr><td><code>book</code> / <code>trades</code></td><td>order-book / trades-feed</td><td><code>dynamic-ssr</code></td><td>每请求取最新一帧，之后交给订阅</td></tr>
+        <tr><td><code>orderForm</code> / <code>positions</code> / <code>accountBar</code></td><td>三个片段</td><td><code>dynamic-ssr</code> + <code>dataDependencies: ["trade-account"]</code></td><td>用户私有数据永不缓存，且三者共享一次解析</td></tr>
+        <tr><td><code>openOrders</code></td><td>open-orders</td><td><code>dynamic-ssr</code></td><td>同上</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h4>「币对基础信息」这类慢数据的正确姿势 <span class="t yes">已支持</span></h4>
+    <p><code>symbol.meta.&lt;sym&gt;</code> 是 <strong>isr + ttl 300s</strong>，带 <code>invalidationTags: ["symbol:BTC", "symbol-meta"]</code>。
+    意味着：① 跨用户跨请求复用，不进用户私有路径；② 运营改了某个币对的限制，按 <code>symbol:BTC</code> tag 定向失效，不用全量刷；
+    ③ 它和盘口是<strong>两条独立的缓存生命周期</strong>，不会因为盘口每秒变而被一起刷掉。</p>
+    <p><code>leverage.tiers.&lt;sym&gt;</code> 更慢，直接 <strong>static + ttl 86400s</strong>。</p>
+    <span class="ev">domains/trade-data/src/tradeSources.ts:497-540</span>
+  </div>
+
+  <div class="card warn">
+    <h4>切币对时的失效 <span class="t part">部分支持</span></h4>
+    <p>切 symbol 时，<code>TRADE_ACTIVE_SYMBOL</code> 在总线上广播，islands 各自响应。数据侧的 source id 天然按 symbol 分区（<code>book.l2.BTC</code> vs <code>book.l2.ETH</code>），所以缓存不会串。</p>
+    <p><strong>但</strong>：页面级的 <code>props.symbol</code> 是靠 <code>fragmentSlots.ts</code> 里一个 <code>{...slot, props}</code> 的每请求合并实现的 —— 这是 <code>page-trade</code> 独有的手写胶水，不是框架能力。换句话说，<strong>「按路由参数给所有槽位注入同一个 prop」这件事没有被抽象</strong>。</p>
+  </div>
+</section>
+
+<!-- ───────── 设计系统 ───────── -->
+<section id="design">
+  <div class="sec-head"><span class="sec-num">05</span><h2>设计系统能不能独立交给 UI 组</h2></div>
+  <p><strong>能，而且现在就已经是独立三层了。</strong>边界清楚，业务侧只消费 CSS 变量：</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>层</th><th>包</th><th>内容</th><th>谁维护</th></tr></thead>
+      <tbody>
+        <tr><td>L0 原始值</td><td><code>@mvp/design-tokens</code><br><span class="t part">44 行</span></td><td>色值、间距、圆角、字体、z-index 的裸数据 + <code>createCssVariables(prefix)</code></td><td><strong>UI 设计组</strong></td></tr>
+        <tr><td>L1 主题系统</td><td><code>@mvp/design-system</code></td><td>语义色（<code>lightColors</code>/<code>darkColors</code>）、<code>createAllThemeVariables()</code>、<code>baseResetCss</code>、<code>tailwindPreset</code>、<code>emitDeclarations()</code></td><td><strong>UI 设计组</strong></td></tr>
+        <tr><td>L2 组件</td><td><code>@mvp/ui</code>（server-safe 7 个原语）<br><code>@mvp/ui/shadcn</code>（11 个 <code>"use client"</code>）</td><td>Button/Card/Section/Image/Skeleton/ProductCardBase/AppNav；shadcn 那层是 Radix 封装</td><td><strong>UI 设计组</strong></td></tr>
+        <tr><td>L2′ 领域语义</td><td><code>domains/trade-theme</code></td><td>买卖/涨跌语义色，把 <code>--trade-*</code> 定义成 <code>--mvp-color-*</code> 的<strong>主题感知别名</strong></td><td>业务组（交易域）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>业务侧实际拿到的「var 变量」</h3>
+  <p>正是你要的那个东西 —— 业务写 CSS 时只碰这些，不碰组件内部：</p>
+  <div class="cmd">/* 框架语义层（UI 组拥有，主题切换自动生效） */
+--mvp-color-accent   --mvp-color-ink      --mvp-color-border
+--mvp-color-surface-*  --mvp-color-text-muted
+--mvp-color-buy      --mvp-color-sell     --mvp-color-up    --mvp-color-down
+--mvp-font-body      --mvp-font-mono      --mvp-spacing-md   --mvp-z-*
+
+/* 交易域别名层（业务组拥有，是上面那层的主题感知别名） */
+--trade-buy  --trade-sell  --trade-up  --trade-down
+--trade-panel-bg  --trade-panel-border  --trade-row-hover
+--trade-flash-buy --trade-flash-sell    --trade-chip-active
+--trade-text      --trade-font-mono</div>
+  <p>
+    这个<strong>两段式</strong>是关键：UI 组改 <code>--mvp-color-buy</code> 的色值，所有交易片段自动跟随；
+    业务组想给交易场景单独调（比如盘口行 hover 更重），改 <code>--trade-row-hover</code> 即可，<strong>不需要碰 UI 组的包</strong>。
+    主题切换由 <code>&lt;html data-theme&gt;</code> 驱动，<code>createAllThemeVariables()</code> 一次性注入 light+dark 两套，无闪烁。
+  </p>
+  <div class="card">
+    <h4>交接给 UI 组需要约定的三件事 <span class="t yes">现成机制</span></h4>
+    <p>① <strong>版本与发布</strong>：这三个包已经是独立 workspace 包，可以独立发版；业务侧升版本即可。<br>
+    ② <strong>防重复造轮子</strong>：<code>audit:similarity</code> 会 fail 掉和现有组件相似度 ≥0.82 的新组件（当前扫 22 个 <code>.tsx</code>）。<br>
+    ③ <strong>预算</strong>：CSS 字节数有硬门禁 —— 不过<strong>页面级目前测不到</strong>（样式是请求时字符串注入的，审计如实标 <code>unmeasured</code>），片段级是真的在测（如 order-book 2176 / 10000 字节）。</p>
+  </div>
+  <div class="card warn">
+    <h4>一个现实约束 <span class="t part">注意</span></h4>
+    <p><code>@mvp/ui</code> 把 7 个 Radix 包 + cmdk + tailwind-merge 列为 <strong>dependencies 而非 optional</strong>，所以任何依赖 <code>@mvp/ui</code> 的片段镜像都会装上 Radix —— 哪怕它只用了 server-safe 的那 7 个原语。要给 UI 组独立发版前，建议先把 shadcn 那层拆成独立包或 optional peer。</p>
+  </div>
+</section>
+
+<!-- ───────── 缺口 ───────── -->
+<section id="gaps">
+  <div class="sec-head"><span class="sec-num">06</span><h2>针对合约交易场景的三个缺口</h2></div>
+
+  <div class="card gap">
+    <h4>缺口 1 · 片段不能声明实时订阅 <span class="t no">最影响你的场景</span></h4>
+    <p>槽位能声明 <code>dataDependencies</code>（一次性读），<strong>没有 <code>subscriptions</code> 的对应物</strong>。所有实时订阅集中在页面的 <code>realtime.ts</code>（542 行），它硬编码了订阅哪些源、patch 哪些 DOM 选择器。</p>
+    <p><strong>对你的影响</strong>：新增一个吃实时数据的片段（比如「爆仓提示」「资金费倒计时」），必须改页面代码 —— 而框架的核心承诺是「挂载片段不用改页面」。</p>
+    <p><strong>建议</strong>：给 <code>SlotSchema</code> 加 <code>subscriptions?: string[]</code>，由运行时统一订阅并把帧按片段分发（片段声明自己的 patch 入口，像现有的 <code>@mvp/fragment-*/patch</code> 约定）。估 1–2 人周。</p>
+  </div>
+
+  <div class="card gap">
+    <h4>缺口 2 · 交易约束没有强制执行点 <span class="t no">风险</span></h4>
+    <p><code>symbol.meta</code> 提供了 <code>tickSize</code> / <code>lotSize</code> / <code>priceDecimals</code> / <code>sizeDecimals</code> / <code>maxLeverage</code>，<code>leverage.tiers</code> 提供了阶梯 —— <strong>但它们只是数据，没有任何地方强制校验下单入参符合这些约束</strong>。</p>
+    <p><code>defineMutation("placeOrder")</code> 的 input schema 只校验字段<strong>类型</strong>（symbol/side/type/size/leverage 是不是 number/string），不校验「size 是否是 lotSize 的整数倍」「leverage 是否超过该币对该档位的上限」「price 是否对齐 tickSize」。</p>
+    <p><strong>建议</strong>：在 <code>domains/trade-contracts</code> 加一层纯函数校验器（<code>validateOrderAgainstSymbol(draft, meta, tiers)</code>），下单前 island 调一次、服务端 mutation 再调一次。纯函数、好测、两端复用。估 3–5 人日。</p>
+  </div>
+
+  <div class="card warn">
+    <h4>缺口 3 · SymbolMetadata 字段可能不够 <span class="t part">待确认</span></h4>
+    <p>现有六个字段覆盖了 tick/lot/小数位/最大杠杆。你提到的<strong>「最小开单数量」</strong>目前只能用 <code>lotSize</code> 表达 —— 如果业务上「最小下单量」和「数量步长」是两个独立值（多数交易所是），需要扩字段；<strong>「风险限额」</strong>目前在 <code>leverage.tiers</code> 的 <code>maxNotional</code> 里，若还要按用户等级/仓位模式细分，也要扩。</p>
+    <p>扩字段本身成本很低（改 <code>SymbolMetadata</code> 类型 + 生成函数），关键是<strong>先把业务上真正需要的约束列全</strong>再一次性加，避免反复改契约。</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">07</span><h2>一页纸总结</h2></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>你的问题</th><th>落在哪一层</th><th>结论</th></tr></thead>
+      <tbody>
+        <tr><td>React 水合 / 去水 / 流式</td><td><code>@mvp/islands</code> + <code>@mvp/runtime</code>（react.tsx）</td><td><span class="t yes">已支持</span> 选择性水合、快照脱水再水合、版本握手、流式分块；<strong>但锁在 React 18.3</strong>，吃不到 19 的 <code>useOptimistic</code>/Actions/meta 提升</td></tr>
+        <tr><td>数据实时/非实时分区</td><td><code>@mvp/contracts</code>（枚举+不变式）+ <code>@mvp/data</code> + <code>domains/trade-data</code></td><td><span class="t yes">成熟</span> 七档新鲜度 × 四档隐私，定义期强制校验；你举的六类数据全部已有 source</td></tr>
+        <tr><td>顶层→底层跨层共享</td><td><code>manifest.slots.json</code> 的 <code>dataDependencies</code> + 调度器 DAG</td><td><span class="t yes">已支持</span> 声明式依赖，请求级去重，失败传播；无需 props drilling</td></tr>
+        <tr><td>微组件↔微组件实时共享</td><td><code>@mvp/interaction</code> + <code>@mvp/store</code> + <code>domains/trade-contracts</code></td><td><span class="t part">部分</span> 契约总线 + ACL 已成熟（水合后）；<strong>但实时订阅仍需页面手工编排</strong></td></tr>
+        <tr><td>不同创建时机</td><td>三条正交轴：渲染策略 / 新鲜度 / 缓存维度</td><td><span class="t yes">已支持</span> 币对基础信息 isr 300s、杠杆阶梯 static 86400s，按 tag 定向失效</td></tr>
+        <tr><td>设计系统独立交付</td><td><code>@mvp/design-tokens</code> → <code>@mvp/design-system</code> → <code>@mvp/ui</code> → <code>domains/trade-theme</code></td><td><span class="t yes">已支持</span> 四层已分离，业务侧只消费 <code>--mvp-*</code> / <code>--trade-*</code> 变量；建议先拆 shadcn 的 Radix 依赖</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <blockquote>
+    <p><strong>优先级建议</strong>：如果要把这套东西真正用在合约交易业务上，先做<strong>缺口 2（交易约束强制执行）</strong> —— 它是资金安全相关，3–5 人日；
+    再做<strong>缺口 1（片段声明订阅）</strong> —— 它决定了这套微前端在实时场景下能不能真正「加片段不改页面」，1–2 人周。
+    React 19 升级可以往后放，它是体验改善不是能力缺失。</p>
+  </blockquote>
+</section>
+
+<footer>
+  基于分支 <code>fix/framework-hardening</code> 的源码通读，2026-09-20。版本事实：React 18.3.1 / Next 15.3.4（<code>apps/page-trade/package.json</code>）。
+  数据源清单来自 <code>domains/trade-data/src/sourceIds.ts</code> + <code>tradeSources.ts</code>；频道清单来自 <code>domains/trade-contracts/src/slices.ts</code>；
+  CSS 变量清单由 grep 实际提取。标「缺口」的三条是本次阅读得出的判断，不是仓库自述。
+</footer>
+</div>

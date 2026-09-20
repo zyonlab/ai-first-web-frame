@@ -1,0 +1,43 @@
+<p class="eyebrow">排错</p>
+<h1>验证闸门</h1>
+<p class="lede"><code>pnpm verify</code> <strong>顺序</strong>跑 14 道闸门，并写出 <code>reports/verify-report.json</code>。请读对应闸门的报告，不要只看退出码。</p>
+
+<div class="table-wrap"><table>
+<thead><tr><th>闸门</th><th>超时</th><th>报告</th><th>先看什么</th></tr></thead>
+<tbody>
+<tr><td><code>typecheck</code></td><td>60s</td><td><code>typecheck-report.json</code></td><td>54 个 project 里哪个失败</td></tr>
+<tr><td><code>lint</code></td><td>60s</td><td>—</td><td>oxlint 输出</td></tr>
+<tr><td><code>check</code></td><td>60s</td><td>—</td><td>biome；<code>pnpm exec biome check --write &lt;file&gt;</code> 修格式</td></tr>
+<tr><td><code>verify:manifest-gen</code></td><td>60s</td><td>—</td><td>某页 <code>stale</code> → 重跑 <code>mount-slot</code>，绝不手改 <code>fragmentSlots.gen.ts</code></td></tr>
+<tr><td><code>verify:demos</code></td><td>60s</td><td>—</td><td><code>docs/DEMOS.md</code> 块与各页 <code>demonstrates</code> 的差异；<code>--write</code> 可重新生成</td></tr>
+<tr><td><code>docs:test</code></td><td>60s</td><td><code>docs-test-report.json</code></td><td>哪个 <code>AGENT.md</code> 代码块跑不动了</td></tr>
+<tr><td><code>test</code></td><td>180s</td><td>—</td><td>Vitest，经 Turborepo</td></tr>
+<tr><td><code>build</code></td><td>300s</td><td>—</td><td>包/片段用 tsdown，页面用 <code>next build</code></td></tr>
+<tr><td><code>audit:similarity</code></td><td>60s</td><td><code>similarity-report.json</code></td><td>超过 <code>threshold</code> 的 <code>matches</code></td></tr>
+<tr><td><code>audit:bundle</code></td><td>60s</td><td><code>bundle-report.json</code></td><td><code>checks[].status</code></td></tr>
+<tr><td><code>audit:css</code></td><td>60s</td><td><code>css-report.json</code></td><td><code>metrics.unusedCssBytes</code></td></tr>
+<tr><td><code>audit:deps</code></td><td>60s</td><td><code>dependency-report.json</code></td><td><code>issues[].code</code> → <a href="../reference/diagnostics.html">诊断码</a></td></tr>
+<tr><td><code>audit:optimizer</code></td><td>60s</td><td><code>optimization-findings.json</code></td><td>只有 <code>critical</code> 会失败</td></tr>
+<tr><td><code>audit:boundary</code></td><td>60s</td><td><code>server-client-boundary-report.json</code></td><td>只看 <code>severity: "fail"</code> 的条目</td></tr>
+</tbody></table></div>
+
+<h2 id="常见失败">常见失败</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>症状</th><th>怎么办</th></tr></thead>
+<tbody>
+<tr><td><code>check</code> 只因格式失败</td><td>biome 在 <code>check</code> 模式下拒绝自动修复。跑 <code>pnpm exec biome check --write &lt;paths&gt;</code>。</td></tr>
+<tr><td><code>duplicated-package-version</code></td><td>同一依赖在工作区某处有两个不同区间 —— 包括同一包的 <code>peerDependencies</code> 与 <code>dependencies</code> 分裂。统一区间；本仓库刻意只允许一个。</td></tr>
+<tr><td><code>server-safe-browser-global</code></td><td><code>packages/*</code> 文件碰了浏览器全局对象。如果该模块确实只跑在浏览器，给它 <code>"use client"</code>，并考虑做成独立导出子路径，让服务端 bundle 永远拉不到它 —— <code>@mvp/runtime/live</code> 就是这么做的。<b>不要</b>把包加进白名单来躲规则。</td></tr>
+<tr><td><code>fragment-server-not-hosted</code></td><td>片段自建了 Fastify 实例。把 <code>src/server.ts</code> 改写成 <code>createFragmentServer</code> 上的适配器。</td></tr>
+<tr><td><code>layer-constraint-violation</code></td><td>修正 import 方向，或故意地修改 <code>dependency-audit.json</code> 里的 <code>depConstraints</code>。加个 tag 逃逸不算修复。</td></tr>
+<tr><td><code>raw-fetch-in-business-code</code></td><td>改用 <code>@mvp/request</code> 或 <code>@mvp/data</code>。</td></tr>
+<tr><td>预算失败</td><td>缩小客户端入口、把工作移到 SSR，或拆分片段。调大数字是一个决定，应写进提交信息。</td></tr>
+<tr><td>相似度失败</td><td>复用被标出的那个组件，而不是新增一个近似重复的。</td></tr>
+<tr><td><code>verify:manifest-gen</code> 报 <code>stale</code></td><td>对该页面重跑 <code>mount-slot</code>（哪怕只是 <code>--check</code> 也会告诉你是哪一页）。生成文件是派生物，JSON manifest 才是源。</td></tr>
+<tr><td><code>docs:test</code> 失败</td><td>某个 <code>AGENT.md</code> 示例跑不动了。修示例或修代码 —— <b>不要</b>为了消音把块标成 <code>no-run</code>，除非它确实无法执行，因为报告会统计被跳过的块，而这个数字是要维持在零的。</td></tr>
+<tr><td>你没碰过的包 typecheck 失败</td><td>报告这个既存失败；不要为了变绿去改别的包。</td></tr>
+</tbody></table></div>
+
+<h2 id="冷克隆">冷克隆</h2>
+<p><code>pnpm test</code>、<code>pnpm verify:manifest-gen</code> 和 <code>pnpm docs:test</code> 都会先跑 <code>scripts/ensure-workspace-build.mts</code>，它<strong>总是</strong>委托给 Turborepo，而不是在 <code>dist/</code> 只要存在时就跳过 —— 一个存在但过期的 <code>dist/</code> 正是这道检查要防的失败。如果某道闸门以「找不到某个 <code>@mvp/*</code> 模块」失败，跑 <code>pnpm build</code> 并读构建错误，那才是真正的错误。</p>
+<div class="note"><p><b>题外话但值得知道：</b>14 道闸门是<em>严格顺序</em>执行的（<code>scripts/verify.mts</code> 用 <code>spawnSync</code> 的 <code>map</code>），6 个互不相干的审计并不会重叠。这是延迟问题而非正确性问题（热缓存约 32 秒），但足以解释为什么它不会更快（<a href="../known-limitations.html#f9">F9</a>）。</p></div>

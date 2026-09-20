@@ -2,7 +2,6 @@ import {
   type FragmentRegistry,
   type FragmentRenderRequest,
   type FragmentRenderResponse,
-  type PageManifest,
   parseFragmentRenderResponse,
   type ReleaseChannel,
   type RenderStrategy,
@@ -12,6 +11,7 @@ import {
 import { serializeContext } from "@mvp/request-context";
 
 export type { FragmentRenderResponse, ReleaseChannel } from "@mvp/contracts";
+export * from "./fragmentProxy";
 
 /** The strategy used when a slot does not declare one. */
 export const DEFAULT_RENDER_STRATEGY: RenderStrategy = "dynamic-ssr";
@@ -117,12 +117,148 @@ export type FragmentSlotsExecution = {
   hints: SchedulerHint[];
 };
 
-export type FragmentCache = Map<
-  string,
-  { expiresAt: number; response: FragmentRenderResponse }
->;
+export type FragmentCacheEntry = {
+  expiresAt: number;
+  response: FragmentRenderResponse;
+  /** `cachePolicy.tags` of the slot that produced the entry; drives invalidation. */
+  tags: string[];
+};
+
+export type FragmentCache = Map<string, FragmentCacheEntry>;
+
+/**
+ * Entry ceiling for the in-process fragment cache. Keys vary on
+ * tenant/locale/experiment/props, and `props` routinely carries high-cardinality
+ * values (a trading symbol, a product id), so an unbounded map is a slow leak in
+ * a long-lived page process. Expired entries are swept and the oldest writes are
+ * evicted on every write past the ceiling.
+ */
+export const DEFAULT_FRAGMENT_CACHE_MAX_ENTRIES = 500;
 
 const defaultFragmentCache: FragmentCache = new Map();
+
+/** A fresh, independent fragment cache (per-test or per-tenant isolation). */
+export function createFragmentCache(): FragmentCache {
+  return new Map();
+}
+
+/**
+ * Drops expired entries, then evicts oldest-written entries until the cache is
+ * within `maxEntries`. `Map` iterates in insertion order, so the oldest write
+ * is the first key.
+ */
+export function pruneFragmentCache(
+  cache: FragmentCache,
+  nowMs: number,
+  maxEntries: number = DEFAULT_FRAGMENT_CACHE_MAX_ENTRIES,
+): number {
+  let removed = 0;
+  for (const [key, entry] of cache) {
+    if (entry.expiresAt <= nowMs) {
+      cache.delete(key);
+      removed += 1;
+    }
+  }
+  if (cache.size <= maxEntries) return removed;
+  const excess = cache.size - maxEntries;
+  for (const key of [...cache.keys()].slice(0, excess)) {
+    cache.delete(key);
+    removed += 1;
+  }
+  return removed;
+}
+
+/**
+ * Drops every cached response whose producing slot declared `tag` in its
+ * `cachePolicy.tags`, and returns how many entries were removed. This is what
+ * makes a slot's declared tags load-bearing instead of decorative: pair it with
+ * `@mvp/interaction`'s `defineMutation({ invalidates })` so a write path can
+ * evict the fragment HTML it invalidated.
+ */
+export function invalidateFragmentCacheByTag(
+  tag: string,
+  cache: FragmentCache = defaultFragmentCache,
+): number {
+  let removed = 0;
+  for (const [key, entry] of cache) {
+    if (entry.tags.includes(tag)) {
+      cache.delete(key);
+      removed += 1;
+    }
+  }
+  return removed;
+}
+
+/**
+ * Attribute a composed page stamps its aggregate health into, so the
+ * composition gateway can map a failed REQUIRED slot onto an honest HTTP
+ * status code.
+ *
+ * Why a marker in the body at all: in the Next App Router a `page.tsx` cannot
+ * set a response status or header — only middleware and route handlers can —
+ * while the shell gateway, which owns the response the browser actually
+ * receives, already reads the upstream body as text.
+ *
+ * Why a `<div hidden data-…>` and not a `<meta>`: this is an internal signal
+ * for the gateway, not metadata about the document. React 19 WOULD hoist a
+ * `<meta>` rendered from a page component into `<head>` (verified by SSR probe;
+ * React 18, which this repo used to be on, did not and left it in `<body>`,
+ * which is invalid HTML) — but `<head>` is the document's public metadata
+ * surface, read by crawlers and third-party tools, and a degradation signal
+ * does not belong there. A hidden `div` carrying data attributes is valid where
+ * it actually renders, invisible, and equally greppable.
+ *
+ * The problem it solves is Tailor's `primary` semantic: before this, a page
+ * whose required slot was entirely down still answered `200`, so crawlers
+ * indexed degraded markup as real content and success-rate monitoring saw
+ * nothing. Only `unhealthy` (a REQUIRED slot failed) changes the status;
+ * `degraded` (an optional slot failed) stays `200`, because partial
+ * degradation is a designed feature, not an error.
+ */
+export const PAGE_HEALTH_ATTR = "data-mvp-page-health";
+
+/** Attribute carrying the failed required slot names, for diagnosis. */
+export const PAGE_HEALTH_FAILED_ATTR = "data-failed-slots";
+
+/**
+ * Reads the health marker back out of a composed page's HTML. Returns null
+ * when the page does not participate (no marker), which must be treated as
+ * "no opinion" rather than as unhealthy — pages opt in.
+ */
+export function readPageHealthFromHtml(html: string): {
+  health: PageHealth;
+  failedSlots: string[];
+} | null {
+  const tag = new RegExp(
+    `<[a-z]+[^>]*\\s${PAGE_HEALTH_ATTR}=["'][^"']*["'][^>]*>`,
+    "i",
+  ).exec(html);
+  if (!tag) return null;
+  const content = new RegExp(`${PAGE_HEALTH_ATTR}=["']([^"']*)["']`, "i").exec(
+    tag[0],
+  )?.[1];
+  if (content !== "ok" && content !== "degraded" && content !== "unhealthy") {
+    return null;
+  }
+  const failed = new RegExp(
+    `${PAGE_HEALTH_FAILED_ATTR}=["']([^"']*)["']`,
+    "i",
+  ).exec(tag[0])?.[1];
+  return {
+    health: content,
+    failedSlots: failed ? failed.split(",").filter(Boolean) : [],
+  };
+}
+
+/** The required slots that ended up degraded in an execution. */
+export function failedRequiredSlotNames(
+  execution: FragmentSlotsExecution,
+): string[] {
+  return Object.values(execution.slots)
+    .filter((result) => result.slot.required === true && result.status !== "ok")
+    .map((result) => result.slot.name)
+    .sort();
+}
 
 export type FragmentSlotExecutionPlan = FragmentSlotDefinition[][];
 
@@ -158,14 +294,27 @@ export function resolveFragment(
   return null;
 }
 
+/**
+ * Races `promise` against a timer, resolving to `fallback` when the timer
+ * wins. `onTimeout` fires at that moment so the caller can CANCEL the work it
+ * just stopped waiting for: racing alone leaves the losing promise running,
+ * which for an HTTP call means a socket and an unread response body held for
+ * as long as the upstream takes. With up to one call per slot per request,
+ * that is an unbounded in-flight set under a slow fragment — see
+ * `fetchFragment`, which passes an `AbortController.abort`.
+ */
 export async function withTimeout<T>(
   promise: Promise<T>,
   ms: number,
   fallback: T,
+  onTimeout?: () => void,
 ): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<T>((resolve) => {
-    timer = setTimeout(() => resolve(fallback), ms);
+    timer = setTimeout(() => {
+      onTimeout?.();
+      resolve(fallback);
+    }, ms);
   });
   try {
     return await Promise.race([promise, timeout]);
@@ -174,8 +323,23 @@ export async function withTimeout<T>(
   }
 }
 
+/**
+ * Escapes text interpolated into fallback markup. `reason` carries upstream
+ * error text (status lines, schema violations) and therefore is never trusted
+ * to be markup-safe.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function createFallbackHtml(fragmentName: string, reason: string) {
-  return `<section data-fragment="${fragmentName}" data-fallback="true"><p>${fragmentName} is temporarily unavailable.</p><small>${reason}</small></section>`;
+  const name = escapeHtml(fragmentName);
+  return `<section data-fragment="${name}" data-fallback="true"><p>${name} is temporarily unavailable.</p><small>${escapeHtml(reason)}</small></section>`;
 }
 
 export function createFallbackResponse(
@@ -212,8 +376,23 @@ export function createFragmentHeaders(
   };
 }
 
+/** Name used in degraded markup when the caller did not supply one. */
+export const ANONYMOUS_FRAGMENT_NAME = "fragment";
+
 export async function fetchFragment(
-  fragment: { serviceUrl: string; version: string },
+  fragment: {
+    serviceUrl: string;
+    version: string;
+    /**
+     * The registry fragment NAME. Degraded markup is identified by this, never
+     * by `serviceUrl`: in compose/k8s the serviceUrl is an internal DNS name
+     * and port, and it used to be rendered into the public page HTML on every
+     * timeout. It also keeps the `[data-fragment="<name>"]` selector that e2e
+     * specs and `verify:runtime` anchor on stable across BOTH degradation
+     * paths (this one and the scheduler's).
+     */
+    name?: string;
+  },
   request: FragmentRenderRequest,
   options: {
     timeoutMs?: number;
@@ -224,11 +403,14 @@ export async function fetchFragment(
   } = {},
 ): Promise<FragmentRenderResponse> {
   const fallback = createFallbackResponse(
-    fragment.serviceUrl,
+    fragment.name ?? ANONYMOUS_FRAGMENT_NAME,
     fragment.version,
     "fallback",
   );
   const fetchImpl = options.fetchImpl ?? fetch;
+  // Cancels the upstream request the moment the timeout fires, so a slow
+  // fragment cannot accumulate in-flight sockets on the page process.
+  const controller = new AbortController();
   const spanId = options.trace?.startSpan(
     options.spanName ?? `fragment.http:${fragment.serviceUrl}`,
     "network",
@@ -251,6 +433,7 @@ export async function fetchFragment(
         method: "POST",
         headers: createFragmentHeaders(request.ctx),
         body: JSON.stringify(request),
+        signal: controller.signal,
       })
         .then(async (response) => {
           if (!response.ok)
@@ -278,6 +461,7 @@ export async function fetchFragment(
         }),
       options.timeoutMs ?? 200,
       fallback,
+      () => controller.abort(),
     );
     options.trace?.endSpan(spanId ?? "", {
       status: isFallbackResponse(response) ? "fallback" : "ok",
@@ -312,6 +496,8 @@ export type FetchFragmentSlotsOptions = {
   dataTimeoutMs?: number;
   onRequiredFailure?: "fallback" | "throw";
   maxSerialLevels?: number;
+  /** Entry ceiling for `cache`; see {@link DEFAULT_FRAGMENT_CACHE_MAX_ENTRIES}. */
+  cacheMaxEntries?: number;
 };
 
 export async function fetchFragmentSlots(
@@ -384,6 +570,7 @@ export function streamFragmentSlots({
   dataTimeoutMs,
   onRequiredFailure = "fallback",
   maxSerialLevels,
+  cacheMaxEntries = DEFAULT_FRAGMENT_CACHE_MAX_ENTRIES,
 }: FetchFragmentSlotsOptions): FragmentSlotStreamHandle {
   const { levels, hints } = createSlotDataExecutionPlan({
     slots,
@@ -480,6 +667,7 @@ export function streamFragmentSlots({
         fetchImpl,
         timeoutMs,
         cache,
+        cacheMaxEntries,
         now,
         trace,
         parentSpanId: schedulerSpanId,
@@ -926,6 +1114,7 @@ export async function fetchFragmentSlot({
   fetchImpl,
   timeoutMs,
   cache,
+  cacheMaxEntries = DEFAULT_FRAGMENT_CACHE_MAX_ENTRIES,
   now,
   trace,
   parentSpanId,
@@ -936,6 +1125,7 @@ export async function fetchFragmentSlot({
   fetchImpl?: typeof fetch;
   timeoutMs: number;
   cache: FragmentCache;
+  cacheMaxEntries?: number;
   now: () => number;
   trace?: RuntimeTrace;
   parentSpanId?: string;
@@ -1039,18 +1229,29 @@ export async function fetchFragmentSlot({
       }
     }
 
-    const response = await fetchFragment(fragment, request, {
-      fetchImpl,
-      timeoutMs: slot.timeoutMs ?? timeoutMs,
-      trace,
-      parentSpanId: slotSpanId,
-      spanName: `fragment.http:${slot.name}`,
-    });
+    const response = await fetchFragment(
+      { ...fragment, name: slot.fragment },
+      request,
+      {
+        fetchImpl,
+        timeoutMs: slot.timeoutMs ?? timeoutMs,
+        trace,
+        parentSpanId: slotSpanId,
+        spanName: `fragment.http:${slot.name}`,
+      },
+    );
 
     if (cacheKey && !isFallbackResponse(response)) {
       const ttl = slot.cachePolicy?.ttl ?? response.cache.ttl;
-      if (ttl > 0)
-        cache.set(cacheKey, { expiresAt: now() + ttl * 1000, response });
+      if (ttl > 0) {
+        cache.set(cacheKey, {
+          expiresAt: now() + ttl * 1000,
+          response,
+          tags: slot.cachePolicy?.tags ?? response.cache.tags ?? [],
+        });
+        // Bounded on write: sweep expired entries and evict oldest writes.
+        pruneFragmentCache(cache, now(), cacheMaxEntries);
+      }
     }
 
     const source = isFallbackResponse(response)
@@ -1119,29 +1320,6 @@ function stableStringify(value: unknown): string {
       .join(",")}}`;
   }
   return JSON.stringify(value);
-}
-
-export function composePage(
-  pageManifest: PageManifest,
-  slots: Record<string, FragmentRenderResponse | Error>,
-  ctx: RequestContext,
-) {
-  const fragments = pageManifest.slots
-    .map((slot) => {
-      const response = slots[slot.name];
-      if (!response || response instanceof Error)
-        return createFallbackHtml(
-          slot.fragment,
-          response?.message ?? "missing",
-        );
-      return response.html;
-    })
-    .join("");
-  return [
-    "<!doctype html>",
-    `<html lang="${ctx.locale}"><head><title>${pageManifest.seo.title}</title><meta name="description" content="${pageManifest.seo.description}"></head>`,
-    `<body><main><h1>${pageManifest.seo.title}</h1><p>${pageManifest.seo.description}</p>${fragments}</main></body></html>`,
-  ].join("");
 }
 
 export function mergeAssets(fragmentResponses: FragmentRenderResponse[]) {
