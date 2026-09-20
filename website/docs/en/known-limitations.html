@@ -3,8 +3,8 @@
 <p class="lede">Everything here was found by reading the source tree and running the gates, not by reading the internal docs. Each entry names the file that proves it. Nothing in this list is a hypothetical.</p>
 <p>The list is ordered by what would hurt first, and each entry says who it hurts: <b>AX</b> an AI agent working in the repository, <b>DX</b> a human developer, <b>OPS</b> someone running it, <b>DOCS</b> a claim that is not true as stated.</p>
 <div class="facts">
-  <div class="fact"><b>15</b><span>verified findings</span></div>
-  <div class="fact"><b>2</b><span>already fixed</span></div>
+  <div class="fact"><b>17</b><span>verified findings</span></div>
+  <div class="fact"><b>4</b><span>already fixed</span></div>
   <div class="fact"><b>3</b><span>would change a decision</span></div>
 </div>
 <hr />
@@ -81,7 +81,8 @@
 <p>The blanket claim "performance budgets are hard gates: exceeding component/fragment/page budgets fails <code>pnpm verify</code>" is true of 2 fields out of 11.</p>
 <p>To be fair to the tooling: <code>audit:bundle</code> is explicit about its own scope — its report carries an <code>unmeasured</code> array with a <code>reason</code> per skip, and a <code>notes</code> entry stating that runtime-only metrics are not gated. The gap is between the schema and the gates, and between the gates and the summary prose.</p>
 <div class="note bad">
-<p><b>The sharpest instance:</b> every one of the 14 fragments declares <code>maxFragmentLatencyMs</code> and <code>maxRenderMs</code> — the two most operationally meaningful numbers a fragment has — and <b>nothing reads either</b>. Likewise every page declares <code>maxINPMs: 200</code> while the runtime gate implements LCP, CLS and TTFB checks and no INP check at all.</p>
+<p><b>The sharpest instance:</b> every one of the 14 fragments declares <code>maxFragmentLatencyMs</code> and <code>maxRenderMs</code> — the two most operationally meaningful numbers a fragment has — and <b>nothing reads either</b>.</p>
+<p><code>maxINPMs</code> moved but did not land: INP is now genuinely measured in the browser (<a href="#f16">F16</a>), so the number exists — but the runtime gate still implements LCP, CLS and TTFB checks and no INP check, so the declared ceiling is still not a ceiling. Measured-and-ungated is a different problem from unmeasured, and a smaller one.</p>
 </div>
 <hr />
 <h2 id="f12">F12 · <del>The scaffold file count is stated as 9 in three places and 11 in three others</del> — FIXED</h2>
@@ -110,6 +111,25 @@
 <p><code>tools/release-tools/src/unit-graph.ts:178-184</code> builds slice nodes by upserting from each fragment manifest's <code>consumes.slices</code> / <code>produces.slices</code>. No manifest mentions <code>trade.book-grouping</code>, so it has no node and no edges — and the affected engine therefore cannot know that changing that channel's payload affects <code>order-book</code>.</p>
 <p>Same shape as <a href="#f1">F1</a>: two sides declare related facts (the authoritative contract list, and the manifest convention fields) and no gate compares them. Those manifest fields are also outside <code>FragmentManifestSchema</code>, so nothing validates their spelling either.</p>
 <hr />
+<h2 id="f16">F16 · <s>The trace id was a hardcoded constant</s> — FIXED</h2>
+<p><code>createTraceId()</code> in the gateway returned the literal string <code>"trace_0000000000000000"</code>. Every request in the system therefore shared one trace id: spans from unrelated page loads collapsed into a single trace, every OTLP payload exported so far was one indistinguishable blob, and the per-fragment <code>x-trace-id</code> propagation that looked carefully built propagated the same value every time.</p>
+<div class="note bad">
+<p><b>The interesting part is why it survived.</b> Correlation that always "works" looks exactly like correlation that works. There was no failing test, no error and no report — a trace id was present on every span, and it was the wrong one. The class of bug a gate cannot catch is the one where the wrong answer is well-formed.</p>
+</div>
+<p>Replaced with real W3C Trace Context (<code>@mvp/observability/traceContext</code>): <code>traceparent</code> is continued when present and minted otherwise, propagated gateway → page → fragment, and echoed on the response. A malformed header starts a new trace rather than being partly adopted. 20 tests cover the spec's own example vector, all-zero rejection and uniqueness across 500 ids.</p>
+<p>Kept on this page because the shape recurs: <b>any identifier that is generated rather than observed can be a constant and nothing will complain.</b> The same question is worth asking of <code>requestId</code>, cache keys and idempotency keys.</p>
+
+<hr />
+
+<h2 id="f17">F17 · Real-user monitoring reaches one page of seven — OPS, medium</h2>
+<p><code>@mvp/observability/rum</code> now measures LCP, CLS, INP, TTFB and long tasks properly, and tags every sample with the server's trace id so a client-side vital joins the server spans of the same page load. But only <code>page-home</code> installs it. <code>page-trade</code> — the nine-slot realtime terminal, the page where jank and interaction latency actually matter — reports nothing.</p>
+<p>The ingestion endpoint is also per-app (<code>apps/page-home/app/api/rum/route.ts</code>) and holds its registry in process memory, so samples neither survive a restart nor aggregate across pages.</p>
+<div class="note">
+<p>This replaced a worse problem rather than creating one: the previous sample was <code>{ name: "INP", value: performance.now() }</code> at island mount — not INP, and never an interaction. One page reporting real numbers beats seven reporting a confident wrong one, but it is not coverage.</p>
+</div>
+
+<hr />
+
 <h2 id="things-that-look-like-limitations-and-are-not">Things that look like limitations and are not</h2>
 <p>Worth stating, because each one gets reported as a bug:</p>
 <div class="note good">
@@ -125,4 +145,4 @@
 <h2 id="how-to-use-this-page">How to use this page</h2>
 <p>If you are evaluating: F1, F11 and F14 are the ones that would change a decision — one advisory tool that is wrong, one claim broader than its implementation, one observability hole at the main boundary. None of them is a design dead end; all three are a day of work each.</p>
 <p>If you are an agent working here: read F1 before acting on any optimizer recommendation, and F4 before concluding a flag does not exist.</p>
-<p>F3 and F12 are marked FIXED and kept rather than deleted, because the <em>mechanism</em> that let each one happen is still there — an undeclared-env-var drift has no warning, and no test compares a documented file count against what the scaffolder writes.</p>
+<p>F3, F12 and F16 are marked FIXED and kept rather than deleted, because the <em>mechanism</em> that let each one happen is still there — an undeclared-env-var drift has no warning, no test compares a documented file count against what the scaffolder writes, and nothing checks that a generated identifier actually varies.</p>
