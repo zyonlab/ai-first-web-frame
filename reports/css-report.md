@@ -17,16 +17,16 @@ Status: pass
 | fragment | pnl-chart | 2914 | 10000 | pass | 1 css file(s), minified bytes |
 | fragment | portfolio-summary | 3553 | 10000 | pass | 1 css file(s), minified bytes |
 | fragment | positions-table | 1740 | 10000 | pass | 1 css file(s), minified bytes |
-| fragment | promotion-banner | 0 | 10000 | pass | no .css files in unit dir; inline/injected styles are not counted |
-| fragment | recommendation-widget | 0 | 10000 | pass | no .css files in unit dir; inline/injected styles are not counted |
+| fragment | promotion-banner | 0 | 10000 | unmeasured | UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing |
+| fragment | recommendation-widget | 0 | 10000 | unmeasured | UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing |
 | fragment | trades-feed | 1126 | 10000 | pass | 1 css file(s), minified bytes |
-| page | page-home | 0 | 50000 | pass | no .css files in unit dir; inline/injected styles are not counted |
-| page | page-markets | 0 | 50000 | pass | no .css files in unit dir; inline/injected styles are not counted |
-| page | page-portfolio | 0 | 50000 | pass | no .css files in unit dir; inline/injected styles are not counted |
-| page | page-product | 0 | 50000 | pass | no .css files in unit dir; inline/injected styles are not counted |
-| page | page-referrals | 0 | 50000 | pass | no .css files in unit dir; inline/injected styles are not counted |
-| page | page-trade | 0 | 50000 | pass | no .css files in unit dir; inline/injected styles are not counted |
-| page | page-vaults | 0 | 50000 | pass | no .css files in unit dir; inline/injected styles are not counted |
+| page | page-home | 0 | 50000 | unmeasured | UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing |
+| page | page-markets | 0 | 50000 | unmeasured | UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing |
+| page | page-portfolio | 0 | 50000 | unmeasured | UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing |
+| page | page-product | 0 | 50000 | unmeasured | UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing |
+| page | page-referrals | 0 | 50000 | unmeasured | UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing |
+| page | page-trade | 0 | 50000 | unmeasured | UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing |
+| page | page-vaults | 0 | 50000 | unmeasured | UNMEASURED: no .css file in unit dir — styles are injected as strings at request time, so this ceiling gated nothing |
 
 ## Global metrics
 
