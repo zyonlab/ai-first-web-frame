@@ -141,7 +141,7 @@
       "scope": "page",
       "unit": "page-home",
       "metric": "jsBytes",
-      "actual": 127713,
+      "actual": 128395,
       "budget": 180000,
       "status": "pass",
       "measurement": "Next first-load JS (.next manifests), gzipped bytes"

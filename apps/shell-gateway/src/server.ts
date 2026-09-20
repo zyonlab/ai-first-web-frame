@@ -434,6 +434,14 @@ export function buildServer(options: BuildServerOptions = {}) {
       // set a header, so it hands them up the same way it hands up health.
       const shellTiming = formatServerTiming([
         {
+          // Published here so the BROWSER can read the server's trace id from
+          // `PerformanceServerTiming` — no extra markup, no extra request. It
+          // is what makes a client-side LCP sample and a server-side span tree
+          // carry the same id instead of being two stories about one page load.
+          name: "traceparent",
+          description: ctx.traceparent,
+        },
+        {
           name: "shell",
           durationMs: now() - requestStartedAtMs,
           description: "gateway total",
