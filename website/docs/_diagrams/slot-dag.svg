@@ -1,0 +1,78 @@
+<svg viewBox="0 0 960 440" role="img" aria-labelledby="dag-title dag-desc" xmlns="http://www.w3.org/2000/svg">
+<title id="dag-title">Slots execute as topological layers</title>
+<desc id="dag-desc">Slots and their declared data dependencies form one graph; each level runs in parallel, a failure propagates to everything downstream as skipped-dependency, and slots with no edges start immediately.</desc>
+<defs>
+  <marker id="g-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+    <polygon points="0 0, 8 3, 0 6" fill="currentColor"/>
+  </marker>
+</defs>
+
+<!-- level bands -->
+<rect class="d-zone" x="32" y="64" width="272" height="272" rx="8"/>
+<rect class="d-zone" x="344" y="64" width="272" height="272" rx="8"/>
+<rect class="d-zone" x="656" y="64" width="272" height="272" rx="8"/>
+<text class="d-tag" x="48" y="88">LEVEL 0 · STARTS AT ONCE</text>
+<text class="d-tag" x="360" y="88">LEVEL 1 · WAITS FOR 0</text>
+<text class="d-tag" x="672" y="88">LEVEL 2</text>
+
+<!-- arrows -->
+<g color="var(--muted)">
+  <path class="d-line" d="M280 152 H336" marker-end="url(#g-arr)"/>
+  <path class="d-line" d="M280 248 H304 Q312 248 312 240 V160 Q312 152 320 152 H336" marker-end="url(#g-arr)"/>
+  <path class="d-line" d="M592 152 H648" marker-end="url(#g-arr)"/>
+</g>
+<g color="var(--rust)">
+  <path class="d-line" d="M592 248 H616 Q624 248 624 256 V272 Q624 280 632 280 H648" marker-end="url(#g-arr)" stroke="var(--rust)"/>
+</g>
+
+<rect class="d-mask" x="288" y="128" width="44" height="12" rx="2"/>
+<text class="d-lbl" x="310" y="137" text-anchor="middle">FEEDS</text>
+<rect class="d-mask" x="600" y="128" width="64" height="12" rx="2"/>
+<text class="d-lbl" x="632" y="137" text-anchor="middle">dependsOn</text>
+
+<!-- level 0 nodes -->
+<rect class="d-mask" x="56" y="120" width="224" height="64" rx="6"/>
+<rect class="d-box-m" x="56" y="120" width="224" height="64" rx="6"/>
+<rect x="68" y="132" width="44" height="12" rx="2" fill="none" stroke="var(--muted)" stroke-opacity="0.45" stroke-width="0.8"/>
+<text class="d-tag" x="90" y="141" text-anchor="middle">DATA</text>
+<text class="d-name" x="168" y="164" text-anchor="middle">trade-account</text>
+
+<rect class="d-mask" x="56" y="216" width="224" height="64" rx="6"/>
+<rect class="d-box" x="56" y="216" width="224" height="64" rx="6"/>
+<rect x="68" y="228" width="44" height="12" rx="2" fill="none" stroke="var(--muted)" stroke-opacity="0.45" stroke-width="0.8"/>
+<text class="d-tag" x="90" y="237" text-anchor="middle">SLOT</text>
+<text class="d-name" x="168" y="260" text-anchor="middle">book · trades · chart</text>
+
+<!-- level 1 -->
+<rect class="d-mask" x="368" y="120" width="224" height="64" rx="6"/>
+<rect class="d-box-t" x="368" y="120" width="224" height="64" rx="6"/>
+<text class="d-name" x="480" y="150" text-anchor="middle">accountBar</text>
+<text class="d-sub" x="480" y="166" text-anchor="middle">dataDependencies: trade-account</text>
+
+<rect class="d-mask" x="368" y="216" width="224" height="64" rx="6"/>
+<rect class="d-box-r" x="368" y="216" width="224" height="64" rx="6"/>
+<text class="d-name" x="480" y="246" text-anchor="middle">a slot that failed</text>
+<text class="d-sub" x="480" y="262" text-anchor="middle">status: fallback</text>
+
+<!-- level 2 -->
+<rect class="d-mask" x="680" y="120" width="224" height="64" rx="6"/>
+<rect class="d-box" x="680" y="120" width="224" height="64" rx="6"/>
+<text class="d-name" x="792" y="150" text-anchor="middle">orderForm</text>
+<text class="d-sub" x="792" y="166" text-anchor="middle">status: ok</text>
+
+<rect class="d-mask" x="680" y="248" width="224" height="64" rx="6"/>
+<rect class="d-box-r" x="680" y="248" width="224" height="64" rx="6"/>
+<text class="d-name" x="792" y="278" text-anchor="middle">downstream slot</text>
+<text class="d-sub" x="792" y="294" text-anchor="middle">status: skipped-dependency</text>
+
+<!-- legend -->
+<line x1="32" y1="368" x2="928" y2="368" stroke="var(--rule)" stroke-width="0.8"/>
+<text class="d-tag" x="32" y="390">LEGEND</text>
+<rect x="104" y="380" width="16" height="12" rx="2" class="d-box-t"/>
+<text class="d-lbl" x="128" y="390">resolved</text>
+<rect x="212" y="380" width="16" height="12" rx="2" class="d-box-r"/>
+<text class="d-lbl" x="236" y="390">degraded — never attempted downstream</text>
+<rect x="556" y="380" width="16" height="12" rx="2" class="d-box-m"/>
+<text class="d-lbl" x="580" y="390">data dependency</text>
+<text class="d-sub" x="704" y="390">a slot with no edge is not therefore static</text>
+</svg>

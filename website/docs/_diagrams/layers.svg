@@ -1,0 +1,50 @@
+<svg viewBox="0 0 960 372" role="img" aria-labelledby="ly-title ly-desc" xmlns="http://www.w3.org/2000/svg">
+<title id="ly-title">Three layers, one direction</title>
+<desc id="ly-desc">Product code may depend on anything, domain code on domain and framework, framework code only on framework; the rule is declared in dependency-audit.json and enforced by an audit rather than by review.</desc>
+<defs>
+  <marker id="l-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+    <polygon points="0 0, 8 3, 0 6" fill="currentColor"/>
+  </marker>
+</defs>
+
+<!-- direction rail -->
+<g color="var(--muted)">
+  <path class="d-line" d="M888 96 V296" marker-end="url(#l-arr)"/>
+</g>
+<rect class="d-mask" x="836" y="168" width="104" height="48" rx="2"/>
+<text class="d-lbl" x="872" y="184" text-anchor="middle">MAY DEPEND</text>
+<text class="d-lbl" x="872" y="200" text-anchor="middle">DOWNWARD</text>
+<text class="d-lbl" x="872" y="216" text-anchor="middle">ONLY</text>
+
+<!-- upward dependency: the thing the audit forbids -->
+<g color="var(--rust)">
+  <path class="d-line" d="M96 256 V232" stroke="var(--rust)" stroke-dasharray="4 3" marker-end="url(#l-arr)"/>
+  <path class="d-line" d="M240 256 V160" stroke="var(--rust)" stroke-dasharray="4 3" marker-end="url(#l-arr)"/>
+</g>
+<rect class="d-mask" x="32" y="88" width="784" height="72" rx="8"/>
+<rect class="d-box-t" x="32" y="88" width="784" height="72" rx="8"/>
+<rect x="48" y="100" width="80" height="12" rx="2" fill="none" stroke="var(--teal)" stroke-opacity="0.45" stroke-width="0.8"/>
+<text class="d-tag" x="88" y="109" text-anchor="middle" fill="var(--teal)">LAYER:PRODUCT</text>
+<text class="d-name" x="48" y="138" text-anchor="start">apps/ · fragments/</text>
+<text class="d-sub" x="288" y="138" text-anchor="start">pages and fragment services — may depend on anything below</text>
+
+<rect class="d-mask" x="32" y="176" width="784" height="64" rx="8"/>
+<rect class="d-box" x="32" y="176" width="784" height="64" rx="8"/>
+<rect x="48" y="188" width="76" height="12" rx="2" fill="none" stroke="var(--muted)" stroke-opacity="0.45" stroke-width="0.8"/>
+<text class="d-tag" x="86" y="197" text-anchor="middle">LAYER:DOMAIN</text>
+<text class="d-name" x="48" y="224" text-anchor="start">domains/</text>
+<text class="d-sub" x="288" y="224" text-anchor="start">business vocabulary — trade contracts, source ids, order constraints</text>
+
+<rect class="d-mask" x="32" y="256" width="784" height="64" rx="8"/>
+<rect class="d-box-m" x="32" y="256" width="784" height="64" rx="8"/>
+<rect x="48" y="268" width="88" height="12" rx="2" fill="none" stroke="var(--muted)" stroke-opacity="0.45" stroke-width="0.8"/>
+<text class="d-tag" x="92" y="277" text-anchor="middle">LAYER:FRAMEWORK</text>
+<text class="d-name" x="48" y="304" text-anchor="start">packages/</text>
+<text class="d-sub" x="288" y="304" text-anchor="start">@mvp/* — knows nothing about trading, and must not learn</text>
+
+<line x1="32" y1="336" x2="928" y2="336" stroke="var(--rule)" stroke-width="0.8"/>
+<text class="d-tag" x="32" y="358">ENFORCED BY</text>
+<text class="d-sub" x="136" y="358">dependency-audit.json — tags + depConstraints, modelled on @nx/enforce-module-boundaries</text>
+<path class="d-line" d="M636 354 H660" stroke="var(--rust)" stroke-dasharray="4 3" color="var(--rust)" marker-end="url(#l-arr)"/>
+<text class="d-sub" x="668" y="358" fill="var(--rust)">an upward import — rule code layer-constraint-violation</text>
+</svg>

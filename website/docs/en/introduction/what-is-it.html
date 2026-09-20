@@ -1,0 +1,33 @@
+<h1 id="what-is-it">What is it</h1>
+<p>A framework for building one web page out of many independently deployed server-rendered services, with the composition rules expressed as schemas rather than conventions.</p>
+<h2 id="the-problem-it-addresses">The problem it addresses</h2>
+<p>A large product page is usually owned by several teams, but shipped as one artifact. Any change means rebuilding and redeploying the whole page, and one slow or broken section takes the page with it.</p>
+<p>The alternative — browser-side micro-frontends — moves the composition into the client and pays for it in JavaScript and in first paint. That trade is wrong for a page that must be indexable and fast on first load.</p>
+<p>This framework composes on the <strong>server</strong>. Each section is an HTTP service that answers <code>POST /render</code> with HTML; the page fetches them in parallel, streams them as they settle, and substitutes a declared fallback for any that fails.</p>
+<h2 id="the-three-claims">The three claims</h2>
+<p><strong>1. A fragment is the minimum deployable unit — and that is executable.</strong></p>
+<p><code>pnpm verify:unit --name &lt;fragment&gt;</code> builds only that unit's dependency closure, boots the built artifact, and asserts that <code>/health</code>, <code>/ready</code> and <code>/manifest</code> all report the same manifest version, and that <code>POST /render</code> output carries it. Each fragment has its own Dockerfile. Going live with a new version needs no page rebuild: pages resolve <code>serviceUrl</code> and version from <code>registry/registry.data.json</code> per request.</p>
+<p>See <a href="../concepts/minimum-deployable-unit.html">Minimum deployable unit</a>.</p>
+<p><strong>2. Every boundary is a schema, not a convention.</strong></p>
+<p>35 Zod schemas in <code>packages/contracts/src/index.ts</code> cover the render request/response envelope, both manifest kinds, the registry file, the request context, island snapshots, performance budgets and the data-dependency descriptors. Six of them are also exported as pre-generated JSON Schema so a non-TypeScript consumer can validate the same contracts.</p>
+<p>See <a href="../concepts/contracts-first.html">Contracts first</a>.</p>
+<p><strong>3. The repository is addressable by an agent, not just by a human.</strong></p>
+<p>Eight MCP tools (<code>packages/mcp/src/tools.ts</code>) expose the lifecycle. Every lifecycle CLI prints a JSON envelope with a <code>status</code> field and writes nothing on failure. Every <code>packages/*</code> and <code>domains/*</code> directory ships an <code>AGENT.md</code> whose fenced TypeScript examples are <strong>executed</strong> by <code>pnpm docs:test</code> inside <code>pnpm verify</code> — 36 files, 41 executable blocks — so a documented example that stops working fails CI.</p>
+<p>See <a href="../getting-started/ai-setup.html">AI setup</a>.</p>
+<h2 id="what-it-is-not">What it is not</h2>
+<ul>
+<li><strong>Not a client-side micro-frontend runtime.</strong> There is no runtime module loading and no version negotiation. An island whose SSR snapshot does not match the page's expected version is <em>not</em> hydrated (four distinct mismatch reasons); it is never loaded from a different remote. If you need runtime remote loading, you want Module Federation.</li>
+<li><strong>Not a registry service.</strong> The fragment registry is a JSON file in the repository (<code>registry/registry.data.json</code>) mutated by CLIs with atomic writes and an advisory lock. It gives you channels, promotion and rollback, but not cross-repository distribution.</li>
+<li><strong>Not a deployment system.</strong> It produces one image per unit and a registry that can be repointed per fragment at runtime. Rolling those images out is left to your platform.</li>
+<li><strong>Not language-agnostic.</strong> A fragment is a Node service built on <code>@mvp/fragment-host</code>. The wire format (<code>POST /render</code> → <code>{html, assets, …}</code>) is language-neutral, but nothing in the repository exercises a non-Node fragment.</li>
+</ul>
+<h2 id="shape-of-a-request">Shape of a request</h2>
+<ol>
+<li>Browser hits the gateway (<code>:4100</code>), which resolves the route from <code>@mvp/routes</code> and proxies to the owning page app.</li>
+<li>The page app reads its slots from <code>src/manifest.slots.json</code> (via a generated <code>fragmentSlots.gen.ts</code>) and calls <code>executeFragmentSlots</code> / <code>streamFragmentSlots</code>.</li>
+<li>The scheduler topologically layers slots and data dependencies, runs each layer in parallel, applies a per-slot timeout, and skips any slot whose dependency failed.</li>
+<li>Each slot resolves to a fragment version through the registry channel, then to an HTTP <code>POST /render</code>. Cache policy can serve it from a bounded in-process cache instead.</li>
+<li>The page renders a health marker; the gateway maps a failed <strong>required</strong> slot to <code>503</code>.</li>
+<li>In the browser, islands hydrate only where the snapshot handshake passes, and declared realtime panels subscribe through <code>@mvp/runtime/live</code>.</li>
+</ol>
+<p>Each step is a guide: <a href="../guides/page-composition.html">page composition</a>, <a href="../guides/slot-scheduling.html">slot scheduling</a>, <a href="../guides/fallbacks-and-page-health.html">fallbacks and page health</a>, <a href="../guides/islands-and-hydration.html">islands</a>, <a href="../guides/realtime-subscriptions.html">realtime</a>.</p>

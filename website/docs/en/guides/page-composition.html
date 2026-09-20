@@ -1,0 +1,49 @@
+<h1 id="page-composition">Page composition</h1>
+<p>A page declares slots; the framework fills them. The page never contains per-fragment wiring.</p>
+<h2 id="the-manifest-is-the-source-of-truth">The manifest is the source of truth</h2>
+<p><code>apps/&lt;page&gt;/src/manifest.slots.json</code> is a JSON <strong>array</strong> of slot objects:</p>
+<pre><code class="lang-json">[
+  {
+    "name": "promotion",
+    "fragment": "promotion-banner",
+    "channel": "stable",
+    "strategy": "cached-ssr",
+    "timeoutMs": 200,
+    "props": { "scene": "home", "campaignId": "summer" },
+    "cachePolicy": { "ttl": 60, "tags": ["promotion", "home"], "vary": ["tenant", "locale"] },
+    "required": false
+  }
+]</code></pre>
+<p>Edit it with <code>mount-slot</code>, not by hand — a successful mount regenerates <code>src/fragmentSlots.gen.ts</code> from it, and <code>pnpm verify:manifest-gen</code> fails the build if the two drift.</p>
+<p><code>src/fragmentSlots.ts</code> stays hand-written but thin: it wraps the generated array and adds only per-request glue that cannot be expressed statically — a <code>timeoutMs</code> override, a <code>resolveData</code> function, or (on <code>page-trade</code>) merging the per-request <code>props.symbol</code>.</p>
+<h2 id="rendering-slots">Rendering slots</h2>
+<p><code>page.tsx</code> renders through <code>&lt;FragmentSlot&gt;</code> / <code>&lt;FragmentSlotStream&gt;</code> from <code>@mvp/runtime/react</code>:</p>
+<pre><code class="lang-tsx">import { FragmentSlot, PageHealthMeta } from "@mvp/runtime/react";
+
+const execution = await executeFragmentSlots({ slots, registry, ctx, dataDependencies });
+
+return (
+  &lt;main&gt;
+    &lt;FragmentSlot result={execution.slots.promotion} /&gt;
+    &lt;PageHealthMeta health={execution.health} failed={failedRequiredSlotNames(execution)} /&gt;
+  &lt;/main&gt;
+);</code></pre>
+<p>Two entry points, one choice:</p>
+<ul>
+<li><code>executeFragmentSlots</code> — one barrier: resolves everything, then you render. Simple.</li>
+<li><code>streamFragmentSlots</code> — returns immediately with one promise per slot plus an aggregate, so the shell and each <code>&lt;Suspense&gt;</code> boundary can flush as its own layer settles. <code>executeFragmentSlots</code> is literally <code>streamFragmentSlots(options).result</code>.</li>
+</ul>
+<h2 id="strategies">Strategies</h2>
+<div class="table-wrap"><table><thead><tr><th>Strategy</th><th>Behaviour</th></tr></thead><tbody><tr><td><code>static</code></td><td>no service call; <code>staticHtml</code> from the manifest is emitted</td></tr><tr><td><code>ttl-cache</code></td><td>served from the bounded in-process cache while fresh</td></tr><tr><td><code>cached-ssr</code></td><td>rendered, then cached per <code>cachePolicy</code></td></tr><tr><td><code>dynamic-ssr</code></td><td>rendered per request</td></tr></tbody></table></div>
+<p><code>cachePolicy.vary</code> partitions the cache key by context dimensions (<code>tenant</code>, <code>locale</code>, <code>props</code>). The cache is bounded (<code>DEFAULT_FRAGMENT_CACHE_MAX_ENTRIES</code>) with <code>pruneFragmentCache</code> and tag-based invalidation via <code>invalidateFragmentCacheByTag</code>.</p>
+<h2 id="every-slot-result-is-inspectable">Every slot result is inspectable</h2>
+<pre><code class="lang-ts">type FragmentSlotResult = {
+  slot: FragmentSlotDefinition;
+  strategy: RenderStrategy;
+  source: "static" | "cache" | "network" | "fallback";
+  status: "ok" | "fallback" | "skipped-dependency";
+  // …
+};</code></pre>
+<p><code>source</code> answers "where did these bytes come from"; <code>status</code> answers "did it work". A slot can be <code>source: "fallback"</code> with <code>status: "fallback"</code> (its own service failed) or <code>status: "skipped-dependency"</code> (something it depended on failed first).</p>
+<h2 id="what-the-demo-actually-composes">What the demo actually composes</h2>
+<p>19 slots across 5 pages. <code>page-trade</code> has 9 (the realtime terminal), <code>page-product</code> 4, <code>page-home</code> 3, <code>page-portfolio</code> 2, <code>page-markets</code> 1. <code>page-referrals</code> and <code>page-vaults</code> exist as apps but compose no fragments.</p>

@@ -1,0 +1,41 @@
+<h1 id="design-system">Design system</h1>
+<p>The visual layer is a separate package with no business dependencies, so it can be owned by a design team and consumed by product teams without either editing the other's code.</p>
+<h2 id="layers">Layers</h2>
+<pre><code>@mvp/design-tokens    raw scales -&gt; CSS custom properties
+@mvp/design-system    semantic tokens, themes, Tailwind preset, base reset
+@mvp/ui               7 components (Button, Card, Image, Section, Skeleton, AppNav,
+                      ProductCardBase) + ./shadcn (11 primitives: command, data-table,
+                      dialog, dropdown-menu, locale-switcher, select, slider, tabs,
+                      theme-toggle, toast, tooltip)
+fragments/*           consume @mvp/ui and the CSS variables; never redefine a token</code></pre>
+<p>The layering rule is enforced: <code>dependency-audit.json</code> carries <code>tags</code> and <code>depConstraints</code> (modelled on <code>@nx/enforce-module-boundaries</code>), and a violation is <code>layer-constraint-violation</code>. A fragment may import <code>@mvp/ui</code>; <code>@mvp/ui</code> may not import a fragment, a page, or a domain package.</p>
+<h2 id="the-contract-between-design-and-product">The contract between design and product</h2>
+<p>Everything crossing the boundary is a <strong>CSS custom property</strong>, prefixed <code>--mvp-</code>:</p>
+<pre><code class="lang-ts">import { tokens, cssVariableNames, TOKEN_PREFIX } from "@mvp/design-system";
+// TOKEN_PREFIX === "mvp"   -&gt;   --mvp-color-…, --mvp-radius-sm, …</code></pre>
+<p><code>cssVariableNames</code> is a frozen list of every variable the system emits. That list is what makes the boundary auditable: <code>audit:css</code> counts a selector or variable nobody references as unused bytes, so a token the design team removes cannot quietly linger.</p>
+<p>Product code adjusts appearance by <strong>setting</strong> variables, not by editing components:</p>
+<pre><code class="lang-css">.trade-terminal { --trade-panel-bg: var(--mvp-color-surface-sunken); }</code></pre>
+<p>The fragments follow this convention already — <code>order-book</code>'s stylesheet reads <code>var(--trade-panel-border, #23262f)</code>, i.e. a business-scoped variable with a literal fallback, so the panel still renders if the theme layer is absent.</p>
+<h2 id="theming">Theming</h2>
+<pre><code class="lang-ts">import {
+  createThemeVariables, createAllThemeVariables, createBaseVariables,
+  emitDeclarations, DARK_MODE_SELECTOR, themeColors,
+} from "@mvp/design-system";</code></pre>
+<p>Two themes (<code>ThemeName = "light" | "dark"</code>), switched by attribute: <code>DARK_MODE_SELECTOR === '[data-theme="dark"]'</code>. The Tailwind preset is configured <code>darkMode: ["selector", DARK_MODE_SELECTOR]</code>, so Tailwind's <code>dark:</code> variants and the raw CSS variables agree on one switch.</p>
+<p>Theme is also a <strong>request-context dimension</strong> (<code>ctx.theme</code>: <code>light</code> | <code>dark</code> | <code>system</code>), and the gateway exposes <code>GET /_shell/theme</code> so the choice survives a full page load rather than living only in client state.</p>
+<h2 id="tailwind">Tailwind</h2>
+<pre><code class="lang-ts">// a consumer's tailwind.config.ts
+import { tailwindPreset } from "@mvp/design-system";
+export default { presets: [tailwindPreset], content: ["./src/**/*.{ts,tsx}"] };</code></pre>
+<p>The preset maps Tailwind's theme keys onto <code>var(--mvp-…)</code> rather than duplicating values, so there is one definition per token. <code>@mvp/ui</code> also publishes <code>./tailwind.config</code> and <code>./shadcn/globals.css</code> for consumers that need them directly.</p>
+<h2 id="component-metadata">Component metadata</h2>
+<p>Every <code>@mvp/ui</code> component ships <code>metadata.ts</code> (category, <code>serverSafe</code>, <code>propsSchema</code>, description), <code>budget.ts</code> and <code>fixtures.ts</code> alongside the component. The fixtures are what the similarity audit and the component dev harness (<code>pnpm dev:component</code>) consume, and <code>serverSafe</code> is what the server/client boundary audit checks against.</p>
+<h2 id="handing-the-layer-over">Handing the layer over</h2>
+<p>Practically, a design team can own <code>packages/design-tokens</code>, <code>packages/design-system</code> and <code>packages/ui</code> and ship them independently, because:</p>
+<ul>
+<li>those three packages import no domain or product code (enforced);</li>
+<li>their public surface is tokens + components + a Tailwind preset;</li>
+<li><code>audit:css</code> and <code>audit:similarity</code> gate the two failure modes that a shared UI layer actually suffers from — dead CSS, and a near-duplicate component added instead of reusing one.</li>
+</ul>
+<p>What is <em>not</em> automated is a visual regression suite. There is no screenshot baseline in the repository, so a token change that shifts layout is caught by <code>maxCLS</code> only if a Playwright run happens to measure it — and the web-vitals checks are not part of <code>pnpm verify</code> (<a href="../known-limitations.html#f11">F11</a>).</p>

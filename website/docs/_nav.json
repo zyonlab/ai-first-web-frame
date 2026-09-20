@@ -1,66 +1,145 @@
 {
+  "languages": [
+    { "code": "en", "label": "English" },
+    { "code": "zh", "label": "中文" }
+  ],
   "nav": [
     {
-      "text": "Introduction",
       "dir": "introduction",
-      "items": ["what-is-it", "how-it-compares", "glossary"]
+      "text": { "en": "Introduction", "zh": "简介" },
+      "items": [
+        { "slug": "what-is-it", "en": "What is it", "zh": "这是什么" },
+        {
+          "slug": "how-it-compares",
+          "en": "How it compares",
+          "zh": "与竞品对位"
+        },
+        { "slug": "glossary", "en": "Glossary", "zh": "术语表" }
+      ]
     },
     {
-      "text": "Getting started",
       "dir": "getting-started",
+      "text": { "en": "Getting started", "zh": "上手" },
       "items": [
-        "installation",
-        "quick-start",
-        "your-first-fragment",
-        "ai-setup"
+        { "slug": "installation", "en": "Installation", "zh": "安装" },
+        { "slug": "quick-start", "en": "Quick start", "zh": "快速开始" },
+        {
+          "slug": "your-first-fragment",
+          "en": "Your first fragment",
+          "zh": "第一个片段"
+        },
+        { "slug": "ai-setup", "en": "AI setup", "zh": "AI 接入" }
       ]
     },
     {
-      "text": "Guides",
       "dir": "guides",
+      "text": { "en": "Guides", "zh": "指南" },
       "items": [
-        "fragment-development",
-        "page-composition",
-        "slot-scheduling",
-        "fallbacks-and-page-health",
-        "request-context",
-        "backend-proxy",
-        "islands-and-hydration",
-        "realtime-subscriptions",
-        "cross-fragment-communication",
-        "design-system",
-        "performance-budgets",
-        "release-channels"
+        {
+          "slug": "fragment-development",
+          "en": "Fragment development",
+          "zh": "开发片段"
+        },
+        {
+          "slug": "page-composition",
+          "en": "Page composition",
+          "zh": "页面组合"
+        },
+        {
+          "slug": "slot-scheduling",
+          "en": "Slot scheduling",
+          "zh": "槽位调度"
+        },
+        {
+          "slug": "fallbacks-and-page-health",
+          "en": "Fallbacks and page health",
+          "zh": "降级与页面健康"
+        },
+        {
+          "slug": "request-context",
+          "en": "Request context",
+          "zh": "请求上下文"
+        },
+        { "slug": "backend-proxy", "en": "Backend proxy", "zh": "后端代理" },
+        {
+          "slug": "islands-and-hydration",
+          "en": "Islands and hydration",
+          "zh": "岛屿与水合"
+        },
+        {
+          "slug": "realtime-subscriptions",
+          "en": "Realtime subscriptions",
+          "zh": "实时订阅"
+        },
+        {
+          "slug": "cross-fragment-communication",
+          "en": "Cross-fragment communication",
+          "zh": "跨片段通信"
+        },
+        { "slug": "design-system", "en": "Design system", "zh": "设计系统" },
+        {
+          "slug": "performance-budgets",
+          "en": "Performance budgets",
+          "zh": "性能预算"
+        },
+        {
+          "slug": "release-channels",
+          "en": "Release channels",
+          "zh": "发布通道"
+        }
       ]
     },
     {
-      "text": "Concepts",
       "dir": "concepts",
+      "text": { "en": "Concepts", "zh": "概念" },
       "items": [
-        "mental-model",
-        "layers-and-boundaries",
-        "contracts-first",
-        "minimum-deployable-unit"
+        { "slug": "mental-model", "en": "Mental model", "zh": "心智模型" },
+        {
+          "slug": "layers-and-boundaries",
+          "en": "Layers and boundaries",
+          "zh": "分层与边界"
+        },
+        {
+          "slug": "contracts-first",
+          "en": "Contracts first",
+          "zh": "契约优先"
+        },
+        {
+          "slug": "minimum-deployable-unit",
+          "en": "Minimum deployable unit",
+          "zh": "最小部署单元"
+        }
       ]
     },
     {
-      "text": "Reference",
       "dir": "reference",
+      "text": { "en": "Reference", "zh": "参考" },
       "items": [
-        "cli",
-        "http-endpoints",
-        "manifests",
-        "packages",
-        "environment-variables",
-        "diagnostics",
-        "ports"
+        { "slug": "cli", "en": "CLI", "zh": "命令行" },
+        { "slug": "http-endpoints", "en": "HTTP endpoints", "zh": "HTTP 端点" },
+        { "slug": "manifests", "en": "Manifests", "zh": "清单" },
+        { "slug": "packages", "en": "Packages", "zh": "包" },
+        {
+          "slug": "environment-variables",
+          "en": "Environment variables",
+          "zh": "环境变量"
+        },
+        { "slug": "diagnostics", "en": "Diagnostics", "zh": "诊断码" },
+        { "slug": "ports", "en": "Ports", "zh": "端口" }
       ]
     },
     {
-      "text": "Troubleshooting",
       "dir": "troubleshooting",
-      "items": ["gates", "build", "runtime"]
+      "text": { "en": "Troubleshooting", "zh": "排错" },
+      "items": [
+        { "slug": "gates", "en": "Gates", "zh": "闸门" },
+        { "slug": "build", "en": "Build", "zh": "构建" },
+        { "slug": "runtime", "en": "Runtime", "zh": "运行时" }
+      ]
     },
-    { "text": "Known limitations", "file": "known-limitations" }
+    {
+      "file": "known-limitations",
+      "text": { "en": "Known limitations", "zh": "已知缺陷" }
+    }
   ]
 }

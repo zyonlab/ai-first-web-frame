@@ -1,0 +1,25 @@
+<h1 id="mental-model">Mental model</h1>
+<p>Four ideas. If these land, the rest of the API reads as obvious.</p>
+<h2 id="1-a-page-is-a-composition-of-services-not-a-build-artifact">1. A page is a composition of services, not a build artifact</h2>
+<p>The page app owns layout and slot names. It does not own the sections. Each section is an HTTP service that could be redeployed while the page keeps running, because the page resolves <code>serviceUrl</code> and version out of a registry on every request.</p>
+<p>The practical consequence: "ship a change to the order book" means build one image, register a version, promote a channel. It does not mean rebuild the trade page.</p>
+<h2 id="2-declarations-live-with-the-thing-they-describe">2. Declarations live with the thing they describe</h2>
+<p>A fragment declares its own version, fallback, assets, budget, backend proxy targets, SSR data dependencies and browser subscriptions — in its own <code>src/manifest.ts</code>, published at <code>GET /manifest</code>.</p>
+<p>A page declares only what it alone knows: which slots exist, which fragment and channel fills each, per-slot timeouts and cache policy, and the parameter values (which symbol is active).</p>
+<p>Whenever those two lists disagree about who owns a fact, the fragment wins. That is what makes independent deployment real: the realtime refactor moved ~470 lines out of the trade page into the three fragments, and the payoff is that <em>changing what a fragment subscribes to now needs no page change at all</em>.</p>
+<h2 id="3-failure-is-local-and-declared">3. Failure is local and declared</h2>
+<p>Every boundary has a declared degraded form. A slot has <code>manifest.fallback</code>. A dependency failure marks downstream slots <code>skipped-dependency</code> rather than attempting them. An island whose snapshot does not match is <em>not hydrated</em>, leaving valid server-rendered markup.</p>
+<p>The only failure that changes the HTTP status is a <strong>required</strong> slot failing, which the gateway turns into <code>503</code>. Everything else is a <code>200</code> with less on the page.</p>
+<p>Nothing in this system responds to a broken part by producing a half-built version of it. That is the rule the version handshake exists to enforce.</p>
+<h2 id="4-if-it-matters-it-is-checked-by-a-command">4. If it matters, it is checked by a command</h2>
+<p>The repository's position is that a convention nobody can run is a comment. So:</p>
+<ul>
+<li>boundaries are Zod schemas, and 6 of them are also emitted as JSON Schema;</li>
+<li>layering is a declarative config the audit enforces;</li>
+<li>"a fragment is deployable on its own" is <code>pnpm verify:unit</code>;</li>
+<li>manifest↔code drift is structurally impossible (codegen) <em>and</em> checked (<code>verify:manifest-gen</code>);</li>
+<li>documentation examples are executed (<code>docs:test</code>).</li>
+</ul>
+<p>The corollary, and the reason <a href="../known-limitations.html">Known limitations</a> exists as a first-class page: anything declared but <strong>not</strong> checked should be treated as aspiration. Five of the eleven performance-budget fields are in that category.</p>
+<h2 id="how-the-pieces-map-to-packages">How the pieces map to packages</h2>
+<div class="table-wrap"><table><thead><tr><th>Concern</th><th>Package</th></tr></thead><tbody><tr><td>Contracts for every boundary</td><td><code>@mvp/contracts</code></td></tr><tr><td>Slot scheduling, caching, streaming, proxy resolution, SEO, live panels</td><td><code>@mvp/runtime</code></td></tr><tr><td>The one fragment HTTP host</td><td><code>@mvp/fragment-host</code></td></tr><tr><td>Registry resolution + lifecycle mutations + slot codegen</td><td><code>@mvp/registry</code></td></tr><tr><td>Route registry</td><td><code>@mvp/routes</code></td></tr><tr><td>Data sources, cache adapters, subscriptions, freshness</td><td><code>@mvp/data</code></td></tr><tr><td>Contract-checked HTTP client</td><td><code>@mvp/request</code></td></tr><tr><td>Request context + serialization</td><td><code>@mvp/request-context</code></td></tr><tr><td>Island hydration + snapshot handshake</td><td><code>@mvp/islands</code></td></tr><tr><td>Interaction bus + mutations</td><td><code>@mvp/interaction</code></td></tr><tr><td>Client slice store</td><td><code>@mvp/store</code></td></tr><tr><td>Tokens, themes, components</td><td><code>@mvp/design-tokens</code>, <code>@mvp/design-system</code>, <code>@mvp/ui</code></td></tr><tr><td>Traces, metrics, OTLP export</td><td><code>@mvp/observability</code></td></tr><tr><td>Advisory optimizer findings</td><td><code>@mvp/optimizer</code></td></tr><tr><td>Agent tooling (MCP)</td><td><code>@mvp/mcp</code></td></tr></tbody></table></div>

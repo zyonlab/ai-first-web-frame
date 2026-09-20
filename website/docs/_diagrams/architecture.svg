@@ -1,0 +1,85 @@
+<svg viewBox="0 0 960 420" role="img" aria-labelledby="arch-title arch-desc" xmlns="http://www.w3.org/2000/svg">
+<title id="arch-title">Composition topology</title>
+<desc id="arch-desc">A browser reaches one shell gateway, which proxies to a page app; the page app resolves each slot against the fragment registry and calls independently deployed fragment services over POST /render.</desc>
+<defs>
+  <marker id="a-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+    <polygon points="0 0, 8 3, 0 6" fill="currentColor"/>
+  </marker>
+</defs>
+
+<!-- arrows first, so boxes paint over the line ends -->
+<g color="var(--muted)">
+  <path class="d-line" d="M152 184 H216" marker-end="url(#a-arr)"/>
+  <path class="d-line" d="M376 184 H440" marker-end="url(#a-arr)"/>
+  <path class="d-line" d="M600 162 H628 Q636 162 636 154 V108 Q636 100 644 100 H664" marker-end="url(#a-arr)"/>
+  <path class="d-line" d="M600 184 H664" marker-end="url(#a-arr)"/>
+  <path class="d-line" d="M600 206 H628 Q636 206 636 214 V260 Q636 268 644 268 H664" marker-end="url(#a-arr)"/>
+  <path class="d-line-d" d="M524 288 V236" marker-end="url(#a-arr)"/>
+</g>
+
+<!-- arrow labels: mask + 8px gap so the connector stays traceable -->
+<rect class="d-mask" x="164" y="164" width="40" height="12" rx="2"/>
+<text class="d-lbl" x="184" y="173" text-anchor="middle">HTTP</text>
+<rect class="d-mask" x="384" y="164" width="48" height="12" rx="2"/>
+<text class="d-lbl" x="408" y="173" text-anchor="middle">PROXY</text>
+<rect class="d-mask" x="608" y="164" width="56" height="12" rx="2"/>
+<text class="d-lbl" x="636" y="173" text-anchor="middle">/render</text>
+<rect class="d-mask" x="532" y="256" width="60" height="12" rx="2"/>
+<text class="d-lbl" x="562" y="265" text-anchor="start">RESOLVE</text>
+
+<!-- browser -->
+<rect class="d-mask" x="32" y="152" width="120" height="64" rx="6"/>
+<rect class="d-box-m" x="32" y="152" width="120" height="64" rx="6"/>
+<text class="d-name" x="92" y="182" text-anchor="middle">Browser</text>
+<text class="d-sub" x="92" y="198" text-anchor="middle">one origin</text>
+
+<!-- gateway (focal 1) -->
+<rect class="d-mask" x="216" y="140" width="160" height="88" rx="6"/>
+<rect class="d-box-t" x="216" y="140" width="160" height="88" rx="6"/>
+<rect x="228" y="152" width="52" height="12" rx="2" fill="none" stroke="var(--teal)" stroke-opacity="0.45" stroke-width="0.8"/>
+<text class="d-tag" x="254" y="161" text-anchor="middle" fill="var(--teal)">GATEWAY</text>
+<text class="d-name" x="296" y="192" text-anchor="middle">shell-gateway</text>
+<text class="d-sub" x="296" y="210" text-anchor="middle">:4100</text>
+
+<!-- page app -->
+<rect class="d-mask" x="440" y="140" width="160" height="88" rx="6"/>
+<rect class="d-box" x="440" y="140" width="160" height="88" rx="6"/>
+<rect x="452" y="152" width="36" height="12" rx="2" fill="none" stroke="var(--muted)" stroke-opacity="0.45" stroke-width="0.8"/>
+<text class="d-tag" x="470" y="161" text-anchor="middle">PAGE</text>
+<text class="d-name" x="520" y="192" text-anchor="middle">Next.js app</text>
+<text class="d-sub" x="520" y="210" text-anchor="middle">:4101–4107 · 7 units</text>
+
+<!-- fragments (focal 2 on the middle one) -->
+<rect class="d-mask" x="664" y="72" width="256" height="56" rx="6"/>
+<rect class="d-box" x="664" y="72" width="256" height="56" rx="6"/>
+<text class="d-name" x="792" y="96" text-anchor="middle">order-book</text>
+<text class="d-sub" x="792" y="112" text-anchor="middle">:4204 · own image · own budget</text>
+
+<rect class="d-mask" x="664" y="156" width="256" height="56" rx="6"/>
+<rect class="d-box-t" x="664" y="156" width="256" height="56" rx="6"/>
+<text class="d-name" x="792" y="180" text-anchor="middle">order-form</text>
+<text class="d-sub" x="792" y="196" text-anchor="middle">:4205 · own image · own budget</text>
+
+<rect class="d-mask" x="664" y="240" width="256" height="56" rx="6"/>
+<rect class="d-box" x="664" y="240" width="256" height="56" rx="6"/>
+<text class="d-name" x="792" y="264" text-anchor="middle">…12 more</text>
+<text class="d-sub" x="792" y="280" text-anchor="middle">:4201–4214 · 14 units</text>
+
+<!-- registry -->
+<rect class="d-mask" x="440" y="288" width="160" height="56" rx="6"/>
+<rect class="d-box-m" x="440" y="288" width="160" height="56" rx="6"/>
+<text class="d-name" x="520" y="312" text-anchor="middle">Fragment registry</text>
+<text class="d-sub" x="520" y="328" text-anchor="middle">channel → version + url</text>
+
+<!-- legend -->
+<line x1="32" y1="368" x2="928" y2="368" stroke="var(--rule)" stroke-width="0.8"/>
+<text class="d-tag" x="32" y="390">LEGEND</text>
+<rect x="104" y="380" width="16" height="12" rx="2" class="d-box-t"/>
+<text class="d-lbl" x="128" y="390">focal</text>
+<rect x="188" y="380" width="16" height="12" rx="2" class="d-box"/>
+<text class="d-lbl" x="212" y="390">service</text>
+<rect x="288" y="380" width="16" height="12" rx="2" class="d-box-m"/>
+<text class="d-lbl" x="312" y="390">state / client</text>
+<path class="d-line-d" d="M424 386 H456"/>
+<text class="d-lbl" x="464" y="390">per-request resolution</text>
+</svg>

@@ -1,0 +1,51 @@
+<h1 id="your-first-fragment">Your first fragment</h1>
+<p>The full loop: scaffold → implement → register → mount → verify → promote. Every command prints a JSON envelope with a <code>status</code> field, and none of them writes anything on failure.</p>
+<h2 id="1-scaffold">1. Scaffold</h2>
+<pre><code class="lang-sh">pnpm --filter @mvp/create-component start -- PricePanel --type fragment</code></pre>
+<p>PascalCase in, <code>fragments/price-panel/</code> out, <strong>11 files</strong>:</p>
+<pre><code>src/server.ts        src/render.ts       src/manifest.ts   src/budget.ts
+src/fixtures.ts      src/render.test.ts  tests/server.test.ts
+package.json         tsconfig.json       Dockerfile        README.md</code></pre>
+<p>Accept: <code>"status": "created"</code> and <code>files.length === 11</code>.</p>
+<p>The generated unit <strong>runs as scaffolded</strong>: <code>src/server.ts</code> is a ~20-line adapter over <code>@mvp/fragment-host</code>, the port is the first free value after 4201, and the Dockerfile really builds. Never hand-roll a fragment server — <code>audit:deps</code> rule <code>fragment-server-not-hosted</code> fails the build if you do.</p>
+<blockquote><code>--type ui</code> instead creates <code>packages/ui/src/&lt;Name&gt;/</code> with 8 files. Two shapes, one command.</blockquote>
+<h2 id="2-implement-test-first">2. Implement, test first</h2>
+<pre><code class="lang-sh">$EDITOR fragments/price-panel/src/render.test.ts   # extend first
+$EDITOR fragments/price-panel/src/render.ts
+pnpm --filter @mvp/fragment-price-panel test</code></pre>
+<p><code>render.ts</code> receives <code>{props, ctx}</code> and returns <code>{html, assets, cache, metadata}</code>. Keep the markup self-contained: a fragment's CSS ships in its own <code>&lt;style data-fragment-style="..."&gt;</code> block and its class names must be referenced from source, or <code>audit:css</code> counts them as unused bytes.</p>
+<h2 id="3-register">3. Register</h2>
+<pre><code class="lang-sh">pnpm exec tsx scripts/register-fragment.mts \
+  --name price-panel --version 0.1.0 \
+  --service-url http://localhost:4203 \
+  --channel canary --with-compose</code></pre>
+<p>Full flag set (from the script's own allowlist, <code>scripts/register-fragment.mts</code>):</p>
+<div class="table-wrap"><table><thead><tr><th>Flag</th><th>Notes</th></tr></thead><tbody><tr><td><code>--name</code></td><td>kebab-case fragment name</td></tr><tr><td><code>--version</code></td><td>the version this channel should resolve to</td></tr><tr><td><code>--service-url</code></td><td>must parse as a URL</td></tr><tr><td><code>--manifest-url</code></td><td>defaults to <code>&lt;service-url&gt;/manifest</code></td></tr><tr><td><code>--assets-url</code></td><td>optional; for a fragment that serves island JS from elsewhere</td></tr><tr><td><code>--channel</code></td><td><code>stable</code> \</td><td><code>canary</code> \</td><td><code>preview</code></td></tr><tr><td><code>--port</code></td><td>compose port; the script refuses one already in use</td></tr><tr><td><code>--with-compose</code></td><td>also add the service to <code>infra/docker/docker-compose.yml</code></td></tr></tbody></table></div>
+<p>Accept: <code>"status": "registered"</code>. Re-running the identical command prints <code>"action": "unchanged"</code> — the script is idempotent.</p>
+<p>Runtime override: <code>PRICE_PANEL_URL=https://…</code> repoints <code>serviceUrl</code>/<code>manifestUrl</code> for that fragment without a registry write. (It does <strong>not</strong> move <code>assetsUrl</code> — <a href="../known-limitations.html#f2">F2</a>.)</p>
+<h2 id="4-mount-into-a-page-slot">4. Mount into a page slot</h2>
+<pre><code class="lang-sh">pnpm exec tsx scripts/mount-slot.mts \
+  --page page-home --slot pricePanel --fragment price-panel \
+  --strategy dynamic-ssr --channel canary --timeout-ms 200</code></pre>
+<p>Full flag set (<code>scripts/mount-slot.mts</code> allowlist):</p>
+<p><code>--page</code> <code>--slot</code> <code>--fragment</code> <code>--strategy</code> <code>--channel</code> <code>--timeout-ms</code> <code>--props</code> <code>--static-html</code> <code>--cache-policy</code> <code>--data-dependencies</code> <code>--depends-on</code> <code>--required</code> <code>--remove</code> <code>--check</code> <code>--allow-unregistered</code></p>
+<ul>
+<li><code>--depends-on</code> orders this slot <strong>after</strong> another slot. <code>--data-dependencies</code> names entries in the page's data-source registry. See <a href="../guides/slot-scheduling.html">slot scheduling</a>.</li>
+<li><code>--required</code> makes a failure of this slot turn the page <code>unhealthy</code> → gateway <code>503</code>.</li>
+<li>Mounting an unregistered fragment <strong>fails</strong> with <code>"status": "failed"</code> and no write. Register first, or pass <code>--allow-unregistered</code> to warn and proceed. <code>--remove</code> is unaffected.</li>
+</ul>
+<p>Accept: <code>"status": "mounted"</code> with empty <code>warnings</code>.</p>
+<p>A successful mount or unmount also regenerates <code>apps/&lt;page&gt;/src/fragmentSlots.gen.ts</code> from the manifest. Never hand-edit that file. <code>mount-slot --page &lt;page&gt; --check</code> writes nothing and verifies the generated file is still in sync; <code>pnpm verify:manifest-gen</code> does it for every page and is part of <code>pnpm verify</code>.</p>
+<h2 id="5-verify">5. Verify</h2>
+<pre><code class="lang-sh">pnpm verify                            # 14 gates, whole repo
+pnpm verify:unit --name price-panel    # this unit builds, boots, and agrees on its version</code></pre>
+<p>Never ship with a failing audit or budget.</p>
+<h2 id="6-promote-and-roll-back">6. Promote, and roll back</h2>
+<pre><code class="lang-sh">pnpm exec tsx scripts/promote-fragment.mts --name price-panel
+# "status":"promoted", with from/to versions
+
+pnpm exec tsx scripts/rollback-fragment.mts --name price-panel [--to 0.1.0]
+# "status":"rolled-back"</code></pre>
+<p>Promotion records the previous <code>stable</code> in the entry's <code>versions</code> history and appends to <code>registry/releases.json</code> (append-only). Rollback without <code>--to</code> restores the version recorded at promote time, and fails cleanly when there is no recorded target — which is the case for a fragment that has never been promoted.</p>
+<h2 id="concurrency">Concurrency</h2>
+<p>All four lifecycle scripts write atomically (temp file + rename) behind a <code>&lt;file&gt;.lock</code> advisory lock, with an optimistic content-hash check. If another process changed the file since load, you get <code>{"status": "conflict", "retry": true}</code>, exit 1, and no write. Re-run the same command.</p>

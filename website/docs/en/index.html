@@ -1,0 +1,23 @@
+<h1 id="ai-first-web-frame">ai-first-web-frame</h1>
+<p>An SSR-first micro-frontend framework where <strong>a fragment is the unit of deployment</strong> and <strong>every contract is machine-checkable</strong>.</p>
+<p>A page is a composition of independently deployed HTTP services. Each service owns its markup, its data, its budget and its release channel. The page names slots; the framework resolves each slot against a registry per request, runs them as a dependency graph, and degrades slot-by-slot when one fails.</p>
+<figure class="figure">
+<!--@figure:architecture-->
+<figcaption><b>One request, four hops.</b> The browser only ever sees the gateway. A page names slots; the registry turns each one into a concrete version and URL <em>per request</em>, which is why shipping a new fragment build needs no page rebuild.</figcaption>
+</figure>
+<h2 id="what-is-actually-in-the-box">What is actually in the box</h2>
+<p>Counts below are from the repository, not from a roadmap:</p>
+<div class="table-wrap"><table><thead><tr><th>Thing</th><th>Count</th><th>Where</th></tr></thead><tbody><tr><td>Deployable units</td><td>22</td><td>1 gateway + 7 page apps + 14 fragment services</td></tr><tr><td>Workspace packages</td><td>55</td><td><code>apps/</code> <code>fragments/</code> <code>domains/</code> <code>packages/</code> <code>tools/</code></td></tr><tr><td>Exported Zod schemas</td><td>35</td><td><code>packages/contracts/src/index.ts</code> (+ 6 pre-generated JSON Schemas)</td></tr><tr><td>Composed slots</td><td>19</td><td>across 5 pages (<code>page-referrals</code> and <code>page-vaults</code> compose none)</td></tr><tr><td>Verification gates</td><td>14</td><td><code>scripts/verify.mts</code></td></tr><tr><td>Machine-readable rule codes</td><td>18</td><td><code>reference/diagnostics.md</code></td></tr><tr><td>MCP tools for agents</td><td>8</td><td><code>packages/mcp/src/tools.ts</code></td></tr></tbody></table></div>
+<h2 id="start-here">Start here</h2>
+<ul>
+<li>New to it: <a href="introduction/what-is-it.html">What is it</a> → <a href="getting-started/quick-start.html">Quick start</a></li>
+<li>Building a fragment: <a href="getting-started/your-first-fragment.html">Your first fragment</a></li>
+<li>Driving it with an AI agent: <a href="getting-started/ai-setup.html">AI setup</a></li>
+<li>Evaluating it: <a href="introduction/how-it-compares.html">How it compares</a> and <a href="known-limitations.html">Known limitations</a> — read both.</li>
+</ul>
+<h2 id="reading-these-docs-locally">Reading these docs locally</h2>
+<pre><code class="lang-sh">pnpm docs:serve           # http://localhost:4301
+pnpm docs:serve --open    # and open a browser</code></pre>
+<p>Zero dependencies and no build step: one script renders the Markdown on request. URLs mirror the file paths, so every relative link in the source works unchanged.</p>
+<h2 id="a-note-on-these-docs">A note on these docs</h2>
+<p>Every factual claim here was checked against the source tree, and paths are cited so you can re-check. Where the implementation is narrower than the idea, the docs say so inline rather than in a footnote — and everything that is declared but not enforced, or documented but not true, is collected in <a href="known-limitations.html">Known limitations</a>.</p>

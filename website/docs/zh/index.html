@@ -1,0 +1,70 @@
+<p class="eyebrow">对外文档 · 以代码为唯一事实</p>
+<h1>ai-first-web-frame</h1>
+<p class="lede">一个 SSR 优先的微前端框架，两条立场贯穿始终：<strong>片段（fragment）是部署的最小单位</strong>，以及<strong>每一条边界都是机器可校验的契约</strong>。</p>
+
+<p>一个页面不是一个构建产物，而是一组各自独立部署的 HTTP 服务的组合。每个服务自己拥有标记、数据、性能预算和发布通道。页面只负责声明槽位；框架在<em>每一次请求</em>时把槽位解析成具体的版本与地址，按依赖图执行，并在某一块失败时逐槽降级。</p>
+
+<figure class="figure">
+<!--@figure:architecture-->
+<figcaption><b>一次请求，四段路。</b>浏览器只认识网关。页面声明槽位名，注册表在每次请求时把它翻译成具体版本和 URL —— 这就是为什么发布一个新的片段构建不需要重建任何页面。</figcaption>
+</figure>
+
+<h2 id="盒子里到底有什么">盒子里到底有什么</h2>
+<p>下面的数字全部来自仓库实测，不是路线图：</p>
+
+<div class="facts">
+  <div class="fact"><b>22</b><span>可独立部署单元</span></div>
+  <div class="fact"><b>55</b><span>工作区包</span></div>
+  <div class="fact"><b>35</b><span>导出的 Zod 契约</span></div>
+  <div class="fact"><b>19</b><span>已组合的槽位</span></div>
+  <div class="fact"><b>14</b><span>验证闸门</span></div>
+  <div class="fact"><b>18</b><span>机器可读规则码</span></div>
+  <div class="fact"><b>8</b><span>面向 agent 的 MCP 工具</span></div>
+</div>
+
+<div class="table-wrap"><table>
+<thead><tr><th>项</th><th>数量</th><th>在哪里</th></tr></thead>
+<tbody>
+<tr><td>可部署单元</td><td>22</td><td>1 个网关 + 7 个页面应用 + 14 个片段服务</td></tr>
+<tr><td>工作区包</td><td>55</td><td><code>apps/</code> <code>fragments/</code> <code>domains/</code> <code>packages/</code> <code>tools/</code></td></tr>
+<tr><td>导出的 Zod schema</td><td>35</td><td><code>packages/contracts/src/index.ts</code>（另有 6 份预生成 JSON Schema）</td></tr>
+<tr><td>已组合槽位</td><td>19</td><td>分布在 5 个页面（<code>page-referrals</code> 与 <code>page-vaults</code> 一个都没有）</td></tr>
+<tr><td>验证闸门</td><td>14</td><td><code>scripts/verify.mts</code></td></tr>
+<tr><td>机器可读规则码</td><td>18</td><td>见<a href="reference/diagnostics.html">诊断码</a></td></tr>
+<tr><td>MCP 工具</td><td>8</td><td><code>packages/mcp/src/tools.ts</code></td></tr>
+</tbody></table></div>
+
+<h2 id="从哪里开始">从哪里开始</h2>
+
+<div class="cards three">
+  <div class="card t">
+    <h4>第一次接触</h4>
+    <p><a href="introduction/what-is-it.html">这是什么</a> → <a href="getting-started/quick-start.html">快速开始</a>。先把 22 个服务跑起来看一眼，比读十页描述快。</p>
+  </div>
+  <div class="card i">
+    <h4>要写一个片段</h4>
+    <p><a href="getting-started/your-first-fragment.html">第一个片段</a>：脚手架 → 实现 → 注册 → 挂载 → 验证 → 晋级，每一步都有机器可读的验收信号。</p>
+  </div>
+  <div class="card r">
+    <h4>在做技术选型</h4>
+    <p><a href="introduction/how-it-compares.html">与竞品对位</a>和<a href="known-limitations.html">已知缺陷</a>——两篇都要读，后者才是决策依据。</p>
+  </div>
+</div>
+
+<h2 id="开发者实际经历的路径">开发者实际经历的路径</h2>
+<figure class="figure">
+<!--@figure:user-journey-->
+<figcaption><b>五个阶段，每个阶段都有一个可被程序判定的验收信号。</b>这正是这套流程能被 AI agent 驱动、而不只是被人驱动的原因 —— agent 不需要「看起来对了」，它需要 <code>status: "registered"</code> 这种可判定的东西。</figcaption>
+</figure>
+
+<h2 id="在本地阅读这份文档">在本地阅读这份文档</h2>
+<pre><code>pnpm docs:serve           # http://localhost:4301
+pnpm docs:serve --open    # 顺带打开浏览器</code></pre>
+<p>零依赖、无构建步骤：一个脚本把手写的 HTML 片段套进外壳。图表是内联 SVG，用页面自己的 CSS 变量上色，所以同一份文件同时适配浅色和深色主题、中文和英文两版。</p>
+
+<h2 id="关于这份文档本身">关于这份文档本身</h2>
+<p>这里的每一条事实都对着源码核过，并且标注了路径，方便你自己复核。凡是实现比想法窄的地方，都就地说明，而不是藏进脚注。所有「声明了但没有闸门保障」和「文档写了但代码不是那样」的问题，集中在<a href="known-limitations.html">已知缺陷</a>——它是一等公民页面，不是附录。</p>
+
+<div class="note">
+<p><b>翻译约定。</b>技术标识符（<code>dynamic-ssr</code>、<code>canary</code>、<code>POST /render</code>、规则码、字段名）一律保留英文原文，不做意译 —— 它们是代码里要敲的字符串，翻译它们只会制造歧义。图表中的节点标签同理。</p>
+</div>

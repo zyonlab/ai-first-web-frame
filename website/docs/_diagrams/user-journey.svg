@@ -1,0 +1,75 @@
+<svg viewBox="0 0 960 420" role="img" aria-labelledby="uj-title uj-desc" xmlns="http://www.w3.org/2000/svg">
+<title id="uj-title">What a developer actually does, and where it is written down</title>
+<desc id="uj-desc">A story map across five stages from first run to rollout, listing the task at each stage, the command that performs it, the signal that says it worked, and the page that documents it.</desc>
+<defs>
+  <marker id="u-arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+    <polygon points="0 0, 8 3, 0 6" fill="currentColor"/>
+  </marker>
+</defs>
+
+<!-- stage spine -->
+<g color="var(--muted)">
+  <path class="d-line" d="M192 96 H236" marker-end="url(#u-arr)"/>
+  <path class="d-line" d="M372 96 H416" marker-end="url(#u-arr)"/>
+  <path class="d-line" d="M552 96 H596" marker-end="url(#u-arr)"/>
+  <path class="d-line" d="M732 96 H776" marker-end="url(#u-arr)"/>
+</g>
+
+<rect class="d-box-t" x="32" y="72" width="160" height="48" rx="6"/>
+<text class="d-name" x="112" y="94" text-anchor="middle">Run it</text>
+<text class="d-sub" x="112" y="110" text-anchor="middle">see the whole thing</text>
+
+<rect class="d-box" x="236" y="72" width="136" height="48" rx="6"/>
+<text class="d-name" x="304" y="94" text-anchor="middle">Build a unit</text>
+<text class="d-sub" x="304" y="110" text-anchor="middle">scaffold → test</text>
+
+<rect class="d-box" x="416" y="72" width="136" height="48" rx="6"/>
+<text class="d-name" x="484" y="94" text-anchor="middle">Compose it</text>
+<text class="d-sub" x="484" y="110" text-anchor="middle">register → mount</text>
+
+<rect class="d-box" x="596" y="72" width="136" height="48" rx="6"/>
+<text class="d-name" x="664" y="94" text-anchor="middle">Prove it</text>
+<text class="d-sub" x="664" y="110" text-anchor="middle">14 gates</text>
+
+<rect class="d-box-t" x="776" y="72" width="152" height="48" rx="6"/>
+<text class="d-name" x="852" y="94" text-anchor="middle">Ship it</text>
+<text class="d-sub" x="852" y="110" text-anchor="middle">canary → stable</text>
+
+<!-- row labels -->
+<text class="d-tag" x="32" y="168">COMMAND</text>
+<text class="d-tag" x="32" y="248">SIGNAL IT WORKED</text>
+<text class="d-tag" x="32" y="328">WHERE IT IS DOCUMENTED</text>
+
+<line x1="32" y1="180" x2="928" y2="180" stroke="var(--rule-soft)" stroke-width="0.8"/>
+<line x1="32" y1="260" x2="928" y2="260" stroke="var(--rule-soft)" stroke-width="0.8"/>
+<line x1="32" y1="340" x2="928" y2="340" stroke="var(--rule-soft)" stroke-width="0.8"/>
+
+<!-- commands -->
+<text class="d-sub" x="112" y="204" text-anchor="middle">pnpm dev</text>
+<text class="d-sub" x="304" y="204" text-anchor="middle">create-component</text>
+<text class="d-sub" x="484" y="204" text-anchor="middle">register-fragment</text>
+<text class="d-sub" x="484" y="220" text-anchor="middle">mount-slot</text>
+<text class="d-sub" x="664" y="204" text-anchor="middle">pnpm verify</text>
+<text class="d-sub" x="664" y="220" text-anchor="middle">verify:unit</text>
+<text class="d-sub" x="852" y="204" text-anchor="middle">promote-fragment</text>
+
+<!-- signals -->
+<text class="d-sub" x="112" y="284" text-anchor="middle">22 services answer</text>
+<text class="d-sub" x="304" y="284" text-anchor="middle">status: created</text>
+<text class="d-sub" x="304" y="300" text-anchor="middle">files.length === 11</text>
+<text class="d-sub" x="484" y="284" text-anchor="middle">status: registered</text>
+<text class="d-sub" x="484" y="300" text-anchor="middle">status: mounted</text>
+<text class="d-sub" x="664" y="284" text-anchor="middle">exit 0 · 14/14</text>
+<text class="d-sub" x="852" y="284" text-anchor="middle">status: promoted</text>
+<text class="d-sub" x="852" y="300" text-anchor="middle">/health shows it</text>
+
+<!-- docs -->
+<text class="d-sub" x="112" y="364" text-anchor="middle">Quick start</text>
+<text class="d-sub" x="304" y="364" text-anchor="middle">Your first fragment</text>
+<text class="d-sub" x="484" y="364" text-anchor="middle">Page composition</text>
+<text class="d-sub" x="664" y="364" text-anchor="middle">Troubleshooting · Gates</text>
+<text class="d-sub" x="852" y="364" text-anchor="middle">Release channels</text>
+
+<line x1="32" y1="388" x2="928" y2="388" stroke="var(--rule)" stroke-width="0.8"/>
+<text class="d-sub" x="32" y="408">Every stage has a machine-readable acceptance signal. That is the property that makes the loop drivable by an agent, not just by a person.</text>
+</svg>

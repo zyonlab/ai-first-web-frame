@@ -1,0 +1,23 @@
+<h1 id="fragment-backend-proxy">Fragment backend proxy</h1>
+<p>The channel a hydrated island uses to reach its own backend, without CORS and without leaking the fragment's service address to the browser.</p>
+<h2 id="the-problem">The problem</h2>
+<p>A fragment can reach its backend during SSR — it is a server, it has <code>@mvp/request</code>. Its hydrated island cannot: the browser knows only the public origin, and the fragment's <code>serviceUrl</code> is internal (and must stay internal). Before this existed there was no standard channel at all.</p>
+<h2 id="declaring-one">Declaring one</h2>
+<p>In the fragment's <code>src/manifest.ts</code>:</p>
+<pre><code class="lang-ts">proxy: {
+  account: "/account",                          // relative: resolved against this fragment's serviceUrl
+  rates:   "https://rates.internal.example/v2", // absolute: a shared or third-party backend
+}</code></pre>
+<p><code>FragmentManifestSchema.proxy</code> accepts either an absolute <code>http(s)</code> URL or a <strong>root-relative path</strong>. The relative form is a deliberate departure from <code>@podium/proxy</code>: a fragment's own endpoint lives at a different host per environment, and an absolute self-target would have to be env-interpolated into a static manifest.</p>
+<h2 id="what-the-gateway-mounts">What the gateway mounts</h2>
+<pre><code>/_fragment/&lt;fragment&gt;/&lt;target&gt;/*   -&gt;   &lt;resolved base&gt;/*</code></pre>
+<p>So the island calls <code>/_fragment/order-form/account</code> on the page's own origin. Same origin, no CORS, and the real service address never reaches the browser.</p>
+<p>All HTTP methods are forwarded (<code>server.all</code>). The request body is forwarded as-is rather than re-serialized as JSON — an early version did <code>JSON.stringify(request.body ?? {})</code>, which corrupted text and form bodies.</p>
+<h2 id="the-declared-base-is-the-boundary">The declared base is the boundary</h2>
+<p>Pure resolution logic lives in <code>packages/runtime/src/fragmentProxy.ts</code>:</p>
+<pre><code class="lang-ts">parseFragmentProxyPath(pathname)       // -&gt; {fragment, target, rest} | null
+buildFragmentProxyUrl(base, rest, search, serviceUrl)
+resolveFragmentProxy(options)          // the whole decision</code></pre>
+<p>A remainder that would escape the declared base is <strong>rejected</strong>, not normalized. A target is reachable only if the manifest declares it.</p>
+<p>One subtlety worth knowing if you write against these functions: an empty remainder must not append a trailing slash. Fastify routes <code>/account</code> and <code>/account/</code> separately, so <code>/_fragment/order-form/account</code> and <code>/_fragment/order-form/account/</code> are different requests and only one of them is the one you declared.</p>
+<p>Timeout: <code>SHELL_FRAGMENT_PROXY_TIMEOUT_MS</code>.</p>

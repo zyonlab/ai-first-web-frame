@@ -1,0 +1,30 @@
+<h1 id="request-context">Request context</h1>
+<p>One validated object travels with every render, across process boundaries, as HTTP headers.</p>
+<h2 id="shape">Shape</h2>
+<p><code>RequestContextSchema</code> (<code>@mvp/contracts</code>) — required fields first:</p>
+<div class="table-wrap"><table><thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead><tbody><tr><td><code>traceId</code></td><td>string, min 8</td><td>ties fragment spans to one page request</td></tr><tr><td><code>requestId</code></td><td>string, min 4</td><td></td></tr><tr><td><code>locale</code></td><td>string, min 2</td><td></td></tr><tr><td><code>tenant</code></td><td>string, min 1</td><td></td></tr><tr><td><code>featureFlags</code></td><td>record of boolean\</td><td>string\</td><td>number</td><td>required, may be <code>{}</code></td></tr><tr><td><code>timestamp</code></td><td>ISO datetime</td><td></td></tr><tr><td><code>experiment</code></td><td>record of string</td><td>defaults to <code>{}</code></td></tr><tr><td><code>theme</code></td><td><code>light</code>\</td><td><code>dark</code>\</td><td><code>system</code></td><td>defaults to <code>system</code></td></tr><tr><td><code>device</code></td><td><code>mobile</code>\</td><td><code>tablet</code>\</td><td><code>desktop</code>\</td><td><code>bot</code>\</td><td><code>unknown</code></td><td>defaults to <code>unknown</code></td></tr><tr><td><code>userAgent</code></td><td>string</td><td>defaults to <code>""</code></td></tr><tr><td><code>user</code>, <code>session</code>, <code>ip</code></td><td>optional</td><td></td></tr><tr><td><code>extensions</code></td><td>record of string</td><td>defaults to <code>{}</code> — see below</td></tr></tbody></table></div>
+<pre><code class="lang-ts">import { createRequestContext } from "@mvp/request-context";
+
+const ctx = createRequestContext({ headers: { "x-locale": "en-US", "x-tenant": "acme" } });</code></pre>
+<p>Accessors: <code>getLocale</code>, <code>getTenant</code>, <code>getTraceId</code>, <code>getUser</code>, <code>getFeatureFlags</code>, <code>getContextExtension</code>.</p>
+<h2 id="adding-a-dimension-without-touching-the-framework">Adding a dimension without touching the framework</h2>
+<p>The wrong way is to widen <code>RequestContextSchema</code> — that is a framework package, and the layering rule forbids product code from editing it, so "add a field" would mean changing the framework for a business need.</p>
+<p>The right way is <code>extensions</code>:</p>
+<pre><code class="lang-ts">const ctx = createRequestContext({
+  headers,
+  extensions: { abBucket: "b", acquisitionChannel: "paid-search", tier: "gold" },
+});
+
+getContextExtension(ctx, "abBucket"); // "b"</code></pre>
+<p>Values are strings because they cross an HTTP boundary. Each one propagates as <code>x-mvp-ctx-&lt;name&gt;</code> (<code>CONTEXT_EXTENSION_HEADER_PREFIX</code>).</p>
+<p>This is the schema-validated equivalent of <code>@podium/context</code>'s <code>.register(name, parser)</code> extension point.</p>
+<h2 id="crossing-the-wire">Crossing the wire</h2>
+<pre><code class="lang-ts">import { serializeContext, deserializeContext } from "@mvp/request-context";
+
+const headers = serializeContext(ctx);   // -&gt; flat header record
+const ctx2 = deserializeContext(headers);</code></pre>
+<p><code>ContextParser</code> is the type for a custom parser if you need to derive a dimension from raw headers rather than pass it in.</p>
+<h2 id="context-and-caching">Context and caching</h2>
+<p><code>cachePolicy.vary</code> on a slot names the context dimensions that partition its cache key. A fragment whose output depends on <code>tenant</code> must declare <code>vary: ["tenant"]</code>, or two tenants will share one cache entry. <code>createFragmentCacheKey</code> is the function that builds the key, and <code>createDataKey</code> does the equivalent for data sources.</p>
+<h2 id="the-lenient-tier">The lenient tier</h2>
+<p><code>POST /render</code> accepts a <strong>partial</strong> context: <code>parseFragmentRenderRequest</code> tries the strict schema first, then an envelope in which <code>ctx</code> is <code>.partial().optional()</code>, and only answers <code>400</code> when both fail. Convenient for hand-testing a service with curl; see <a href="../known-limitations.html#f14">F14</a> for why you cannot currently observe whether production traffic is landing on that tier.</p>

@@ -1,0 +1,55 @@
+<h1 id="fragment-development">Fragment development</h1>
+<p>A fragment is a Fastify service with one job: answer <code>POST /render</code> with HTML for a given <code>{props, ctx}</code>.</p>
+<h2 id="anatomy">Anatomy</h2>
+<pre><code>fragments/&lt;name&gt;/
+  src/server.ts        ~20-line adapter over @mvp/fragment-host — do not hand-roll
+  src/render.ts        the render function: {props, ctx} -&gt; {html, assets, cache, metadata}
+  src/manifest.ts      name, version, owner, renderMode, fallback, assets, budget, proxy,
+                       dataDependencies, subscriptions
+  src/budget.ts        the unit's performance budget
+  src/data.ts          data access via @mvp/data / @mvp/request (never bare fetch)
+  src/styles.ts        the scoped stylesheet emitted inline with the markup
+  src/island.tsx       optional React island
+  src/live.ts          optional non-React live panel
+  tests/, Dockerfile, package.json, tsconfig.json, README.md, AGENT.md</code></pre>
+<h2 id="the-host-owns-the-http-surface">The host owns the HTTP surface</h2>
+<p><code>createFragmentServer</code> from <code>@mvp/fragment-host</code> provides all eight routes, Prometheus metrics, and trace export. Your <code>server.ts</code> supplies only identity and the render function:</p>
+<pre><code class="lang-ts">import { createFragmentServer } from "@mvp/fragment-host";
+import { orderBookManifest } from "./manifest";
+import { orderBookBudget } from "./budget";
+import { renderOrderBook } from "./render";
+
+export const SERVICE_NAME = "order-book";
+
+export function buildServer(options = {}) {
+  return createFragmentServer({
+    serviceName: SERVICE_NAME,
+    port: 4204,
+    manifest: orderBookManifest,
+    budget: orderBookBudget,
+    render: renderOrderBook,
+    ...options,
+  });
+}</code></pre>
+<p>This is enforced, not merely recommended: <code>audit:deps</code> rule <code>fragment-server-not-hosted</code> fails the build on a fragment that builds its own Fastify instance.</p>
+<p><code>render</code> receives <code>(request, { trace, now })</code>. Take the clock from <code>now</code> rather than <code>Date.now()</code> if your output contains time — that is what makes render output testable and is why the countdown in <code>market-header</code> is deterministic under test.</p>
+<h2 id="fallback-is-declared-not-improvised">Fallback is declared, not improvised</h2>
+<p><code>manifest.fallback</code> is an HTML string the composition layer substitutes when your service is slow, erroring, or skipped. Keep it self-describing and carry the same <code>data-fragment="&lt;name&gt;"</code> root plus <code>data-fallback="true"</code>:</p>
+<pre><code class="lang-ts">fallback: '&lt;section data-fragment="order-book" data-fallback="true"&gt;Order book unavailable&lt;/section&gt;',</code></pre>
+<p>The <code>data-fallback</code> attribute matters at runtime, not just visually: the live-panel driver skips any node carrying it, so a degraded slot is never brought back to life by a subscription.</p>
+<h2 id="data-access">Data access</h2>
+<p>No bare <code>fetch(...)</code> in business code — <code>audit:deps</code> rule <code>raw-fetch-in-business-code</code> fails the build. Use <code>@mvp/request</code> (contract-checked HTTP with timeouts and typed errors: <code>RequestContractError</code>, <code>RequestPolicyError</code>, <code>RequestTimeoutError</code>) or <code>@mvp/data</code> (the source registry with cache adapters, freshness validation and subscriptions).</p>
+<p>A second rule, <code>fetch-without-timeout</code>, catches a <code>fetch</code> that has no abort path at all.</p>
+<h2 id="declaring-what-you-need">Declaring what you need</h2>
+<p>Two separate fields, and the difference matters:</p>
+<pre><code class="lang-ts">// what SSR reads once
+dataDependencies: ["book.l2.&lt;symbol&gt;"],
+// what the browser panel holds open
+subscriptions: ["book.l2.&lt;symbol&gt;"],</code></pre>
+<p><code>order-form</code> shows the asymmetry: it reads <code>account</code> at render time and subscribes to nothing.</p>
+<h2 id="styling">Styling</h2>
+<p>CSS ships inline with the markup in a <code>&lt;style data-fragment-style="&lt;name&gt;"&gt;</code> block from <code>src/styles.ts</code>. <code>audit:css</code> measures total bytes, unused bytes, duplicated rules, global selectors and <code>!important</code> count, and enforces each fragment's <code>cssBytes</code> ceiling. A class name never referenced from source counts as unused bytes — which is why fragments that apply classes only in browser patch code export a <code>*_CLASSES</code> constant so the reference is visible.</p>
+<h2 id="checklist-before-you-ship">Checklist before you ship</h2>
+<pre><code class="lang-sh">pnpm --filter @mvp/fragment-&lt;name&gt; test
+pnpm verify:unit --name &lt;name&gt;     # builds the closure, boots it, checks version agreement
+pnpm verify                        # all 14 gates</code></pre>

@@ -1,0 +1,38 @@
+<h1 id="cli-reference">CLI reference</h1>
+<p>Flag lists below are the scripts' own allowlists (<code>unknownFlagError</code>), not prose. An unknown flag is rejected with a <code>did you mean --&lt;flag&gt;?</code> suggestion, <code>{"status":"failed"}</code>, exit 1, no write.</p>
+<h2 id="lifecycle">Lifecycle</h2>
+<h3 id="register-fragment"><code>register-fragment</code></h3>
+<pre><code class="lang-sh">pnpm exec tsx scripts/register-fragment.mts --name &lt;kebab&gt; --version &lt;semver&gt; \
+  --service-url &lt;url&gt; [--manifest-url &lt;url&gt;] [--assets-url &lt;url&gt;] \
+  [--channel stable|canary|preview] [--port &lt;n&gt;] [--with-compose]</code></pre>
+<p>Statuses: <code>registered</code> · <code>conflict</code> · <code>failed</code>. Idempotent — an identical re-run reports <code>"action": "unchanged"</code>.</p>
+<h3 id="mount-slot"><code>mount-slot</code></h3>
+<pre><code class="lang-sh">pnpm exec tsx scripts/mount-slot.mts --page &lt;page&gt; --slot &lt;name&gt; \
+  [--fragment &lt;kebab&gt;] [--strategy static|ttl-cache|cached-ssr|dynamic-ssr] \
+  [--channel &lt;channel&gt;] [--timeout-ms &lt;n&gt;] [--props &lt;json&gt;] [--static-html &lt;html&gt;] \
+  [--cache-policy &lt;json&gt;] [--data-dependencies &lt;json-array&gt;] [--depends-on &lt;json-array&gt;] \
+  [--required] [--remove] [--check] [--allow-unregistered]</code></pre>
+<p>Statuses: <code>mounted</code> · <code>conflict</code> · <code>failed</code>. <code>--remove</code> unmounts. <code>--check</code> writes nothing and verifies <code>fragmentSlots.gen.ts</code> is in sync. Mounting an unregistered fragment fails unless <code>--allow-unregistered</code>.</p>
+<h3 id="promote-fragment"><code>promote-fragment</code></h3>
+<pre><code class="lang-sh">pnpm exec tsx scripts/promote-fragment.mts --name &lt;kebab&gt;</code></pre>
+<p>Statuses: <code>promoted</code> · <code>unchanged</code> · <code>conflict</code> · <code>failed</code>. Records the previous <code>stable</code> in <code>versions</code> and appends to <code>registry/releases.json</code>.</p>
+<h3 id="rollback-fragment"><code>rollback-fragment</code></h3>
+<pre><code class="lang-sh">pnpm exec tsx scripts/rollback-fragment.mts --name &lt;kebab&gt; [--to &lt;version&gt;]</code></pre>
+<p>Statuses: <code>rolled-back</code> · <code>unchanged</code> · <code>conflict</code> · <code>failed</code>. Fails cleanly with no recorded target.</p>
+<blockquote>Shorter aliases exist — <code>pnpm register:fragment</code>, <code>pnpm mount:slot</code>, <code>pnpm promote:fragment</code>, <code>pnpm rollback:fragment</code> — and take the same flags after <code>--</code>.</blockquote>
+<h2 id="verification">Verification</h2>
+<div class="table-wrap"><table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody><tr><td><code>pnpm verify</code></td><td>the 14 gates; writes <code>reports/</code>; exit 1 if any fails</td></tr><tr><td><code>pnpm verify:unit --name &lt;f&gt; [--port] [--filter] [--skip-build]</code></td><td>build + boot + version contract for one unit</td></tr><tr><td><code>pnpm verify:manifest-gen [--page &lt;p&gt;] [--check]</code></td><td>slot codegen freshness; statuses <code>fresh</code> · <code>stale</code> · <code>exempt</code> · <code>failed</code></td></tr><tr><td><code>pnpm verify:demos [--check] [--write]</code></td><td><code>docs/DEMOS.md</code> generated block vs each page manifest's <code>demonstrates</code></td></tr><tr><td><code>pnpm verify:runtime --url &lt;url&gt; [--json]</code></td><td>web-vitals checks against a <strong>running</strong> page</td></tr><tr><td><code>pnpm docs:test [--config] [--reporter]</code></td><td>executes AGENT.md fenced blocks</td></tr><tr><td><code>pnpm typecheck</code></td><td>tsgo across 54 projects; writes <code>reports/typecheck-report.json</code></td></tr><tr><td><code>pnpm lint</code> / <code>pnpm check</code> / <code>pnpm format</code></td><td>oxlint / biome check / biome write</td></tr></tbody></table></div>
+<h2 id="audits">Audits</h2>
+<pre><code class="lang-sh">pnpm audit:similarity   pnpm audit:bundle   pnpm audit:css
+pnpm audit:deps         pnpm audit:optimizer pnpm audit:boundary</code></pre>
+<p>Each writes a JSON + Markdown report into <code>reports/</code>. Rule codes: <a href="diagnostics.html">diagnostics</a>.</p>
+<h2 id="graph-and-release-tooling">Graph and release tooling</h2>
+<div class="table-wrap"><table><thead><tr><th>Command</th><th>Notes</th></tr></thead><tbody><tr><td><code>pnpm graph</code></td><td>query the unit graph. Flags: <code>--kind</code> <code>--name</code> <code>--dependents-of</code> <code>--dependencies-of</code> <code>--consumes</code> <code>--consumes-slice</code> <code>--produces-slice</code> <code>--json</code></td></tr><tr><td><code>pnpm affected:graph</code></td><td>affected plan for a diff. Flags: <code>--base</code> <code>--head</code> <code>--json</code> <code>--name-only</code> <code>--github-output</code> <code>--quiet</code> <code>--verify</code></td></tr><tr><td><code>pnpm deploy:affected</code></td><td>Flags: <code>--base</code> <code>--dry-run</code> <code>--origin</code> <code>--runtime</code> <code>--url</code></td></tr><tr><td><code>pnpm smoke</code></td><td>docker stack smoke. Flags: <code>--host</code> <code>--interval</code> <code>--timeout</code> <code>--help</code></td></tr></tbody></table></div>
+<h2 id="development">Development</h2>
+<div class="table-wrap"><table><thead><tr><th>Command</th><th>Notes</th></tr></thead><tbody><tr><td><code>pnpm dev</code></td><td>all 22 services in parallel</td></tr><tr><td><code>pnpm --filter &lt;pkg&gt; dev</code></td><td>one service — use this; dedicated <code>dev:*</code> scripts exist for only 4 units</td></tr><tr><td><code>pnpm dev:component [--port] [--json]</code></td><td>component harness against <code>@mvp/ui</code> fixtures</td></tr><tr><td><code>pnpm reports [--port n] [--open]</code></td><td>serve <code>docs/reports/</code> (default 4300)</td></tr><tr><td><code>pnpm mcp</code></td><td>start the MCP server</td></tr><tr><td><code>pnpm e2e</code></td><td>Playwright; needs the stack already running</td></tr></tbody></table></div>
+<h2 id="conventions-shared-by-all-lifecycle-scripts">Conventions shared by all lifecycle scripts</h2>
+<ul>
+<li>JSON envelope on stdout with a <code>status</code> field.</li>
+<li>Exit 1 on failure, and <strong>nothing written</strong>.</li>
+<li>Atomic write (temp + rename) behind a <code>&lt;file&gt;.lock</code> advisory lock with an optimistic content-hash check. On a concurrent change: <code>{"status":"conflict","retry":true}</code> — re-run the same command.</li>
+</ul>

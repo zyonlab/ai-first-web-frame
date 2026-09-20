@@ -1,0 +1,55 @@
+<h1 id="realtime-subscriptions">Realtime subscriptions</h1>
+<p>A server-rendered panel that stays live without React: subscribe to a source, fold each frame into an in-place DOM patch. <strong>The fragment declares what it listens to; the page only binds parameters.</strong></p>
+<h2 id="why-it-is-built-this-way">Why it is built this way</h2>
+<p>The first version put all of it in the page: which fragments were live, which source each needed, and how to patch each one's DOM — about 540 lines in <code>apps/page-trade/src/realtime.ts</code>. A fragment therefore could not become live, or change what it subscribed to, without a page edit. That breaks the claim that a fragment is the unit of deployment.</p>
+<h2 id="1-declare-in-the-fragment-manifest">1. Declare in the fragment manifest</h2>
+<pre><code class="lang-ts">// fragments/order-book/src/manifest.ts
+dataDependencies: ["book.l2.&lt;symbol&gt;"],   // what SSR reads once
+subscriptions:    ["book.l2.&lt;symbol&gt;"],   // what the browser holds open</code></pre>
+<p>These are <strong>source-id templates</strong> in the existing <code>&lt;param&gt;</code> vocabulary. <code>GET /manifest</code> publishes them, so a new fragment version can change what it listens to and ship on its own.</p>
+<p>A template with no placeholder (<code>positions</code>) is a global source.</p>
+<h2 id="2-ship-a-livepanel-from-the-fragment">2. Ship a <code>LivePanel</code> from the fragment</h2>
+<pre><code class="lang-ts">// fragments/order-book/src/live.ts
+import type { LivePanel } from "@mvp/runtime/live";
+import { orderBookManifest } from "./manifest";
+
+export const orderBookLivePanel: LivePanel = {
+  fragment: orderBookManifest.name,          // matches the SSR root's data-fragment
+  subscriptions: orderBookManifest.subscriptions,
+  mount({ node, params, remounted }) {
+    let prev = remounted ? null : ladderFromDom(node, params.symbol, depth);
+    return {
+      onFrame(_source, data) { /* diff + patch in place */ },
+      stop() { /* optional */ },
+    };
+  },
+};</code></pre>
+<p>Export it as <code>./live</code> in the fragment's <code>package.json</code>.</p>
+<h2 id="3-the-page-supplies-only-parameters-and-a-client">3. The page supplies only parameters and a client</h2>
+<pre><code class="lang-ts">import { startLivePanels } from "@mvp/runtime/live";
+
+const controller = startLivePanels({
+  root,
+  panels: TRADE_LIVE_PANELS,
+  params: { symbol },
+  subscribe: (source, onFrame) =&gt; client.subscribe(source, (e) =&gt; onFrame(e.data)),
+  onParamsChange: (next) =&gt; { client = makeClient([next.symbol]); },
+});
+
+controller.setParams({ symbol: "ETH" });
+controller.stop();</code></pre>
+<p>The driver never sees the data client — only resolved source ids.</p>
+<h2 id="remounted-is-the-subtle-part"><code>remounted</code> is the subtle part</h2>
+<p>On a parameter change every panel is torn down and re-mounted (the data client is scoped to a symbol set, so a partial swap would leave panels on a stale client). What is <strong>not</strong> uniform is <code>remounted</code>: it is <code>true</code> only for panels that bind a parameter that actually changed.</p>
+<p>That is how a panel knows whether its SSR DOM is still trustworthy:</p>
+<div class="table-wrap"><table><thead><tr><th>Panel</th><th>Subscription</th><th>On symbol switch</th></tr></thead><tbody><tr><td><code>order-book</code></td><td><code>book.l2.&lt;symbol&gt;</code></td><td><code>remounted: true</code> → rebuild; rendered rows hold the old symbol's prices</td></tr><tr><td><code>trades-feed</code></td><td><code>trades.&lt;symbol&gt;</code></td><td><code>remounted: true</code> → clear the tape</td></tr><tr><td><code>positions-table</code></td><td><code>positions</code></td><td><code>remounted: false</code> → <strong>rows survive</strong>; positions are account-global</td></tr></tbody></table></div>
+<p>Before, that rule was hand-written in the page. Now it is derived from the declarations.</p>
+<h2 id="degradation">Degradation</h2>
+<p>A panel whose fragment did not render, or rendered its fallback (<code>data-fallback</code>), is <strong>skipped</strong>, not mounted — composition already degraded that slot and a subscription must not resurrect it. A panel that throws at mount or on a frame is reported through <code>onError</code> and dropped; the rest of the page stays live.</p>
+<h2 id="helpers">Helpers</h2>
+<p><code>templateParams(template)</code> → the bound parameter names. <code>resolveSourceTemplate(template, params)</code> → the concrete id, <strong>throwing</strong> if a bound parameter is missing rather than subscribing to an id containing a literal <code>&lt;symbol&gt;</code> that would never deliver a frame.</p>
+<p>Shared DOM shim for patch panels: <code>panelDocument</code>, <code>setFieldText</code>, <code>fieldText</code>, <code>parseFieldNumber</code>, <code>cssEscapeAttr</code>.</p>
+<h2 id="keeping-page-and-fragment-honest">Keeping page and fragment honest</h2>
+<p><code>apps/page-trade/src/liveContract.test.ts</code> fails the build if a panel declares a template that does not resolve to a known source id, or binds a parameter the page cannot supply — which would otherwise mount a panel that silently never receives a frame.</p>
+<h2 id="the-remaining-coupling">The remaining coupling</h2>
+<p>The page still <strong>statically imports</strong> each live panel and lists it in <code>TRADE_LIVE_PANELS</code> (two lines). There is no runtime module loading in this repository, so that import has to exist, exactly as it does for the React island registry. What no longer requires a page change is the part that matters for deployment: <em>what an existing fragment subscribes to.</em></p>

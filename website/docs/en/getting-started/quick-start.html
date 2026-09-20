@@ -1,0 +1,39 @@
+<h1 id="quick-start">Quick start</h1>
+<p>Bring up the whole composition and look at it.</p>
+<h2 id="start-everything">Start everything</h2>
+<pre><code class="lang-sh">pnpm install
+pnpm dev</code></pre>
+<p><code>pnpm dev</code> is <code>pnpm -r --parallel --filter './apps/*' --filter './fragments/*' dev</code> — all 22 services at once. The fragment services answer in a second or two; the Next.js page apps compile on first request, so the first hit on a page is slow.</p>
+<div class="table-wrap"><table><thead><tr><th>URL</th><th>What it is</th></tr></thead><tbody><tr><td><code>http://localhost:4100/</code></td><td>shell gateway — the only origin a browser should use</td></tr><tr><td><code>http://localhost:4100/trade/BTC</code></td><td>the richest page: 9 slots, islands, realtime panels</td></tr><tr><td><code>http://localhost:4100/product/123</code></td><td>static + ISR + dynamic slots in one page</td></tr><tr><td><code>http://localhost:4100/manifest/fragments</code></td><td>the resolved fragment registry, as JSON</td></tr><tr><td><code>http://localhost:4100/manifest/routes</code></td><td>the route registry</td></tr><tr><td><code>http://localhost:4201/</code></td><td>a fragment service's own landing page, with its live links</td></tr></tbody></table></div>
+<p>There is a dedicated script for only some units (<code>dev:shell</code>, <code>dev:page-home</code>, <code>dev:page-product</code>, <code>dev:fragment:promotion-banner</code>, <code>dev:fragment:recommendation-widget</code>). For anything else use the filter directly:</p>
+<pre><code class="lang-sh">pnpm --filter @mvp/page-trade dev
+pnpm --filter @mvp/fragment-order-book dev</code></pre>
+<h2 id="look-at-one-fragment-in-isolation">Look at one fragment in isolation</h2>
+<p>Every fragment serves the same eight routes, so you can exercise one without a page:</p>
+<pre><code class="lang-sh">curl -s localhost:4204/health    | jq   # {status,service,version,uptimeMs}
+curl -s localhost:4204/manifest  | jq   # the manifest verbatim
+curl -s localhost:4204/budget    | jq   # its performance budget
+curl -s localhost:4204/assets    | jq   # manifest.assets</code></pre>
+<p><code>POST /render</code> takes <code>{ctx, props}</code> and answers <code>{html, assets, cache, metadata}</code>:</p>
+<pre><code class="lang-sh">curl -s localhost:4204/render -X POST -H 'content-type: application/json' \
+  -d '{"props":{"symbol":"BTC"},"ctx":{"locale":"en-US","tenant":"default"}}' | jq 'del(.html)'
+# { "assets": {...}, "cache": {"ttl":0,"tags":["book","book:BTC"]},
+#   "metadata": {"name":"order-book","version":"0.1.0"} }</code></pre>
+<p>That <code>ctx</code> is <strong>not</strong> a complete <code>RequestContext</code> — the full schema also requires <code>traceId</code>, <code>requestId</code>, <code>featureFlags</code> and <code>timestamp</code>. It works anyway because <code>parseFragmentRenderRequest</code> is two-tier: it tries the strict schema, then falls back to a lenient envelope (<code>ctx</code> partial and optional) and only answers <code>400</code> when both fail. Handy for poking at a service by hand; see <a href="../known-limitations.html#f14">known limitations F14</a> for why you cannot currently tell whether <em>production</em> traffic is hitting the lenient tier.</p>
+<p><code>4204</code> is <code>order-book</code>. The full port map is in <a href="../reference/ports.html">reference/ports</a>.</p>
+<h2 id="prove-a-fragment-ships-on-its-own">Prove a fragment ships on its own</h2>
+<pre><code class="lang-sh">pnpm verify:unit --name order-book</code></pre>
+<p>Builds only that unit's dependency closure, boots <code>dist/server.js</code>, and asserts <code>/health</code>, <code>/ready</code> and <code>/manifest</code> agree on the manifest version and that <code>POST /render</code> output carries it. Exit 0 only if every step passed.</p>
+<h2 id="see-what-the-page-actually-did">See what the page actually did</h2>
+<p>Each composed page can expose its scheduler trace. The gateway also carries trace headers on the composed response:</p>
+<pre><code class="lang-sh">curl -sI localhost:4100/trade/BTC | grep -i trace</code></pre>
+<p>Diagnostics rendering is gated by <code>MVP_DIAGNOSTICS</code> (see <a href="../reference/environment-variables.html">environment variables</a>).</p>
+<h2 id="read-the-reports">Read the reports</h2>
+<pre><code class="lang-sh">pnpm verify      # writes reports/
+pnpm reports     # serves docs/reports/ on :4300 — long-form HTML reports about the repo itself</code></pre>
+<p><code>reports/</code> (repo root) is machine output, rewritten by every <code>pnpm verify</code>. <code>docs/reports/</code> is hand-written analysis. They are different directories on purpose.</p>
+<h2 id="next">Next</h2>
+<ul>
+<li><a href="your-first-fragment.html">Your first fragment</a> — the full scaffold → ship loop.</li>
+<li><a href="ai-setup.html">AI setup</a> — driving all of this from an agent.</li>
+</ul>

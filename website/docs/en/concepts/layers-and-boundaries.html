@@ -1,0 +1,38 @@
+<h1 id="layers-and-boundaries">Layers and boundaries</h1>
+<p>Three layers, one direction, enforced by config rather than by review.</p>
+<pre><code>apps/ + fragments/     layer:product    may depend on anything
+domains/               layer:domain     may depend on domain + framework
+packages/              layer:framework  may depend only on framework</code></pre>
+<h2 id="the-rule-is-declarative">The rule is declarative</h2>
+<p><code>dependency-audit.json</code>:</p>
+<pre><code class="lang-json">{
+  "tags": {
+    "packages/*":  ["layer:framework"],
+    "domains/*":   ["layer:domain"],
+    "apps/*":      ["layer:product"],
+    "fragments/*": ["layer:product"]
+  },
+  "depConstraints": [
+    { "sourceTag": "layer:framework", "onlyDependOnLibsWithTags": ["layer:framework"] },
+    { "sourceTag": "layer:domain",    "onlyDependOnLibsWithTags": ["layer:domain", "layer:framework"] },
+    { "sourceTag": "layer:product",   "onlyDependOnLibsWithTags": ["*"] }
+  ]
+}</code></pre>
+<p>Modelled on <code>@nx/enforce-module-boundaries</code>. A violation is <code>layer-constraint-violation</code> from <code>audit:deps</code>. Fix the import, or change the constraint deliberately — do not add a tag to dodge it.</p>
+<h2 id="why-the-framework-layer-may-not-import-a-domain">Why the framework layer may not import a domain</h2>
+<p><code>@mvp/contracts</code> is framework. If business vocabulary could land there, then "add an A/B bucket to the request context" would mean editing a framework package — and every consumer inherits your product's nouns.</p>
+<p>That pressure is real, which is why there is a designed escape hatch instead of a rule people quietly break: <code>ctx.extensions</code> (a validated string record, propagated as <code>x-mvp-ctx-&lt;name&gt;</code>) takes the dimension without widening the schema. <code>domain-code-in-framework-package</code> is the audit rule that catches the other route.</p>
+<h2 id="sibling-isolation">Sibling isolation</h2>
+<p>Two more rules stop the horizontal leaks that a monorepo invites:</p>
+<ul>
+<li><code>page-importing-another-page</code> / <code>cross-page-import</code> — page apps are separate deployables; one importing another's internals silently couples two release cycles.</li>
+<li><code>fragment-importing-page-code</code> — a fragment that reaches into a page is no longer independently deployable, whatever the manifest claims.</li>
+</ul>
+<h2 id="server-client">Server / client</h2>
+<p>A second audit (<code>audit:boundary</code>) covers the direction the layer rule cannot see:</p>
+<div class="table-wrap"><table><thead><tr><th>Code</th><th>Meaning</th></tr></thead><tbody><tr><td><code>server-imports-client-module</code></td><td>a server file pulls in a <code>"use client"</code> module</td></tr><tr><td><code>server-browser-global</code></td><td>a server file touches <code>document</code> / <code>window</code> / <code>localStorage</code></td></tr><tr><td><code>page-use-client</code></td><td>a page component marked <code>"use client"</code> when it need not be</td></tr><tr><td><code>large-client-component</code></td><td>advisory (<code>warn</code>) size guideline for a client component</td></tr></tbody></table></div>
+<p><code>audit:deps</code> adds <code>server-safe-browser-global</code> for framework packages: a <code>packages/*</code> file that touches a browser global without <code>"use client"</code> fails. That is why <code>@mvp/runtime/live</code> — which is browser-only by nature — is a separate export carrying <code>"use client"</code>, rather than something bolted onto the main entry.</p>
+<h2 id="sharing-across-fragments">Sharing across fragments</h2>
+<p>A fragment shares code by publishing an <strong>export subpath</strong>, not by importing a sibling:</p>
+<div class="table-wrap"><table><thead><tr><th>Subpath</th><th>Purpose</th><th>Example</th></tr></thead><tbody><tr><td><code>./patch</code></td><td>pure frame → patch logic, no DOM</td><td><code>@mvp/fragment-order-book/patch</code></td></tr><tr><td><code>./live</code></td><td>the browser live panel</td><td><code>@mvp/fragment-order-book/live</code></td></tr><tr><td><code>./island</code></td><td>the React island component</td><td><code>@mvp/fragment-order-form/island</code></td></tr><tr><td><code>./manifest</code></td><td>manifest for consumers that need it</td><td><code>@mvp/fragment-market-header/manifest</code></td></tr><tr><td><code>./render</code></td><td>the render function, for a composing test</td><td><code>@mvp/fragment-order-form/render</code></td></tr></tbody></table></div>
+<p>Pure logic in <code>./patch</code>, DOM in <code>./live</code>, React in <code>./island</code> — that split is what keeps a fragment's JS budget honest, because a page can pull the pure half without dragging React in.</p>
