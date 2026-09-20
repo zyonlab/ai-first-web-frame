@@ -1,4 +1,5 @@
 export * from "./metrics";
+export * from "./traceContext";
 export * from "./traceExport";
 
 type LogSink = {

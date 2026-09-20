@@ -368,6 +368,9 @@ export function buildServer(options: BuildServerOptions = {}) {
       attributes: { method: request.method },
     });
 
+    // Both headers: `traceparent` is what DevTools, collectors and APMs read;
+    // `x-trace-id` is kept for callers that predate it.
+    reply.header("traceparent", ctx.traceparent);
     reply.header("x-trace-id", ctx.traceId);
 
     const pathname = new URL(request.url, "http://shell.local").pathname;

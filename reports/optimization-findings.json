@@ -176,7 +176,7 @@
   "traces": {
     "dir": "reports/traces",
     "filesRead": 7,
-    "snapshotCount": 218,
+    "snapshotCount": 230,
     "skippedLines": 0
   }
 }

@@ -309,6 +309,16 @@ export const RequestContextSchema = z.object({
    * HTTP boundary (see `serializeContext`).
    */
   extensions: z.record(z.string()).default({}),
+  /**
+   * W3C Trace Context header value for this request, when one is in flight.
+   *
+   * Framework vocabulary rather than business vocabulary, which is why it lives
+   * here and not in `extensions`: it is how a span in one service attaches to a
+   * trace started in another, and every consumer of this schema needs the same
+   * interpretation of it. Optional because a context can legitimately be built
+   * outside a request (a test, a script, a worker).
+   */
+  traceparent: z.string().optional(),
   timestamp: z.string().datetime(),
 });
 export type RequestContext = z.infer<typeof RequestContextSchema>;

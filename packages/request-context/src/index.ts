@@ -100,6 +100,7 @@ export function createRequestContext(
   const headers = reqLike.headers;
   const ctx = RequestContextSchema.parse({
     traceId: readHeader(headers, "x-trace-id") ?? makeId("trace"),
+    traceparent: readHeader(headers, "traceparent"),
     requestId: readHeader(headers, "x-request-id") ?? makeId("req"),
     locale: readHeader(headers, "x-locale") ?? "en-US",
     tenant: readHeader(headers, "x-tenant") ?? "default",
@@ -154,6 +155,10 @@ export const getContextExtension = (ctx: RequestContext, name: string) =>
 
 export function serializeContext(ctx: RequestContext): Record<string, string> {
   return {
+    // Standard first: this is what a downstream service, a collector or a
+    // browser will actually look for. `x-trace-id` rides along for callers
+    // that predate it.
+    ...(ctx.traceparent ? { traceparent: ctx.traceparent } : {}),
     "x-trace-id": ctx.traceId,
     "x-request-id": ctx.requestId,
     "x-locale": ctx.locale,
