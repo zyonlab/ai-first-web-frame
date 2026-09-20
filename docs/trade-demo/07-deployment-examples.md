@@ -53,9 +53,10 @@ pnpm --filter @mvp/create-component start -- OrderBook --type fragment
 ```
 
 - **Accept:** JSON output has `"status": "created"`.
-- **Creates** `fragments/order-book/` with 9 files: `src/server.ts`,
-  `src/render.tsx`, `src/manifest.ts`, `src/budget.ts`, `src/fixtures.ts`,
-  `src/render.test.tsx`, `package.json`, `Dockerfile`, `README.md`.
+- **Creates** `fragments/order-book/` with 11 files: `src/server.ts`,
+  `src/render.ts`, `src/manifest.ts`, `src/budget.ts`, `src/fixtures.ts`,
+  `src/render.test.ts`, `tests/server.test.ts`, `package.json`, `tsconfig.json`,
+  `Dockerfile`, `README.md`.
 - **No registry/manifest change yet** — scaffolding only writes the fragment dir.
 
 ### Step 1.2 — Implement + test (TDD)

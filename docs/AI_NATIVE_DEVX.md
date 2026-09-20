@@ -212,7 +212,7 @@ drive the whole loop concurrently, no `CLAUDE.md` reading.
 
 | MCP tool | wraps | notes |
 |---|---|---|
-| `scaffold_component` | `create-component` | PascalCase → 9 files |
+| `scaffold_component` | `create-component` | PascalCase → 11 files (`--type ui` → 8) |
 | `dev_component` | `dev:component` (§4) | returns preview URL + injection API |
 | `verify_unit` | `verify --affected` + `verify:runtime` (§6) | static + runtime |
 | `register_fragment` | `register-fragment.mts` | idempotent |

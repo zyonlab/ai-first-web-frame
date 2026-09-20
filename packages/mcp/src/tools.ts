@@ -69,7 +69,7 @@ export const SCRIPT_TOOLS: ScriptTool[] = [
   {
     name: "scaffold_component",
     description:
-      "Scaffold a new fragment (9 files) via @mvp/create-component. Input: { name: PascalCase, type?: 'fragment' }.",
+      "Scaffold a new fragment (11 files) via @mvp/create-component. Input: { name: PascalCase, type?: 'fragment' }.",
     inputSchema: {
       type: "object",
       required: ["name"],

@@ -26,20 +26,11 @@
   ],
   "tasks": {
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": [
-        "dist/**",
-        "dist-browser/**",
-        ".next/**",
-        "!.next/cache/**"
-      ]
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "dist-browser/**", ".next/**", "!.next/cache/**"]
     },
     "test": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "outputs": []
     }
   },
@@ -47,9 +38,6 @@
     "SHELL_URL",
     "PAGE_*_URL",
     "*_URL",
-    "RECENTLY_VIEWED_COOKIE_SECRET",
-    "REGISTRY_URL",
-    "REGISTRY_USERNAME",
-    "REGISTRY_PASSWORD"
+    "RECENTLY_VIEWED_COOKIE_SECRET"
   ]
 }

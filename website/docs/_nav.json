@@ -1,0 +1,66 @@
+{
+  "nav": [
+    {
+      "text": "Introduction",
+      "dir": "introduction",
+      "items": ["what-is-it", "how-it-compares", "glossary"]
+    },
+    {
+      "text": "Getting started",
+      "dir": "getting-started",
+      "items": [
+        "installation",
+        "quick-start",
+        "your-first-fragment",
+        "ai-setup"
+      ]
+    },
+    {
+      "text": "Guides",
+      "dir": "guides",
+      "items": [
+        "fragment-development",
+        "page-composition",
+        "slot-scheduling",
+        "fallbacks-and-page-health",
+        "request-context",
+        "backend-proxy",
+        "islands-and-hydration",
+        "realtime-subscriptions",
+        "cross-fragment-communication",
+        "design-system",
+        "performance-budgets",
+        "release-channels"
+      ]
+    },
+    {
+      "text": "Concepts",
+      "dir": "concepts",
+      "items": [
+        "mental-model",
+        "layers-and-boundaries",
+        "contracts-first",
+        "minimum-deployable-unit"
+      ]
+    },
+    {
+      "text": "Reference",
+      "dir": "reference",
+      "items": [
+        "cli",
+        "http-endpoints",
+        "manifests",
+        "packages",
+        "environment-variables",
+        "diagnostics",
+        "ports"
+      ]
+    },
+    {
+      "text": "Troubleshooting",
+      "dir": "troubleshooting",
+      "items": ["gates", "build", "runtime"]
+    },
+    { "text": "Known limitations", "file": "known-limitations" }
+  ]
+}
