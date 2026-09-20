@@ -131,6 +131,21 @@ A fragment is the smallest unit that ships on its own, and that is an executable
 ## Common commands
 
 - `pnpm test` (all) | `pnpm --filter @mvp/page-home test` (one package)
+- **Task caching**: `build` and `test` run through Turborepo (`turbo.json`). A warm tree
+  takes `pnpm verify` from ~165s to ~32s (build 100s → 0.2s, test 24s → 0.2s); turbo also
+  restores deleted `dist/`/`.next/` from cache instead of rebuilding. Two correctness rules
+  when touching it:
+  - Anything a task reads from OUTSIDE its own package must be declared, or the cache
+    serves a stale pass. `packages/mcp/turbo.json` is the worked example: its tests read the
+    registry data and page manifests, so those are listed as `$TURBO_ROOT$` inputs.
+  - Env vars that change what a task does belong in `globalEnv`; values that only address an
+    external environment (`*_URL`, secrets) belong in `globalPassThroughEnv` so they never
+    enter a cache key. Biome's `noUndeclaredEnvVars` enforces this once `turbo.json` exists.
+- `pnpm test` / `verify:manifest-gen` / `docs:test` self-heal a cold clone: they run
+  `scripts/ensure-workspace-build.mts` first. It ALWAYS delegates to turbo rather than
+  skipping when `dist/` merely exists — a present-but-stale `dist/` is exactly the failure
+  that check used to let through. It is needed even with turbo because `^build` covers only
+  DECLARED deps, and `@mvp/mcp` declares none while its tests shell out to `scripts/*.mts`.
 - `pnpm exec vitest run packages/registry` (registry + lifecycle helper tests)
 - `pnpm typecheck` | `pnpm lint` | `pnpm check` | `pnpm build`
 - `pnpm verify:unit --name <fragment>` (single-unit build + boot + version contract)

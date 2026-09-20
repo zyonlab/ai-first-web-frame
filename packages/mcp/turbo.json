@@ -1,0 +1,22 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/registry/registry.data.json",
+        "$TURBO_ROOT$/registry/releases.json",
+        "$TURBO_ROOT$/scripts/*.mts",
+        "$TURBO_ROOT$/packages/routes/src/registry.ts",
+        "$TURBO_ROOT$/apps/*/package.json",
+        "$TURBO_ROOT$/apps/*/src/manifest.slots.json",
+        "$TURBO_ROOT$/apps/*/src/fragmentSlots.gen.ts",
+        "$TURBO_ROOT$/fragments/*/package.json",
+        "$TURBO_ROOT$/fragments/*/src/manifest.ts"
+      ],
+      "outputs": []
+    }
+  }
+}

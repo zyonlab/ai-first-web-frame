@@ -1,0 +1,55 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "stream",
+  "globalDependencies": [
+    "pnpm-lock.yaml",
+    "package.json",
+    "tsconfig.base.json",
+    "vitest.config.ts",
+    "biome.json",
+    "oxlint.json",
+    "dependency-audit.json"
+  ],
+  "globalEnv": [
+    "NODE_ENV",
+    "CI",
+    "MVP_DIAGNOSTICS",
+    "PUBLIC_SITE_ORIGIN",
+    "TRACE_SAMPLE_RATE",
+    "SHELL_PAGE_TIMEOUT_MS",
+    "SHELL_ASSET_TIMEOUT_MS",
+    "SHELL_FRAGMENT_PROXY_TIMEOUT_MS",
+    "SHELL_REQUIRED_FAILURE_STATUS",
+    "E2E_STRICT",
+    "DOCS_TEST_DEBUG",
+    "DOCS_TEST_KEEP_TMP"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        "dist-browser/**",
+        ".next/**",
+        "!.next/cache/**"
+      ]
+    },
+    "test": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": []
+    }
+  },
+  "globalPassThroughEnv": [
+    "SHELL_URL",
+    "PAGE_*_URL",
+    "*_URL",
+    "RECENTLY_VIEWED_COOKIE_SECRET",
+    "REGISTRY_URL",
+    "REGISTRY_USERNAME",
+    "REGISTRY_PASSWORD"
+  ]
+}
