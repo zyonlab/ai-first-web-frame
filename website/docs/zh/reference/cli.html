@@ -1,0 +1,77 @@
+<p class="eyebrow">参考</p>
+<h1>命令行</h1>
+<p class="lede">下面的 flag 清单取自各脚本<strong>自己的白名单</strong>（<code>unknownFlagError</code>），不是散文描述。未知 flag 会被拒绝，并给出 <code>did you mean --&lt;flag&gt;?</code> 建议、<code>{"status":"failed"}</code>、exit 1、不写文件。</p>
+
+<h2 id="生命周期">生命周期</h2>
+
+<h3 id="register-fragment"><code>register-fragment</code></h3>
+<pre><code>pnpm exec tsx scripts/register-fragment.mts --name &lt;kebab&gt; --version &lt;semver&gt; \
+  --service-url &lt;url&gt; [--manifest-url &lt;url&gt;] [--assets-url &lt;url&gt;] \
+  [--channel stable|canary|preview] [--port &lt;n&gt;] [--with-compose]</code></pre>
+<p>状态：<code>registered</code> · <code>conflict</code> · <code>failed</code>。幂等 —— 原样重跑报告 <code>"action": "unchanged"</code>。</p>
+
+<h3 id="mount-slot"><code>mount-slot</code></h3>
+<pre><code>pnpm exec tsx scripts/mount-slot.mts --page &lt;page&gt; --slot &lt;name&gt; \
+  [--fragment &lt;kebab&gt;] [--strategy static|ttl-cache|cached-ssr|dynamic-ssr] \
+  [--channel &lt;channel&gt;] [--timeout-ms &lt;n&gt;] [--props &lt;json&gt;] [--static-html &lt;html&gt;] \
+  [--cache-policy &lt;json&gt;] [--data-dependencies &lt;json-array&gt;] [--depends-on &lt;json-array&gt;] \
+  [--required] [--remove] [--check] [--allow-unregistered]</code></pre>
+<p>状态：<code>mounted</code> · <code>conflict</code> · <code>failed</code>。<code>--remove</code> 卸载。<code>--check</code> 不写文件，只校验 <code>fragmentSlots.gen.ts</code> 是否同步。挂载未注册的片段会失败，除非加 <code>--allow-unregistered</code>。</p>
+
+<h3 id="promote-fragment"><code>promote-fragment</code></h3>
+<pre><code>pnpm exec tsx scripts/promote-fragment.mts --name &lt;kebab&gt;</code></pre>
+<p>状态：<code>promoted</code> · <code>unchanged</code> · <code>conflict</code> · <code>failed</code>。把上一个 <code>stable</code> 记进 <code>versions</code> 并追加到 <code>registry/releases.json</code>。</p>
+
+<h3 id="rollback-fragment"><code>rollback-fragment</code></h3>
+<pre><code>pnpm exec tsx scripts/rollback-fragment.mts --name &lt;kebab&gt; [--to &lt;version&gt;]</code></pre>
+<p>状态：<code>rolled-back</code> · <code>unchanged</code> · <code>conflict</code> · <code>failed</code>。没有记录目标时干净地失败。</p>
+<div class="note"><p>也有更短的别名 —— <code>pnpm register:fragment</code>、<code>pnpm mount:slot</code>、<code>pnpm promote:fragment</code>、<code>pnpm rollback:fragment</code>，在 <code>--</code> 之后接同样的 flag。</p></div>
+
+<h2 id="验证">验证</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>命令</th><th>作用</th></tr></thead>
+<tbody>
+<tr><td><code>pnpm verify</code></td><td>14 道闸门；写出 <code>reports/</code>；任一失败即 exit 1</td></tr>
+<tr><td><code>pnpm verify:unit --name &lt;f&gt; [--port] [--filter] [--skip-build]</code></td><td>单个单元的构建 + 启动 + 版本契约</td></tr>
+<tr><td><code>pnpm verify:manifest-gen [--page &lt;p&gt;] [--check]</code></td><td>槽位代码生成新鲜度；状态 <code>fresh</code> · <code>stale</code> · <code>exempt</code> · <code>failed</code></td></tr>
+<tr><td><code>pnpm verify:demos [--check] [--write]</code></td><td><code>docs/DEMOS.md</code> 生成块与各页面 manifest 的 <code>demonstrates</code> 是否一致</td></tr>
+<tr><td><code>pnpm verify:runtime --url &lt;url&gt; [--json]</code></td><td>对<b>运行中的</b>页面做 web vitals 检查</td></tr>
+<tr><td><code>pnpm docs:test [--config] [--reporter]</code></td><td>执行各 AGENT.md 的代码块</td></tr>
+<tr><td><code>pnpm typecheck</code></td><td>tsgo 跑 54 个 project；写出 <code>reports/typecheck-report.json</code></td></tr>
+<tr><td><code>pnpm lint</code> / <code>pnpm check</code> / <code>pnpm format</code></td><td>oxlint / biome check / biome write</td></tr>
+</tbody></table></div>
+
+<h2 id="审计">审计</h2>
+<pre><code>pnpm audit:similarity   pnpm audit:bundle   pnpm audit:css
+pnpm audit:deps         pnpm audit:optimizer pnpm audit:boundary</code></pre>
+<p>每个都向 <code>reports/</code> 写一份 JSON + Markdown 报告。规则码见<a href="diagnostics.html">诊断码</a>。</p>
+
+<h2 id="图与发布工具">图与发布工具</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>命令</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>pnpm graph</code></td><td>查询单元图。Flag：<code>--kind</code> <code>--name</code> <code>--dependents-of</code> <code>--dependencies-of</code> <code>--consumes</code> <code>--consumes-slice</code> <code>--produces-slice</code> <code>--json</code></td></tr>
+<tr><td><code>pnpm affected:graph</code></td><td>某个 diff 的 affected 计划。Flag：<code>--base</code> <code>--head</code> <code>--json</code> <code>--name-only</code> <code>--github-output</code> <code>--quiet</code> <code>--verify</code></td></tr>
+<tr><td><code>pnpm deploy:affected</code></td><td>Flag：<code>--base</code> <code>--dry-run</code> <code>--origin</code> <code>--runtime</code> <code>--url</code></td></tr>
+<tr><td><code>pnpm smoke</code></td><td>docker 栈冒烟。Flag：<code>--host</code> <code>--interval</code> <code>--timeout</code> <code>--help</code></td></tr>
+</tbody></table></div>
+
+<h2 id="开发">开发</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>命令</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>pnpm dev</code></td><td>并行启动全部 22 个服务</td></tr>
+<tr><td><code>pnpm --filter &lt;pkg&gt; dev</code></td><td>单个服务 —— 用这个；专用 <code>dev:*</code> 脚本只覆盖 4 个单元</td></tr>
+<tr><td><code>pnpm dev:component [--port] [--json]</code></td><td>基于 <code>@mvp/ui</code> fixtures 的组件工作台</td></tr>
+<tr><td><code>pnpm reports [--port n] [--open]</code></td><td>提供 <code>docs/reports/</code>（默认 4300）</td></tr>
+<tr><td><code>pnpm docs:serve [--port n] [--open]</code></td><td>提供这份文档（默认 4301）</td></tr>
+<tr><td><code>pnpm mcp</code></td><td>启动 MCP 服务</td></tr>
+<tr><td><code>pnpm e2e</code></td><td>Playwright；需要栈已经在跑</td></tr>
+</tbody></table></div>
+
+<h2 id="所有生命周期脚本共享的约定">所有生命周期脚本共享的约定</h2>
+<ul>
+<li>stdout 输出带 <code>status</code> 字段的 JSON 信封。</li>
+<li>失败时 exit 1，且<strong>不写任何文件</strong>。</li>
+<li>原子写（临时文件 + rename），外加 <code>&lt;file&gt;.lock</code> 咨询锁和乐观内容哈希校验。遇到并发改动：<code>{"status":"conflict","retry":true}</code> —— 原样重跑即可。</li>
+</ul>

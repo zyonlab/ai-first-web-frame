@@ -1,5 +1,9 @@
 <h1 id="your-first-fragment">Your first fragment</h1>
 <p>The full loop: scaffold → implement → register → mount → verify → promote. Every command prints a JSON envelope with a <code>status</code> field, and none of them writes anything on failure.</p>
+<figure class="figure">
+<!--@figure:user-journey-->
+<figcaption><b>Every stage has a machine-readable acceptance signal.</b> That is what makes this loop drivable by an agent rather than only by a person.</figcaption>
+</figure>
 <h2 id="1-scaffold">1. Scaffold</h2>
 <pre><code class="lang-sh">pnpm --filter @mvp/create-component start -- PricePanel --type fragment</code></pre>
 <p>PascalCase in, <code>fragments/price-panel/</code> out, <strong>11 files</strong>:</p>

@@ -1,0 +1,49 @@
+<p class="eyebrow">简介</p>
+<h1>术语表</h1>
+<p class="lede">按代码里的用法给出定义。凡是两个词容易混淆的，都把区别写明 —— 这套系统里大部分接入错误，本质上是词汇错误。</p>
+
+<div class="note warn">
+<p><b>翻译约定。</b>技术标识符一律保留英文：它们是你要在终端里敲、在 JSON 里写的字符串。<code>dependsOn</code> 就是 <code>dependsOn</code>，不是「依赖于」。</p>
+</div>
+
+<h2 id="组成单位">组成单位</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>术语</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td><b>Fragment（片段）</b></td><td>可独立部署的 SSR 服务，对 <code>POST /render</code> 返回 HTML。位于 <code>fragments/&lt;kebab-name&gt;/</code>，跑在 <code>@mvp/fragment-host</code> 上，拥有一个 Dockerfile 和一个端口。现有 14 个。</td></tr>
+<tr><td><b>Page（页面）</b></td><td>Next.js App Router 应用（<code>apps/page-*</code>），声明槽位并组合片段。现有 7 个，其中 5 个至少组合了一个槽位。</td></tr>
+<tr><td><b>Shell gateway（网关）</b></td><td>唯一的对外源站（<code>:4100</code>）。解析路由、代理到页面应用、挂载片段后端代理、提供 <code>robots.txt</code> / <code>sitemap.xml</code>，并把页面健康标记翻译成 HTTP 状态码。</td></tr>
+<tr><td><b>Slot（槽位）</b></td><td>页面中一个具名位置，由某个片段填充。声明在 <code>apps/&lt;page&gt;/src/manifest.slots.json</code>。现有 19 个。</td></tr>
+<tr><td><b>Minimum deployable unit</b></td><td>就是片段。由 <code>pnpm verify:unit --name &lt;fragment&gt;</code> 予以证明。</td></tr>
+<tr><td><b>Unit（发布工具语境）</b></td><td>affected 图中的一个节点：route、page、component、data source 或 slice。用 <code>pnpm graph</code> 查询。</td></tr>
+</tbody></table></div>
+
+<h2 id="最容易搞混的两对">最容易搞混的两对</h2>
+
+<div class="cards two">
+  <div class="card i">
+    <h4><code>dependsOn</code> vs <code>dataDependencies</code></h4>
+    <p><code>dependsOn</code> 排的是<strong>槽位之间</strong>的先后（B 在 A 之后渲染）。<code>dataDependencies</code> 指的是页面<strong>数据源注册表</strong>里必须先解析完的条目。</p>
+    <p>两者喂给同一个拓扑调度器，但含义不同。而且：<em>一个没有 <code>dependsOn</code> 的槽位并不因此就是静态的</em> —— 这正是<a href="../known-limitations.html#f1">优化器目前犯的错</a>。</p>
+  </div>
+  <div class="card r">
+    <h4>manifest 里的 <code>dataDependencies</code> vs <code>subscriptions</code></h4>
+    <p><code>dataDependencies</code> 是片段<strong>服务端渲染时读一次</strong>的东西。<code>subscriptions</code> 是它的浏览器面板<strong>持续开着</strong>的东西。</p>
+    <p>刻意分开：<code>order-form</code> 在 render 时读 <code>account</code>，但不订阅任何东西。</p>
+  </div>
+</div>
+
+<h2 id="运行时词汇">运行时词汇</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>术语</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td><b>Render strategy</b></td><td>槽位如何产出：<code>static</code> | <code>ttl-cache</code> | <code>cached-ssr</code> | <code>dynamic-ssr</code>。</td></tr>
+<tr><td><b>Release channel</b></td><td><code>stable</code> | <code>canary</code> | <code>preview</code>。槽位指定通道，注册表在每次请求时解析成具体版本和 <code>serviceUrl</code>。</td></tr>
+<tr><td><b>Source id / 模板</b></td><td>数据源用规范化字符串寻址（<code>book.l2.BTC</code>、<code>positions</code>）。带 <code>&lt;param&gt;</code> 占位符的是<em>模板</em>（<code>book.l2.&lt;symbol&gt;</code>），由页面在挂载时绑定。构造函数在 <code>domains/trade-data/src/sourceIds.ts</code>，<strong>不要手工拼 id</strong>。</td></tr>
+<tr><td><b>Island（岛屿）</b></td><td>在静态 SSR 标记中被水合的客户端组件。片段输出 DOM 加一段内联 JSON 快照；只有握手通过才水合。</td></tr>
+<tr><td><b>Live panel（实时面板）</b></td><td>岛屿的非 React 对应物：服务端渲染的面板，靠把订阅帧折叠成原地 DOM 补丁保持最新。由片段的 <code>./live</code> 导出提供。</td></tr>
+<tr><td><b>Snapshot handshake</b></td><td>决定是否水合的检查。四种失败原因：<code>version-mismatch</code>、<code>contract-hash-mismatch</code>、<code>invalid-snapshot</code>、<code>invalid-props</code>。失败意味着<em>SSR 标记原样保留</em>，绝不会半挂载。</td></tr>
+<tr><td><b>Page health</b></td><td><code>ok</code> | <code>degraded</code> | <code>unhealthy</code>。可选槽位失败是 <code>degraded</code>，仍返回 <code>200</code>；必需槽位失败是 <code>unhealthy</code>，网关返回 <code>503</code>。</td></tr>
+<tr><td><b>Slice / channel</b></td><td>带类型的跨片段通信主题。一个声明的发布者、一份显式订阅者名单、一份 Zod 载荷 schema。<strong>发布者和订阅者 id 是逻辑组件 id，不是片段名</strong> —— <code>symbol-switcher</code> 是页面使用的 owner 身份，不是 <code>fragments/</code> 下的服务。</td></tr>
+<tr><td><b>Gate（闸门）</b></td><td><code>pnpm verify</code> 跑的 14 条命令之一（<code>scripts/verify.mts</code>）。闸门只有通过和失败两种结果；建议性的输出叫 <b>finding</b>，不会让构建失败。</td></tr>
+</tbody></table></div>

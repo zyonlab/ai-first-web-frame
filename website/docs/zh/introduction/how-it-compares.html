@@ -1,0 +1,51 @@
+<p class="eyebrow">简介</p>
+<h1>与竞品对位</h1>
+<p class="lede">与解决重叠问题的项目逐条对位。竞品事实取自它们自己的仓库、文档站和 npm registry 元数据并注明调研日期；我方事实对着本仓库源码核过。</p>
+
+<h2 id="总表">总表</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>能力轴</th><th>最接近的项目</th><th>谁更强</th><th>为什么</th></tr></thead>
+<tbody>
+<tr><td>服务端页面组合</td><td>Podium（<code>@podium/layout</code>）</td><td>各有胜负</td><td>Podium 更成熟、经过生产检验；我们的调度器（DAG + 数据依赖 + 每槽位流式）它没有对应物。</td></tr>
+<tr><td>片段 HTTP 宿主</td><td><code>@podium/podlet</code></td><td><b>他们更强</b></td><td>同一职责。Podium 多了多语言 podlet 和多年生产年限。</td></tr>
+<tr><td>请求上下文传播</td><td><code>@podium/context</code></td><td>各有胜负</td><td>我们维度更多且过 Zod 校验；他们可以注册自定义 parser。我们用 <code>ctx.extensions</code> 达到同一目的。</td></tr>
+<tr><td>注册表与发布通道</td><td>OpenComponents</td><td>各有胜负</td><td>OC 是真正的注册表服务，能跨团队分发。我们只是一个 JSON 文件 —— 但带通道、晋级/回滚和原子写冲突重试。</td></tr>
+<tr><td>片段后端代理</td><td><code>@podium/proxy</code></td><td>持平</td><td>曾经是结构性缺失，现已实现（<code>/_fragment/&lt;fragment&gt;/&lt;target&gt;/*</code>）。</td></tr>
+<tr><td>客户端集成与版本协商</td><td>Module Federation 2.0</td><td><b>他们更强</b></td><td>MF 能协商并加载匹配版本。我们只能<em>检测</em>失配并拒绝水合。</td></tr>
+<tr><td>任务缓存 / affected</td><td>Nx、Turborepo</td><td><b>他们更强</b></td><td>Nx 自动推断项目图且有远程缓存。我们用 Turborepo 跑 <code>build</code>/<code>test</code>，外加一个手写的 affected 引擎。</td></tr>
+<tr><td>延迟服务端渲染</td><td>Astro Server Islands</td><td>各有胜负</td><td>Astro 零配置但 props 走 URL（2048 字节上限、超限转 POST 且不被缓存）。我们走 POST body 没有这个尴尬，代价是要自己跑一个服务。</td></tr>
+<tr><td>构建闸门 / 模块边界</td><td><code>@nx/enforce-module-boundaries</code>、size-limit、Lighthouse CI</td><td>各有胜负</td><td>我们的规则更贴业务（孤儿总线、裸 <code>fetch</code>、片段自建服务）；Nx 的 <code>tags</code>/<code>depConstraints</code> 表达力更强；LHCI 真的在测我们只声明却没测的 web vitals。</td></tr>
+<tr><td>agent 可操作性</td><td>—</td><td><b>我们更强</b></td><td>没有框架级竞品。Nx 和 Module Federation 都已加入 AI 文档章节，但都没把面向 agent 的契约做成 CI 闸门。</td></tr>
+</tbody></table></div>
+
+<h2 id="我们真正不一样的地方">我们真正不一样的地方</h2>
+
+<div class="cards three">
+  <div class="card t">
+    <h4>可执行文档就是闸门</h4>
+    <p><code>pnpm docs:test</code> 抽取每份 <code>AGENT.md</code> 的 TypeScript 代码块并<em>运行</em>它们。36 个文件、41 个可执行块。示例过期是构建失败，不是 issue。Podium、Nx、Module Federation、OpenComponents 都没有这一层。</p>
+  </div>
+  <div class="card i">
+    <h4>带 ACL 的契约化交互总线</h4>
+    <p>跨片段通信在 Podium 是<em>明确不管</em>的。这里每个频道声明一个发布者、一份显式订阅者名单和一份 Zod 载荷 schema，未声明的发布在运行时直接抛错。</p>
+  </div>
+  <div class="card r">
+    <h4>槽位调度是一张图</h4>
+    <p><code>dependsOn</code> 加 <code>dataDependencies</code> 产生拓扑分层、每槽位超时、失败向下游传播；流式模式下每个槽位一个 promise，自己那层一结束就 flush。Podium 的 layout 是「注册、取、拼」。</p>
+  </div>
+</div>
+
+<h2 id="诚实地说该用他们的场景">诚实地说，该用他们的场景</h2>
+<div class="note">
+<p>需要<strong>浏览器侧</strong>组合、客户端 bundle 独立发布，或运行时版本协商 → <b>Module Federation</b>。</p>
+<p>需要用 .NET / PHP / Java / Go 写片段，发布到被其他仓库消费的共享注册表服务 → <b>OpenComponents</b>。</p>
+<p>希望组合层足够无聊且久经考验，且不需要各块之间的依赖图 → <b>Podium</b>。</p>
+<p>希望 monorepo 的任务图、远程缓存和代码生成器是别人的问题 → <b>Nx</b>。</p>
+</div>
+
+<h2 id="调研出处">调研出处</h2>
+<p>竞品能力于 <b>2026-09-19</b> 从各项目自己的仓库、文档站与 npm registry 元数据核实（<code>@podium/layout</code> 5.4.8、<code>oc</code> 0.50.64、Module Federation 2.0 配置参考、Nx 的 run-tasks 与 enforce-module-boundaries、Astro Server Islands 指南）。竞品的<strong>文档目录结构</strong>于 <b>2026-09-20</b> 再次核实，来源为 <code>podium-lib/podium-lib.github.io/docs</code>、<code>module-federation/core/apps/website-new/docs/en</code> 与 <code>nrwl/nx/astro-docs/src/content/docs</code>；本套文档的结构正是取这三家的交集。</p>
+<p>两件没能核实、因此<strong>不作断言</strong>的事：Podium 是否有任何通道/金丝雀概念；OpenComponents 注册表是否支持发布通道。两者看起来都不存在，但「文档里搜不到」不等于「不存在」。</p>
+<div class="note warn">
+<p><b>值得知道的背景。</b>Zalando 的 Tailor —— 最接近的历史亲缘，也是我们「主片段决定状态码」这一设计（即页面健康）的来源 —— 已于 <b>2022-12-05 归档</b>，README 里没有推荐继任者。这条路有人走到过尽头。</p>
+</div>

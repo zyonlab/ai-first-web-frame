@@ -1,0 +1,72 @@
+<p class="eyebrow">指南</p>
+<h1>跨片段通信</h1>
+<p class="lede">独立部署的片段之间仍然要说话：在盘口点一个价格，得把下单表单填上。这件事在 Podium 是<em>明确不管</em>的；在这里它是一份契约。</p>
+
+<h2 id="契约">契约</h2>
+<p>每个频道声明<strong>一个</strong>发布者、一份显式订阅者名单和一份 Zod 载荷 schema：</p>
+<pre><code>// domains/trade-contracts/src/slices.ts
+export const tradeSliceContracts = [
+  {
+    channel: TRADE_ORDER_DRAFT_PRICE,      // "trade.order-draft.price"
+    publisher: "order-book",
+    subscribers: ["order-form"],
+    payloadSchema: orderDraftPriceSchema,
+  },
+  // …
+] as const;</code></pre>
+
+<p>交易 demo 声明了 7 个频道：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>频道</th><th>发布者</th><th>订阅者</th></tr></thead>
+<tbody>
+<tr><td><code>trade.active-symbol</code></td><td><code>symbol-switcher</code></td><td>chart-panel、order-book、trades-feed、order-form、market-header、positions-table、account-bar</td></tr>
+<tr><td><code>trade.order-draft.price</code></td><td><code>order-book</code></td><td>order-form</td></tr>
+<tr><td><code>trade.order-draft</code></td><td><code>order-form</code></td><td>order-form、order-preview</td></tr>
+<tr><td><code>trade.chart-interval</code></td><td><code>chart-panel</code></td><td>chart-panel</td></tr>
+<tr><td><code>trade.hovered-price</code></td><td><code>order-book</code></td><td>order-form、chart-panel</td></tr>
+<tr><td><code>trade.book-grouping</code></td><td><code>order-book</code></td><td>order-book</td></tr>
+<tr><td><code>trade.leverage</code></td><td><code>account-bar</code></td><td>account-bar、order-form</td></tr>
+</tbody></table></div>
+
+<div class="note warn">
+<p><b>发布者和订阅者 id 是逻辑组件 id，不是片段名。</b><code>symbol-switcher</code> 是页面使用的 owner 身份（<code>apps/page-trade/src/hydrate.tsx</code>），不是 <code>fragments/</code> 下的某个服务。这是这里最常见的接入错误。</p>
+<p><code>publisher</code> 是单数：一个频道恰好一个。如果两个组件都要发布同一个概念，那要么是两个频道，要么是一个共享的 owner 身份 —— 不是一个列表。</p>
+</div>
+
+<h2 id="使用总线">使用总线</h2>
+<pre><code>import { createInteractionBus, validateInteractionPayload } from "@mvp/interaction";
+
+const bus = createInteractionBus({ contracts: tradeSliceContracts });
+
+const off = bus.subscribe(TRADE_ORDER_DRAFT_PRICE, (payload) =&gt; setPrice(payload.price), {
+  owner: "order-form",
+});
+
+bus.publish(TRADE_ORDER_DRAFT_PRICE, { price: 64000 }, { owner: "order-book" });</code></pre>
+<p>未声明的发布、或来自非契约指定发布者的发布，在运行时抛 <code>InteractionContractError</code>。载荷按 <code>payloadSchema</code> 校验。</p>
+<p><code>createBroadcastBridge</code> 把总线经 <code>BroadcastChannel</code> 扩展到跨浏览器标签页。</p>
+
+<h2 id="mutation">Mutation</h2>
+<p>会打到后端的状态变更被显式建模，而不是当作「发了就不管」的事件：</p>
+<pre><code>import { defineMutation } from "@mvp/interaction";
+const placeOrder = defineMutation({ /* input/output schema + execute */ });</code></pre>
+<p>契约违规抛 <code>MutationContractError</code>。下单表单的流程展示了这个模式：在 <code>placeOrder.execute</code> 运行<strong>之前</strong>，先拿品种约束校验订单，所以一个非法订单永远到不了撮合引擎。</p>
+
+<h2 id="客户端-slice-store">客户端 slice store</h2>
+<pre><code>import { createSliceStore } from "@mvp/store";
+
+const store = createSliceStore&lt;TradeSlices&gt;(tradeStoreContracts, {
+  initial: structuredClone(initialTradeSlices),
+  owner: TRADE_STORE_OWNER,
+});
+
+store.get(TRADE_ACTIVE_SYMBOL);
+store.set(TRADE_ACTIVE_SYMBOL, { symbol: "ETH" });
+store.subscribe(TRADE_ACTIVE_SYMBOL, (payload) =&gt; { /* … */ });</code></pre>
+<p><code>useStoreSlice</code> 是 React 绑定。频道与 slice key 天然对齐：slice 名就是频道的主题尾段。</p>
+<p>store 是<strong>客户端机制</strong>，契约才是事实来源。同一份名单有两种形状正是因此 —— <code>tradeSliceContracts</code>（岛屿级、规范）与 <code>tradeStoreContracts</code>（为通用 store 的类型参数重排）。</p>
+
+<h2 id="没有被校验的东西">没有被校验的东西</h2>
+<div class="note bad">
+<p>没有任何机制校验「声明的发布者/订阅者 id 是否对应一个真实存在的组件」。<code>order-preview</code> 作为订阅者出现，而它在仓库里<strong>别处都不存在</strong>（<a href="../known-limitations.html#f13">F13</a>）。</p>
+</div>

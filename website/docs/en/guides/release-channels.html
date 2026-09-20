@@ -1,5 +1,9 @@
 <h1 id="release-channels">Release channels</h1>
 <p><code>stable</code> | <code>canary</code> | <code>preview</code>. A slot names a channel; the registry resolves it to a version and a <code>serviceUrl</code> <strong>per request</strong>, so going live with a new fragment build needs no page rebuild.</p>
+<figure class="figure">
+<!--@figure:release-channels-->
+<figcaption><b>Step three is the point of <code>/health</code> reporting the manifest version.</b> A rollout can confirm which build is answering <em>before</em> promoting the channel production reads.</figcaption>
+</figure>
 <h2 id="the-registry-file">The registry file</h2>
 <p><code>registry/registry.data.json</code>, validated on load by <code>FragmentRegistrySchema</code>:</p>
 <pre><code class="lang-json">{

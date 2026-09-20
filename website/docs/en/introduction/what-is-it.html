@@ -4,6 +4,10 @@
 <p>A large product page is usually owned by several teams, but shipped as one artifact. Any change means rebuilding and redeploying the whole page, and one slow or broken section takes the page with it.</p>
 <p>The alternative — browser-side micro-frontends — moves the composition into the client and pays for it in JavaScript and in first paint. That trade is wrong for a page that must be indexable and fast on first load.</p>
 <p>This framework composes on the <strong>server</strong>. Each section is an HTTP service that answers <code>POST /render</code> with HTML; the page fetches them in parallel, streams them as they settle, and substitutes a declared fallback for any that fails.</p>
+<figure class="figure">
+<!--@figure:request-lifecycle-->
+<figcaption><b>One request, end to end.</b> Note the last step: the gateway turns a failed required slot into <code>503</code> while <em>returning the body unchanged</em> — a human still sees the degraded page and a monitor still sees a failure.</figcaption>
+</figure>
 <h2 id="the-three-claims">The three claims</h2>
 <p><strong>1. A fragment is the minimum deployable unit — and that is executable.</strong></p>
 <p><code>pnpm verify:unit --name &lt;fragment&gt;</code> builds only that unit's dependency closure, boots the built artifact, and asserts that <code>/health</code>, <code>/ready</code> and <code>/manifest</code> all report the same manifest version, and that <code>POST /render</code> output carries it. Each fragment has its own Dockerfile. Going live with a new version needs no page rebuild: pages resolve <code>serviceUrl</code> and version from <code>registry/registry.data.json</code> per request.</p>

@@ -3,6 +3,10 @@
 <pre><code>apps/ + fragments/     layer:product    may depend on anything
 domains/               layer:domain     may depend on domain + framework
 packages/              layer:framework  may depend only on framework</code></pre>
+<figure class="figure">
+<!--@figure:layers-->
+<figcaption><b>The rule is declarative, so it can be changed — but only deliberately.</b> Adding a tag to escape a constraint and fixing the import direction look completely different in a diff. That is the point.</figcaption>
+</figure>
 <h2 id="the-rule-is-declarative">The rule is declarative</h2>
 <p><code>dependency-audit.json</code>:</p>
 <pre><code class="lang-json">{

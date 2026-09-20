@@ -1,0 +1,53 @@
+<p class="eyebrow">参考</p>
+<h1>环境变量</h1>
+<p class="lede">下表每一个都追溯到了真正读取它的代码。<code>turbo.json</code> 里声明了但无人读取的变量列在最后，而不是被悄悄省略。</p>
+
+<h2 id="运行时">运行时</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>变量</th><th>被谁读</th><th>作用</th></tr></thead>
+<tbody>
+<tr><td><code>PORT</code></td><td>网关、<code>@mvp/fragment-host</code></td><td>覆盖监听端口</td></tr>
+<tr><td><code>PUBLIC_SITE_ORIGIN</code></td><td>网关</td><td><code>robots.txt</code>、<code>sitemap.xml</code> 和 SEO 元数据使用的规范源站</td></tr>
+<tr><td><code>TRACE_SAMPLE_RATE</code></td><td>网关、片段宿主</td><td>trace 采样率</td></tr>
+<tr><td><code>MVP_DIAGNOSTICS</code></td><td><code>packages/runtime/src/seo.ts</code></td><td><code>on</code> 在生产环境启用诊断渲染</td></tr>
+<tr><td><code>SHELL_PAGE_TIMEOUT_MS</code></td><td>网关</td><td>上游页面拉取超时</td></tr>
+<tr><td><code>SHELL_ASSET_TIMEOUT_MS</code></td><td>网关</td><td>资源透传超时</td></tr>
+<tr><td><code>SHELL_FRAGMENT_PROXY_TIMEOUT_MS</code></td><td>网关</td><td><code>/_fragment/*</code> 代理超时</td></tr>
+<tr><td><code>SHELL_REQUIRED_FAILURE_STATUS</code></td><td>网关</td><td>必需槽位失败时的状态码；<code>0</code> 保留上游状态码</td></tr>
+<tr><td><code>RECENTLY_VIEWED_COOKIE_SECRET</code></td><td><code>apps/page-product/src/recentlyViewed.ts</code></td><td>为最近浏览 cookie 签名</td></tr>
+</tbody></table></div>
+
+<h2 id="片段指向">片段指向</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>模式</th><th>作用</th></tr></thead>
+<tbody>
+<tr><td><code>&lt;FRAGMENT_NAME&gt;_URL</code></td><td>在注册表加载时覆盖该片段的 <code>serviceUrl</code> 和 <code>manifestUrl</code></td></tr>
+</tbody></table></div>
+<p>名字按 <code>fragmentEnvVarName</code> 转换：转大写并把非字母数字字符换成下划线 —— <code>order-book</code> → <code>ORDER_BOOK_URL</code>，<code>price-panel</code> → <code>PRICE_PANEL_URL</code>。</p>
+<p>值必须能解析为 URL —— 由 <code>FragmentRegistryEntrySchema.shape.serviceUrl</code> 校验，取值错误时在加载期就抛错并<strong>点名是哪个变量</strong>，而不是等到 fetch 时才莫名失败。</p>
+<p>它<strong>不</strong>覆盖 <code>assetsUrl</code> —— <a href="../known-limitations.html#f2">F2</a>。</p>
+
+<h2 id="工具与-ci">工具与 CI</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>变量</th><th>被谁读</th><th>作用</th></tr></thead>
+<tbody>
+<tr><td><code>NODE_ENV</code></td><td><code>apps/page-trade/tsdown.vendor.config.ts</code></td><td>vendor bundle 模式</td></tr>
+<tr><td><code>E2E_STRICT</code></td><td><code>e2e/support/expect-fragment-content.ts</code></td><td>要求真实片段内容，而不接受降级内容</td></tr>
+<tr><td><code>DOCS_TEST_DEBUG</code></td><td><code>scripts/docs-test.mts</code></td><td>详细输出</td></tr>
+<tr><td><code>DOCS_TEST_KEEP_TMP</code></td><td><code>scripts/docs-test.mts</code></td><td>保留临时目录以便检查</td></tr>
+<tr><td><code>SHELL_URL</code></td><td><code>scripts/deploy-affected.mts</code></td><td>affected 部署计划的目标</td></tr>
+<tr><td><code>CI</code></td><td>多处</td><td>CI 模式行为</td></tr>
+</tbody></table></div>
+
+<h2 id="turborepo-的分类">Turborepo 的分类</h2>
+<p><code>turbo.json</code> 刻意把它们分成两类，而 Biome 的 <code>noUndeclaredEnvVars</code> 会强制「代码读到的变量必须被声明」：</p>
+<ul>
+<li><b><code>globalEnv</code></b> —— 会改变<em>任务行为</em>的值，因此必须进缓存键：<code>NODE_ENV</code>、<code>CI</code>、<code>MVP_DIAGNOSTICS</code>、<code>PUBLIC_SITE_ORIGIN</code>、<code>TRACE_SAMPLE_RATE</code>、四个 <code>SHELL_*</code>、<code>E2E_STRICT</code>、<code>DOCS_TEST_DEBUG</code>、<code>DOCS_TEST_KEEP_TMP</code>。</li>
+<li><b><code>globalPassThroughEnv</code></b> —— 只用于寻址外部环境的值，因此<strong>绝不</strong>能进缓存键：<code>SHELL_URL</code>、<code>PAGE_*_URL</code>、<code>*_URL</code>、<code>RECENTLY_VIEWED_COOKIE_SECRET</code>。</li>
+</ul>
+<div class="note warn">
+<p>这个分类<strong>是正确性问题，不是风格问题</strong>：把密钥放进 <code>globalEnv</code>，会让密钥轮换时缓存键跟着变；把行为开关放进 <code>globalPassThroughEnv</code>，则会让缓存返回一个过期的「通过」。</p>
+</div>
+
+<h2 id="曾经声明但无人读取">曾经声明但无人读取</h2>
+<p><code>REGISTRY_URL</code>、<code>REGISTRY_USERNAME</code>、<code>REGISTRY_PASSWORD</code> 曾出现在 <code>globalPassThroughEnv</code> 里，而仓库里<strong>零处读取</strong>。它们暗示了一个并不存在的带鉴权的远程注册表集成，现已删除（<a href="../known-limitations.html#f3">F3</a>）。</p>

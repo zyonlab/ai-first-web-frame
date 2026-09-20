@@ -1,0 +1,60 @@
+<p class="eyebrow">指南</p>
+<h1>槽位调度</h1>
+<p class="lede">这是 Podium 没有对应物的部分：槽位和数据依赖构成<strong>同一张有向图</strong>，按拓扑分层执行。</p>
+
+<figure class="figure">
+<!--@figure:slot-dag-->
+<figcaption><b>失败是局部的，而且「跳过」和「尝试过但失败」是两回事。</b>某个节点失败后，它下游的一切<em>根本不会被尝试</em>，状态是 <code>skipped-dependency</code> —— 这个区分让你能一眼看出故障源头在哪。</figcaption>
+</figure>
+
+<h2 id="两种边">两种边</h2>
+<div class="cards two">
+  <div class="card i">
+    <h4><code>dependsOn</code> — 槽位到槽位</h4>
+    <p>「在 <code>accountBar</code> 之后渲染 <code>orderForm</code>」。当一个槽位的渲染<em>确实</em>需要另一个的结果时才用。</p>
+  </div>
+  <div class="card t">
+    <h4><code>dataDependencies</code> — 槽位到数据</h4>
+    <p>指名页面数据源注册表里必须先解析完的条目。两个槽位指同一个 id 时共享一次解析。</p>
+  </div>
+</div>
+<div class="note bad">
+<p>两者都喂给同一个计划器。但<strong>都不是关于可缓存性的陈述</strong> —— 一个没有 <code>dependsOn</code> 的槽位并不因此就是静态的，这正是<a href="../known-limitations.html#f1">建议性优化器目前犯的错</a>。</p>
+</div>
+
+<h2 id="不执行也能检视计划">不执行也能检视计划</h2>
+<pre><code>import { createSlotDataExecutionPlan } from "@mvp/runtime";
+
+const plan = createSlotDataExecutionPlan({ slots, dataDependencies });
+// plan.levels : ScheduledNode[][]  — 每层并行
+// plan.hints  : SchedulerHint[]</code></pre>
+<p>在测试或 lint 规则里很有用：在 manifest 出货之前断言计划是你想要的形状。</p>
+
+<h2 id="提示">提示</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>种类</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td><code>long-serial-chain</code></td><td>图里有一条很深的路径，会主导延迟</td></tr>
+<tr><td><code>unnecessary-barrier</code></td><td>有东西造成了声明的边并不要求的等待</td></tr>
+<tr><td><code>duplicate-data-resolution</code></td><td>同一个数据 id 被解析了不止一次</td></tr>
+</tbody></table></div>
+<p>提示是建议性的：它们出现在 <code>execution.hints</code> 和优化器报告里，<strong>不会</strong>让构建失败。</p>
+
+<h2 id="执行语义">执行语义</h2>
+<ol>
+<li>每层并行执行；第 <i>n+1</i> 层在第 <i>n</i> 层全部落定后开始。</li>
+<li>每个槽位有自己的超时 —— <code>slot.timeoutMs</code> 或页面默认值。超时后该槽位变成它声明的降级内容，页面其余部分不受影响。</li>
+<li>某节点失败时，它下游的一切<strong>不会被尝试</strong>，报告 <code>status: "skipped-dependency"</code>，与「尝试过并失败」区分开。</li>
+<li><code>execution.health</code> 汇总：任一<strong>必需</strong>槽位失败 ⇒ <code>unhealthy</code>；其他失败 ⇒ <code>degraded</code>；否则 <code>ok</code>。</li>
+</ol>
+<p>失败永远是局部的。不存在某个槽位的异常中断整个响应的路径。</p>
+
+<h2 id="流式">流式</h2>
+<pre><code>const { slots, result } = streamFragmentSlots(options);
+// slots.&lt;name&gt; : Promise&lt;FragmentRenderResponse&gt;  — 它自己那层落定就 resolve
+// result       : Promise&lt;FragmentSlotsExecution&gt;  — 全部落定才 resolve</code></pre>
+<p>每个按槽位的 promise 都会 <strong>resolve，永不 reject</strong>。失败或被跳过的槽位 resolve 成与屏障 API 相同的降级响应，所以 <code>&lt;Suspense&gt;</code> 边界永远不需要 try/catch。</p>
+<p>这正是页面可以先 flush 外壳和快槽位、而不必为最慢的那个槽位扣住整个响应的原因。</p>
+
+<h2 id="超时">超时</h2>
+<p><code>withTimeout(promise, ms, onTimeout?)</code> 是底层原语。它刻意<strong>不</strong>建立在 <code>AbortSignal.timeout</code> 之上 —— 后者在某些测试 DOM 环境里不存在，这也是网关的超时辅助函数以 <code>createUpstreamTimeout()</code> 形式单独存在的原因。</p>

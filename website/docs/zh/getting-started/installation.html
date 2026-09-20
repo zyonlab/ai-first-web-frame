@@ -1,0 +1,39 @@
+<p class="eyebrow">上手</p>
+<h1>安装</h1>
+<p class="lede">没有 bootstrap 步骤。冷克隆之后可以直接 <code>pnpm test</code>。</p>
+
+<h2 id="环境要求">环境要求</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>工具</th><th>版本</th><th>为什么</th></tr></thead>
+<tbody>
+<tr><td>Node.js</td><td>20+</td><td><code>@types/node</code> 锁在 20.x；服务本身是纯 Node</td></tr>
+<tr><td>pnpm</td><td>10.13+</td><td>workspace 协议和仓库里的 lockfile 格式</td></tr>
+<tr><td>Docker</td><td>可选</td><td>每个片段一个镜像；<code>infra/docker/docker-compose.yml</code> 可跑全部 22 个</td></tr>
+</tbody></table></div>
+
+<div class="note warn">
+<p><b>只用 pnpm。</b><code>npm</code> 和 <code>yarn</code> 会生成这个工作区不使用的 lockfile。工具一律通过 <code>pnpm exec &lt;tool&gt;</code> 或 <code>pnpm --filter &lt;pkg&gt; &lt;script&gt;</code> 调用。</p>
+</div>
+
+<h2 id="安装">安装</h2>
+<pre><code>pnpm install</code></pre>
+<p>就这一步。<code>pnpm test</code>、<code>pnpm verify:manifest-gen</code> 和 <code>pnpm docs:test</code> 都会先跑 <code>scripts/ensure-workspace-build.mts</code>，它委托给 Turborepo，在需要的 <code>dist/</code> 缺失或过期时构建 <code>packages/</code> + <code>domains/</code>。</p>
+
+<h2 id="验证这份检出">验证这份检出</h2>
+<pre><code>pnpm verify</code></pre>
+<p>14 道闸门，全过则 exit 0，每次运行重写 <code>reports/</code>。Turborepo 缓存热的时候大约半分钟；冷启动几分钟，主要花在 <code>build</code> 上。</p>
+<p>某道闸门失败时，<a href="../troubleshooting/gates.html">排错 · 闸门</a>把每道闸门对应到它写出的报告。</p>
+
+<h2 id="可选浏览器测试套件">可选：浏览器测试套件</h2>
+<p>Playwright 用例<strong>不</strong>属于 <code>pnpm verify</code>，而且它<strong>不会</strong>启动任何服务。</p>
+<pre><code>pnpm exec playwright install chromium   # 一次性，约 94 MB
+pnpm dev                                 # 另开一个终端：全部 22 个服务
+pnpm e2e</code></pre>
+<p>没装浏览器二进制时，纯 API 的用例照常通过，所有浏览器用例都以 <code>Executable doesn't exist</code> 失败 —— 那是少了一个下载，不是产品有问题。</p>
+
+<div class="note bad">
+<p><b>一个值得知道的坑。</b>如果 <code>pnpm build</code> 在 <code>pnpm dev</code> 正在服务时运行，dev server 读的 <code>.next</code> 目录正被构建覆盖，套件会报出毫无意义的结果。在构建前后拿到的 e2e 结果，先重启栈再信。</p>
+</div>
+
+<h2 id="react-与-next-版本">React 与 Next 版本</h2>
+<p>React <b>19.3</b> 配 Next <b>15.3</b>。全仓库<strong>只允许一个声明区间</strong> —— 同一包名出现 peer/dependency 区间分裂会被 <code>audit:deps</code> 判失败。</p>

@@ -1,5 +1,9 @@
 <h1 id="fallbacks-and-page-health">Fallbacks and page health</h1>
 <p>Partial degradation is a designed feature. The question this guide answers is: <em>when does degradation change the HTTP status code?</em></p>
+<figure class="figure">
+<!--@figure:health-decision-->
+<figcaption><b>Only one path changes the status code.</b> The <code>503</code> branch still returns the page body unchanged — the two are not a trade-off.</figcaption>
+</figure>
 <h2 id="three-levels">Three levels</h2>
 <div class="table-wrap"><table><thead><tr><th>Level</th><th>What it is</th></tr></thead><tbody><tr><td>Slot fallback</td><td>one slot renders its declared <code>manifest.fallback</code> HTML</td></tr><tr><td><code>degraded</code></td><td>at least one <strong>optional</strong> slot fell back — page still answers <code>200</code></td></tr><tr><td><code>unhealthy</code></td><td>at least one <strong>required</strong> slot fell back — gateway answers <code>503</code></td></tr></tbody></table></div>
 <p><code>required: true</code> on a slot is what promotes a failure from cosmetic to fatal. This is Tailor's <code>primary</code> semantic: a page whose main content is dead should not answer <code>200</code>, because crawlers will index the degraded markup as real content and success-rate monitoring will see nothing wrong.</p>

@@ -1,0 +1,54 @@
+<p class="eyebrow">指南</p>
+<h1>发布通道</h1>
+<p class="lede"><code>stable</code> | <code>canary</code> | <code>preview</code>。槽位指定通道，注册表<strong>在每次请求时</strong>把它解析成版本和 <code>serviceUrl</code> —— 所以上线一个新的片段构建不需要重建页面。</p>
+
+<figure class="figure">
+<!--@figure:release-channels-->
+<figcaption><b>第三步是 <code>/health</code> 报告 manifest 版本的意义所在。</b>一次发布可以在晋级生产读取的那个通道<em>之前</em>，先确认是哪个构建在应答。</figcaption>
+</figure>
+
+<h2 id="注册表文件">注册表文件</h2>
+<p><code>registry/registry.data.json</code>，加载时由 <code>FragmentRegistrySchema</code> 校验：</p>
+<pre><code>{
+  "fragments": {
+    "promotion-banner": {
+      "stable":  { "version": "0.1.0", "serviceUrl": "http://localhost:4201",
+                   "manifestUrl": "http://localhost:4201/manifest" },
+      "canary":  { "version": "0.2.0-beta.1", "serviceUrl": "http://localhost:4201", "…": "…" },
+      "versions": { "0.1.0": { "…": "…" } }
+    }
+  }
+}</code></pre>
+<p><code>versions</code> 是让回滚成为可能的历史。<code>registry/releases.json</code> 是只追加的晋级日志。</p>
+<div class="note warn">
+<p><b>不要手编辑这两个文件。</b>用 CLI —— 它们以原子方式写入、带咨询锁和乐观内容哈希校验，遇到并发改动时打印 <code>{"status":"conflict","retry":true}</code> 而不是覆盖掉别人的改动。</p>
+</div>
+
+<h2 id="一次发布">一次发布</h2>
+<pre><code># 1. 部署镜像（你的平台的事）
+# 2. 把 canary 指向新版本
+pnpm exec tsx scripts/register-fragment.mts --name order-book --version 0.2.0 \
+  --service-url http://order-book.internal --channel canary
+# 3. 确认是哪个构建在应答
+curl -s http://order-book.internal/health   # {"status":"ok","version":"0.2.0",…}
+# 4. 晋级
+pnpm exec tsx scripts/promote-fragment.mts --name order-book
+# 5. 不对就退回去
+pnpm exec tsx scripts/rollback-fragment.mts --name order-book</code></pre>
+
+<h2 id="不写注册表也能改指向">不写注册表也能改指向</h2>
+<p><code>&lt;FRAGMENT_NAME&gt;_URL</code> 在运行时覆盖目标 —— <code>ORDER_BOOK_URL</code>、<code>PRICE_PANEL_URL</code>（<code>fragmentEnvVarName</code> 会转大写并替换非字母数字字符）。值必须能解析为 URL，否则注册表加载时就抛错并点名出错的变量，而不是等到 fetch 时才失败。</p>
+<p>它改写 <code>serviceUrl</code> 和 <code>manifestUrl</code>，但<strong>不</strong>改写 <code>assetsUrl</code> —— <a href="../known-limitations.html#f2">F2</a>。</p>
+
+<h2 id="解析">解析</h2>
+<pre><code>import { resolveFragment } from "@mvp/runtime";
+resolveFragment(registry, "order-book", "canary");   // 按通道
+resolveFragment(registry, "order-book", "0.1.0");    // 按确切版本
+// -&gt; { version, serviceUrl, manifestUrl } | null</code></pre>
+<p><code>null</code> 表示该通道上没有注册。指向片段所没有的通道的槽位会<strong>静默地</strong>解析成它的降级内容 —— 没有任何构建期检查保证每个槽位的通道在注册表里存在。</p>
+
+<h2 id="demo-的真实状态">demo 的真实状态</h2>
+<div class="note bad">
+<p>在把这套生命周期当真之前值得知道：<strong>14 个片段里有 12 个只有 <code>canary</code> 条目。</strong>只有 <code>promotion-banner</code>（stable + canary）和 <code>recommendation-widget</code>（stable）带 <code>stable</code>，而 <code>page-trade</code>、<code>page-markets</code>、<code>page-portfolio</code> 的每一个槽位挂的都是 <code>channel: "canary"</code>。晋级路径只在 2 个单元上被操练过（<a href="../known-limitations.html#f6">F6</a>）。</p>
+<p><code>recommendation-widget</code> 另外还没有 <code>versions</code> 历史，所以 <code>rollback-fragment</code> 会因为没有记录目标而正确地拒绝它。</p>
+</div>

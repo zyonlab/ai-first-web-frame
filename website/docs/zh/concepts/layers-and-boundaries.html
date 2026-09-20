@@ -1,0 +1,60 @@
+<p class="eyebrow">概念</p>
+<h1>分层与边界</h1>
+<p class="lede">三层，一个方向，由配置强制而不是由 code review 强制。</p>
+
+<figure class="figure">
+<!--@figure:layers-->
+<figcaption><b>规则是声明式的，所以它可以被改，但必须被<em>故意</em>地改。</b>往 tag 里加一条来绕开约束，和修正 import 方向，在 diff 里看起来完全不同 —— 这就是重点。</figcaption>
+</figure>
+
+<h2 id="规则是声明式的">规则是声明式的</h2>
+<pre><code>{
+  "tags": {
+    "packages/*":  ["layer:framework"],
+    "domains/*":   ["layer:domain"],
+    "apps/*":      ["layer:product"],
+    "fragments/*": ["layer:product"]
+  },
+  "depConstraints": [
+    { "sourceTag": "layer:framework", "onlyDependOnLibsWithTags": ["layer:framework"] },
+    { "sourceTag": "layer:domain",    "onlyDependOnLibsWithTags": ["layer:domain", "layer:framework"] },
+    { "sourceTag": "layer:product",   "onlyDependOnLibsWithTags": ["*"] }
+  ]
+}</code></pre>
+<p>仿 <code>@nx/enforce-module-boundaries</code>。违规是 <code>audit:deps</code> 的 <code>layer-constraint-violation</code>。<strong>修正 import，或者故意地修改约束 —— 但不要加个 tag 来躲开它。</strong></p>
+
+<h2 id="为什么框架层不能-import-domain">为什么框架层不能 import domain</h2>
+<p><code>@mvp/contracts</code> 属于框架层。如果业务词汇可以落进去，那么「给请求上下文加一个 A/B 分桶」就意味着修改一个框架包 —— 而每个消费方都会继承你这个产品的名词。</p>
+<p>这个压力是真实存在的，所以这里有一个<em>设计好的逃生口</em>，而不是一条被人悄悄违反的规则：<code>ctx.extensions</code>（经校验的字符串 record，以 <code>x-mvp-ctx-&lt;name&gt;</code> 传播）可以容纳这个维度，而不必加宽 schema。<code>domain-code-in-framework-package</code> 是抓另一条路径的审计规则。</p>
+
+<h2 id="同级隔离">同级隔离</h2>
+<p>还有两条规则挡住 monorepo 天然诱发的横向泄漏：</p>
+<ul>
+<li><code>page-importing-another-page</code> / <code>cross-page-import</code> —— 页面应用是独立的可部署物，一个 import 另一个的内部实现，会悄悄把两条发布节奏绑在一起。</li>
+<li><code>fragment-importing-page-code</code> —— 伸手去够页面的片段已经不再可独立部署，无论 manifest 怎么写。</li>
+</ul>
+
+<h2 id="服务端客户端">服务端 / 客户端</h2>
+<p>另一个审计（<code>audit:boundary</code>）覆盖分层规则看不见的那个方向：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>规则码</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td><code>server-imports-client-module</code></td><td>服务端文件拉进了一个 <code>"use client"</code> 模块</td></tr>
+<tr><td><code>server-browser-global</code></td><td>服务端文件碰了 <code>document</code> / <code>window</code> / <code>localStorage</code></td></tr>
+<tr><td><code>page-use-client</code></td><td>页面组件被标了 <code>"use client"</code> 但其实不必</td></tr>
+<tr><td><code>large-client-component</code></td><td>建议性（<code>warn</code>）的客户端组件体积参考线</td></tr>
+</tbody></table></div>
+<p><code>audit:deps</code> 另加一条 <code>server-safe-browser-global</code>：<code>packages/*</code> 里的文件在没有 <code>"use client"</code> 的情况下碰浏览器全局对象即失败。这正是 <code>@mvp/runtime/live</code>（本质上只跑在浏览器里）要做成一个带 <code>"use client"</code> 的<strong>独立导出子路径</strong>、而不是硬塞进主入口的原因。</p>
+
+<h2 id="片段之间怎么共享代码">片段之间怎么共享代码</h2>
+<p>片段通过发布<strong>导出子路径</strong>共享代码，而不是去 import 同级片段：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>子路径</th><th>用途</th><th>例子</th></tr></thead>
+<tbody>
+<tr><td><code>./patch</code></td><td>纯粹的「帧 → 补丁」逻辑，不碰 DOM</td><td><code>@mvp/fragment-order-book/patch</code></td></tr>
+<tr><td><code>./live</code></td><td>浏览器实时面板</td><td><code>@mvp/fragment-order-book/live</code></td></tr>
+<tr><td><code>./island</code></td><td>React 岛屿组件</td><td><code>@mvp/fragment-order-form/island</code></td></tr>
+<tr><td><code>./manifest</code></td><td>给需要它的消费方的 manifest</td><td><code>@mvp/fragment-market-header/manifest</code></td></tr>
+<tr><td><code>./render</code></td><td>渲染函数，供组合测试使用</td><td><code>@mvp/fragment-order-form/render</code></td></tr>
+</tbody></table></div>
+<p>纯逻辑放 <code>./patch</code>、DOM 放 <code>./live</code>、React 放 <code>./island</code> —— 这个切分正是让片段的 JS 预算保持诚实的原因，因为页面可以只拉纯粹的那一半而不把 React 拖进来。</p>

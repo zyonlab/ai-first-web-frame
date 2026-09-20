@@ -1,5 +1,9 @@
 <h1 id="islands-and-hydration">Islands and hydration</h1>
 <p>A fragment ships SSR HTML plus an inline JSON snapshot. The page hydrates a React island over that markup — but only if a version handshake passes.</p>
+<figure class="figure">
+<!--@figure:hydration-handshake-->
+<figcaption><b>For a mismatch, skipping IS the success case.</b> The page keeps working: server-rendered, readable, indexable, just not interactive there. What must never happen is mounting a component against props it does not understand.</figcaption>
+</figure>
 <h2 id="the-markup-contract">The markup contract</h2>
 <pre><code class="lang-html">&lt;div data-island="orderForm"&gt;
   &lt;script type="application/json" data-island-props="orderForm"&gt;

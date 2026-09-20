@@ -1,0 +1,65 @@
+<p class="eyebrow">指南</p>
+<h1>开发片段</h1>
+<p class="lede">一个片段就是一个只干一件事的 Fastify 服务：给定 <code>{props, ctx}</code>，用 HTML 回答 <code>POST /render</code>。</p>
+
+<h2 id="目录结构">目录结构</h2>
+<pre><code>fragments/&lt;name&gt;/
+  src/server.ts        @mvp/fragment-host 上约 20 行的适配器 —— 不要手写
+  src/render.ts        渲染函数：{props, ctx} -> {html, assets, cache, metadata}
+  src/manifest.ts      name/version/owner/renderMode/fallback/assets/budget/proxy/
+                       dataDependencies/subscriptions
+  src/budget.ts        本单元的性能预算
+  src/data.ts          数据访问，经 @mvp/data / @mvp/request（绝不裸 fetch）
+  src/styles.ts        随标记内联输出的作用域样式表
+  src/island.tsx       可选的 React 岛屿
+  src/live.ts          可选的非 React 实时面板
+  tests/, Dockerfile, package.json, tsconfig.json, README.md, AGENT.md</code></pre>
+
+<h2 id="http-面由宿主拥有">HTTP 面由宿主拥有</h2>
+<p><code>@mvp/fragment-host</code> 的 <code>createFragmentServer</code> 提供全部 8 个端点、Prometheus 指标和 trace 导出。你的 <code>server.ts</code> 只提供身份和渲染函数：</p>
+<pre><code>import { createFragmentServer } from "@mvp/fragment-host";
+import { orderBookManifest } from "./manifest";
+import { orderBookBudget } from "./budget";
+import { renderOrderBook } from "./render";
+
+export const SERVICE_NAME = "order-book";
+
+export function buildServer(options = {}) {
+  return createFragmentServer({
+    serviceName: SERVICE_NAME,
+    port: 4204,
+    manifest: orderBookManifest,
+    budget: orderBookBudget,
+    render: renderOrderBook,
+    ...options,
+  });
+}</code></pre>
+<div class="note warn">
+<p>这是被<strong>强制</strong>的，不只是建议：自建 Fastify 实例的片段会被 <code>audit:deps</code> 的 <code>fragment-server-not-hosted</code> 规则判失败。</p>
+</div>
+<p><code>render</code> 收 <code>(request, { trace, now })</code>。如果输出里含时间，请从 <code>now</code> 取而不是 <code>Date.now()</code> —— 这是让渲染输出可测的原因，也是 <code>market-header</code> 的倒计时在测试下确定的原因。</p>
+
+<h2 id="降级是声明的不是临场发挥的">降级是声明的，不是临场发挥的</h2>
+<p><code>manifest.fallback</code> 是一段 HTML 字符串，在你的服务慢、报错或被跳过时由组合层替换上去。保持自描述，并带上同样的 <code>data-fragment="&lt;name&gt;"</code> 根节点加 <code>data-fallback="true"</code>：</p>
+<pre><code>fallback: '&lt;section data-fragment="order-book" data-fallback="true"&gt;Order book unavailable&lt;/section&gt;',</code></pre>
+<p><code>data-fallback</code> 属性在运行时是有意义的，不只是视觉上的：实时面板驱动会跳过带此属性的节点，所以一个已降级的槽位不会被订阅「复活」。</p>
+
+<h2 id="数据访问">数据访问</h2>
+<p>业务代码里<strong>不允许裸 <code>fetch(...)</code></strong> —— <code>audit:deps</code> 的 <code>raw-fetch-in-business-code</code> 会判失败。用 <code>@mvp/request</code>（带超时和类型化错误的契约化 HTTP：<code>RequestContractError</code>、<code>RequestPolicyError</code>、<code>RequestTimeoutError</code>）或 <code>@mvp/data</code>（带缓存适配器、新鲜度校验和订阅的数据源注册表）。</p>
+<p>另有一条 <code>fetch-without-timeout</code>，抓那种完全没有中止路径的 <code>fetch</code>。</p>
+
+<h2 id="声明你需要什么">声明你需要什么</h2>
+<p>两个独立字段，区别很重要：</p>
+<pre><code>// SSR 时读一次
+dataDependencies: ["book.l2.&lt;symbol&gt;"],
+// 浏览器面板持续开着
+subscriptions: ["book.l2.&lt;symbol&gt;"],</code></pre>
+<p><code>order-form</code> 展示了这种不对称：它在 render 时读 <code>account</code>，却不订阅任何东西。</p>
+
+<h2 id="样式">样式</h2>
+<p>CSS 随标记以 <code>&lt;style data-fragment-style="&lt;name&gt;"&gt;</code> 内联输出，源在 <code>src/styles.ts</code>。<code>audit:css</code> 测量总字节、无用字节、重复规则、全局选择器和 <code>!important</code> 数量，并强制每个片段的 <code>cssBytes</code> 上限。源码中从未被引用的类名算作无用字节 —— 这就是为什么那些只在浏览器补丁代码里加类的片段要导出 <code>*_CLASSES</code> 常量，让引用可见。</p>
+
+<h2 id="出货前清单">出货前清单</h2>
+<pre><code>pnpm --filter @mvp/fragment-&lt;name&gt; test
+pnpm verify:unit --name &lt;name&gt;     # 构建闭包、启动、检查版本一致
+pnpm verify                        # 全部 14 道闸门</code></pre>

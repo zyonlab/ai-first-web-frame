@@ -1,0 +1,45 @@
+<p class="eyebrow">指南</p>
+<h1>降级与页面健康</h1>
+<p class="lede">局部降级是<strong>设计出来的特性</strong>。这一篇回答的问题是：降级在什么时候会改变 HTTP 状态码？</p>
+
+<figure class="figure">
+<!--@figure:health-decision-->
+<figcaption><b>只有一条路径会改变状态码。</b>注意 <code>503</code> 那一支仍然<em>原样返回页面主体</em> —— 人还能看到降级后的页面，监控也能看到失败。这两件事不必二选一。</figcaption>
+</figure>
+
+<h2 id="三个层级">三个层级</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>层级</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td>槽位降级</td><td>某个槽位渲染它在 <code>manifest.fallback</code> 里声明的 HTML</td></tr>
+<tr><td><code>degraded</code></td><td>至少一个<b>可选</b>槽位降级了 —— 页面仍返回 <code>200</code></td></tr>
+<tr><td><code>unhealthy</code></td><td>至少一个<b>必需</b>槽位降级了 —— 网关返回 <code>503</code></td></tr>
+</tbody></table></div>
+<p>槽位上的 <code>required: true</code> 是把失败从「影响观感」升格为「致命」的开关。这就是 Tailor 的 <code>primary</code> 语义：一个主内容已死的页面不该回 <code>200</code>，否则爬虫会把降级标记当成真实内容收录，成功率监控也什么都看不到。</p>
+
+<h2 id="状态码到底是怎么被设置的">状态码到底是怎么被设置的</h2>
+<p>Next.js App Router 的 <code>page.tsx</code> <strong>无法</strong>设置响应状态或头 —— 只有 middleware 和 route handler 可以。但网关本来就把上游主体当文本读。所以页面<strong>把健康状况盖进标记里</strong>，由网关翻译：</p>
+<pre><code>import { PageHealthMeta } from "@mvp/runtime/react";
+
+&lt;PageHealthMeta health={execution.health} failed={failedRequiredSlotNames(execution)} /&gt;</code></pre>
+<p>输出：</p>
+<pre><code>&lt;div hidden data-mvp-page-health="unhealthy" data-failed-slots="book,orderForm"&gt;&lt;/div&gt;</code></pre>
+<p>（即 <code>@mvp/runtime</code> 里的 <code>PAGE_HEALTH_ATTR</code> 和 <code>PAGE_HEALTH_FAILED_ATTR</code> —— 注意第二个是 <code>data-failed-slots</code>，不是 <code>data-mvp-</code> 前缀。）</p>
+<p>网关调用 <code>readPageHealthFromHtml</code>，在 <code>unhealthy</code> 时返回 <code>503</code> + <code>retry-after</code>，<strong>同时原样返回主体</strong>。<code>degraded</code> 保持 <code>200</code>。</p>
+<p><code>SHELL_REQUIRED_FAILURE_STATUS=0</code> 关闭这层翻译，保留上游状态码。</p>
+
+<h3 id="为什么是隐藏的-div-而不是-meta">为什么是隐藏的 <code>div</code> 而不是 <code>&lt;meta&gt;</code></h3>
+<p>因为这是给网关的<strong>内部信号</strong>，不是关于文档的元数据。React 19 <em>确实会</em>把页面组件里渲染的 <code>&lt;meta&gt;</code> 提升进 <code>&lt;head&gt;</code>（已由 SSR 探针实测），而 <code>&lt;head&gt;</code> 是文档对外的元数据面，会被爬虫和第三方工具读取。一个降级信号不该出现在那里。</p>
+<div class="note">
+<p>在 React 18 下，同样的 <code>&lt;meta&gt;</code> 会留在 <code>&lt;body&gt;</code> 里，那是<em>无效 HTML</em>。仓库现在用 React 19，所以这个约束已经消失 —— 保留隐藏 <code>div</code> 从「被迫的变通」变成了「刻意的选择」。</p>
+</div>
+
+<h2 id="流式页面">流式页面</h2>
+<p>用 <code>PageHealthMetaStream</code>，它接收聚合 promise，在汇总结果已知时输出标记。标记必然出现在主体靠后的位置 —— 这没问题，因为网关本来就要缓冲页面主体才能翻译状态码。</p>
+
+<h2 id="怎样设计一个好的降级内容">怎样设计一个好的降级内容</h2>
+<ul>
+<li>保留 <code>data-fragment="&lt;name&gt;"</code> 根节点，并加上 <code>data-fallback="true"</code>。运行时代码认这个属性：实时面板驱动拒绝在降级节点上挂载。</li>
+<li>在没有 JavaScript 的情况下也能读。<code>no-js</code> 这个 Playwright project 会在禁用 JS 的情况下渲染每个页面并断言内容还在。</li>
+<li>不要留零高度。<code>maxCLS</code> 的预算是 <code>0</code>，一个先塌陷再撑开的降级内容就是一次布局偏移。</li>
+</ul>

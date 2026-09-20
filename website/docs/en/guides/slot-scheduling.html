@@ -1,5 +1,9 @@
 <h1 id="slot-scheduling">Slot scheduling</h1>
 <p>The scheduler is the part with no Podium equivalent: slots and data dependencies form one directed graph, which is executed in topological layers.</p>
+<figure class="figure">
+<!--@figure:slot-dag-->
+<figcaption><b>Failure is local, and "skipped" is not "tried and failed".</b> Everything downstream of a failed node is never attempted and reports <code>skipped-dependency</code> — which is what lets you see where the fault actually started.</figcaption>
+</figure>
 <h2 id="two-kinds-of-edge">Two kinds of edge</h2>
 <p><strong><code>dependsOn</code></strong> — slot-to-slot. "Render <code>orderForm</code> after <code>accountBar</code>." Use it when one slot's render genuinely needs another's outcome.</p>
 <p><strong><code>dataDependencies</code></strong> — slot-to-data. Names entries in the page's data-source registry that must resolve before the slot runs. Two slots naming the same id share one resolution.</p>

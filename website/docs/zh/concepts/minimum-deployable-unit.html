@@ -1,0 +1,50 @@
+<p class="eyebrow">概念</p>
+<h1>最小部署单元</h1>
+<p class="lede">主张是「片段能独立出货」。这一页讲的是<strong>什么让它可被检验，而不只是一句架构描述</strong>。</p>
+
+<h2 id="这条主张的可执行形式">这条主张的可执行形式</h2>
+<pre><code>pnpm verify:unit --name order-book</code></pre>
+<p>它按顺序做这些事：</p>
+<ol>
+<li>只构建该单元的依赖闭包 —— <code>pnpm --filter @mvp/fragment-order-book... build</code> → <code>dist/server.js</code>；</li>
+<li>启动<em>构建产物</em>（不是源码）；</li>
+<li>断言 <code>/health</code>、<code>/ready</code> 和 <code>/manifest</code> 报告<strong>同一个 manifest 版本</strong>；</li>
+<li>断言 <code>POST /render</code> 支撑的输出携带该版本；</li>
+<li>检查该单元的注册表通道。</li>
+</ol>
+<p>输出 JSON 信封；每一步都过才 exit 0。Flag：<code>--name</code>、<code>--port</code>、<code>--filter</code>、<code>--skip-build</code>。状态：<code>ok</code> · <code>passed</code> · <code>skipped</code> · <code>failed</code>。</p>
+<div class="note good">
+<p>第 3 步是承重的那一步。如果 <code>/health</code> 报的是一个写死的字符串，一次发布就无法知道是哪个构建在应答，「先部署再晋级」就从流程变成了信仰。</p>
+</div>
+
+<h2 id="打包形式">打包形式</h2>
+<p>每个片段一个 Dockerfile，<code>fragments/&lt;name&gt;/Dockerfile</code>，带 <code>EXPOSE &lt;port&gt;</code>。任何镜像仓库或编排系统都能构建并运行它。<strong>部署本身刻意没有在这里实现</strong> —— 每个组织都已经有一套。</p>
+
+<h2 id="不重建页面就上线">不重建页面就上线</h2>
+<pre><code>构建镜像  →  register-fragment --channel canary  →  核对 /health 版本  →  promote-fragment</code></pre>
+<p>页面<strong>每次请求</strong>都从 <code>registry/registry.data.json</code> 解析 <code>serviceUrl</code> 和版本，所以没有任何页面产物发生变化。<code>&lt;FRAGMENT_NAME&gt;_URL</code> 甚至可以在不写注册表的情况下于运行时改变指向。</p>
+<p><code>rollback-fragment</code> 恢复到晋级时记录的版本。</p>
+
+<h2 id="独立到底覆盖了什么没覆盖什么">「独立」到底覆盖了什么、没覆盖什么</h2>
+<div class="cards two">
+  <div class="card t">
+    <h4>覆盖了</h4>
+    <p>服务端标记、数据访问、CSS、降级内容、预算、后端代理目标、SSR 数据依赖、浏览器订阅，以及它们所发布的版本。全部在片段里，全部经注册表和 <code>GET /manifest</code> 到达页面。</p>
+  </div>
+  <div class="card r">
+    <h4>没覆盖 —— 这是诚实的边界</h4>
+    <p>见下面四条。把它们当成已知边界，而不是待发现的意外。</p>
+  </div>
+</div>
+
+<div class="note bad">
+<ul>
+<li><b>客户端代码必须被页面静态 import。</b>React 岛屿要注册进页面的岛屿注册表；实时面板要列进页面的面板数组。这里没有运行时模块加载，所以新增一个<em>可交互</em>片段是两行页面改动。改变一个已有片段做什么 —— 包括它订阅什么 —— 则不需要。</li>
+<li><b>岛屿资源不跟随环境变量覆盖。</b><code>&lt;FRAGMENT&gt;_URL</code> 移动 <code>serviceUrl</code> 和 <code>manifestUrl</code>，但不移动 <code>assetsUrl</code>（<a href="../known-limitations.html#f2">F2</a>）。</li>
+<li><b>共享 vendor 属于页面。</b>片段的 <code>jsBytes</code> 以 <code>react</code>/<code>@mvp/*</code> external 的方式计量。两个片段不能各自选择互不兼容的 React 版本；仓库强制单一声明区间。</li>
+<li><b>没有任何东西操练过非 Node 片段。</b><code>POST /render</code> 契约与语言无关，JSON Schema 也正为此发布，但树里没有非 Node 片段 —— 把多语言当作<em>未经测试</em>，而不是<em>已支持</em>。</li>
+</ul>
+</div>
+
+<h2 id="计数">计数</h2>
+<p>22 个可部署单元：1 个网关、7 个页面应用、14 个片段服务。端口 4100、4101–4107、4201–4214，见<a href="../reference/ports.html">端口</a>。</p>

@@ -1,0 +1,54 @@
+<p class="eyebrow">参考</p>
+<h1>包</h1>
+<p class="lede">20 个 <code>packages/*</code> 框架库和 5 个 <code>domains/*</code> 示例包，附真实导出面。每个 <code>packages/*</code> 和 <code>domains/*</code> 还带一份 <code>AGENT.md</code>，其示例由 <code>pnpm docs:test</code> 执行。</p>
+
+<h2 id="框架层">框架层 — <code>packages/*</code></h2>
+<div class="table-wrap"><table>
+<thead><tr><th>包</th><th>子路径</th><th>主要导出</th></tr></thead>
+<tbody>
+<tr><td><code>@mvp/contracts</code></td><td><code>.</code></td><td>35 份 Zod schema、6 份 JSON Schema、<code>parseFragmentRenderRequest/Response</code>、<code>toJsonSchema</code>、<code>loadDefaultBudget</code>、<code>mergeBudget</code>、<code>assertBudget</code>、<code>createBudgetReport</code></td></tr>
+<tr><td><code>@mvp/runtime</code></td><td><code>.</code> <code>./react</code> <code>./seo</code> <code>./live</code></td><td>见下</td></tr>
+<tr><td><code>@mvp/fragment-host</code></td><td><code>.</code></td><td><code>createFragmentServer</code>、<code>startFragmentServer</code>、<code>createFragmentObservability</code>、<code>configureFragmentTraceExport</code>、<code>renderFragmentServiceHome</code></td></tr>
+<tr><td><code>@mvp/registry</code></td><td><code>.</code></td><td><code>resolveFragment</code>、<code>buildFragmentRegistry</code>、<code>fragmentEnvVarName</code>、<code>applyRegisterFragment</code>、<code>applyPromoteFragment</code>、<code>applyRollbackFragment</code>、<code>applyMountSlot</code>、<code>diffManifestAgainstRuntime</code>、<code>generateFragmentSlotsSource</code>、<code>writeFileAtomic</code>、<code>parseCliArgs</code>、<code>unknownFlagError</code></td></tr>
+<tr><td><code>@mvp/routes</code></td><td><code>.</code></td><td><code>routeRegistry</code>、<code>buildRouteRegistry</code>、<code>matchRoute</code>、<code>validateRouteRegistry</code></td></tr>
+<tr><td><code>@mvp/data</code></td><td><code>.</code></td><td><code>createDataClient</code>、<code>defineDataSource</code>、<code>createDataKey</code>、<code>validateRuntimeFreshness</code>、<code>MemoryCacheAdapter</code>、<code>DataDependencyError</code></td></tr>
+<tr><td><code>@mvp/request</code></td><td><code>.</code></td><td><code>createRequestClient</code>、三个带类型的错误</td></tr>
+<tr><td><code>@mvp/request-context</code></td><td><code>.</code></td><td><code>createRequestContext</code>、<code>serializeContext</code>、<code>deserializeContext</code>、各访问器、<code>CONTEXT_EXTENSION_HEADER_PREFIX</code></td></tr>
+<tr><td><code>@mvp/islands</code></td><td><code>.</code></td><td><code>registerIsland</code>、<code>hydrateIslands</code>、<code>mountIsland</code>、<code>readIslandSnapshot</code>、<code>configureIslandRuntime</code></td></tr>
+<tr><td><code>@mvp/interaction</code></td><td><code>.</code></td><td><code>createInteractionBus</code>、<code>defineMutation</code>、<code>validateInteractionPayload</code>、<code>createBroadcastBridge</code></td></tr>
+<tr><td><code>@mvp/store</code></td><td><code>.</code></td><td><code>createSliceStore</code>、<code>useStoreSlice</code></td></tr>
+<tr><td><code>@mvp/storage</code></td><td><code>.</code></td><td><code>createStorage</code> 及 cookie/local/session/memory/server-KV 适配器、<code>assertStoragePolicy</code>、<code>resolveStoragePartition</code>、<code>requiredPartitionKeysForPrivacy</code></td></tr>
+<tr><td><code>@mvp/observability</code></td><td><code>.</code></td><td><code>createRequestTrace</code>、<code>measureDuration</code>、指标注册表、trace 导出（OTLP JSON / 文件 / 控制台）</td></tr>
+<tr><td><code>@mvp/optimizer</code></td><td><code>.</code></td><td><code>createOptimizationFindings</code>、<code>createOptimizationMarkdown</code>、<code>loadTraceSnapshots</code></td></tr>
+<tr><td><code>@mvp/assets</code></td><td><code>.</code></td><td><code>collectAssets</code>、<code>mergeAssetsWithPolicy</code>、<code>createAssetHtmlTags</code></td></tr>
+<tr><td><code>@mvp/design-tokens</code></td><td><code>.</code></td><td><code>tokens</code>、<code>createCssVariables</code></td></tr>
+<tr><td><code>@mvp/design-system</code></td><td><code>.</code></td><td><code>tokens</code>、<code>cssVariableNames</code>、<code>TOKEN_PREFIX</code>、<code>themeColors</code>、<code>createThemeVariables</code>、<code>tailwindPreset</code>、<code>DARK_MODE_SELECTOR</code>、<code>baseResetCss</code></td></tr>
+<tr><td><code>@mvp/ui</code></td><td><code>.</code> + 7 组件 + <code>./shadcn</code> 等</td><td>7 个组件（各带 metadata/budget/fixtures）；<code>./shadcn</code> 再加 11 个原语与 <code>cn</code></td></tr>
+<tr><td><code>@mvp/workers</code></td><td><code>.</code></td><td><code>createBackgroundWorker</code>、<code>createWorkerHost</code>、<code>createScheduledJob</code>、<code>validateWorkerManifest</code></td></tr>
+<tr><td><code>@mvp/mcp</code></td><td><code>.</code></td><td><code>devxTools</code>、<code>SCRIPT_TOOLS</code>、<code>findSchemaViolation</code></td></tr>
+</tbody></table></div>
+
+<h3 id="mvp-runtime-按子路径"><code>@mvp/runtime</code> 按子路径</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>子路径</th><th>导出</th></tr></thead>
+<tbody>
+<tr><td><code>.</code></td><td><code>executeFragmentSlots</code>、<code>streamFragmentSlots</code>、<code>fetchFragmentSlots</code>、<code>resolveFragment</code>、<code>resolveRoute</code>、<code>createSlotDataExecutionPlan</code>、<code>createFallbackResponse</code>、缓存三件套、<code>withTimeout</code>、<code>readPageHealthFromHtml</code>、<code>failedRequiredSlotNames</code>、<code>PAGE_HEALTH_ATTR</code>、以及 <code>fragmentProxy</code> 的全部</td></tr>
+<tr><td><code>./react</code></td><td><code>FragmentSlot</code>、<code>FragmentSlotStream</code>、<code>PageHealthMeta</code>、<code>PageHealthMetaStream</code></td></tr>
+<tr><td><code>./seo</code></td><td><code>createPageMetadata</code>、<code>resolveSiteOrigin</code>、<code>isDiagnosticsEnabled</code></td></tr>
+<tr><td><code>./live</code></td><td><code>startLivePanels</code>、<code>templateParams</code>、<code>resolveSourceTemplate</code>、DOM 薄层助手</td></tr>
+</tbody></table></div>
+
+<h2 id="domain-示例">domain 示例 — <code>domains/*</code></h2>
+<p>它们<strong>不是框架</strong>。存在的意义是展示「构建在框架之上的产品层长什么样」，同时给审计一些真实的东西去管。</p>
+<div class="table-wrap"><table>
+<thead><tr><th>包</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>@mvp/trade-contracts</code></td><td>频道 id、载荷 schema、发布者/订阅者 ACL、订单流 reducer，以及 <code>orderConstraints</code>（tick/lot/杠杆档位校验，十进制安全算术）</td></tr>
+<tr><td><code>@mvp/trade-data</code></td><td>C5 source id 注册表（<code>sourceIds</code>、<code>parseSourceId</code>、<code>normalizeSymbol</code>）、<code>createTradeDataClient</code>、确定性 mock 传输</td></tr>
+<tr><td><code>@mvp/trade-prefs</code></td><td>持久化的用户偏好</td></tr>
+<tr><td><code>@mvp/trade-theme</code></td><td>基于 <code>@mvp/design-system</code> 的交易作用域主题变量</td></tr>
+<tr><td><code>@mvp/trade-chart</code></td><td>图表渲染原语</td></tr>
+</tbody></table></div>
+
+<h2 id="发布">发布</h2>
+<p><code>packages/*</code> 除 <code>@mvp/assets</code> 和 <code>@mvp/workers</code> 外均为 <code>private: false</code>。<code>apps/*</code>、<code>fragments/*</code> 和 <code>domains/*</code> 都是私有。<code>tools/create-component</code> 是唯一可发布的工具。发布走 Changesets（<code>pnpm changeset</code>、<code>pnpm version-packages</code>、<code>pnpm release</code>）。</p>

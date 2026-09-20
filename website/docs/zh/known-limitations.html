@@ -1,0 +1,182 @@
+<p class="eyebrow">以代码为证据</p>
+<h1>已知缺陷</h1>
+<p class="lede">这里的每一条都是<strong>读源码、跑闸门</strong>找出来的，不是读内部文档得来的。每条都点名了能证明它的文件。<strong>这份清单里没有一条是假设。</strong></p>
+
+<p>按「先痛哪个」排序。每条都标明它伤到谁：<b>AX</b> 在仓库里干活的 AI agent，<b>DX</b> 人类开发者，<b>OPS</b> 运行它的人，<b>DOCS</b> 一条与事实不符的表述。</p>
+
+<div class="facts">
+  <div class="fact"><b>15</b><span>条已验证缺陷</span></div>
+  <div class="fact"><b>2</b><span>已修复</span></div>
+  <div class="fact"><b>3</b><span>会影响选型决策</span></div>
+</div>
+
+<hr />
+
+<h2 id="f1">F1 · 优化器在建议把实时盘口静态渲染 — AX，高</h2>
+<p><code>reports/optimization-findings.json</code> 当前包含 10 条这种形态的发现：</p>
+<blockquote><p><code>static-slot-book</code> · 「槽位 <b>book</b> 没有声明依赖，可能不需要动态 SSR。」· recommendation：「若内容是确定的，把槽位策略改成 static、ttl-cache 或 cached-ssr。」</p></blockquote>
+<p>这 10 个槽位包括 <code>book</code>、<code>trades</code>、<code>orderForm</code>、<code>positions</code>、<code>openOrders</code> 和 <code>accountBar</code> —— 全是实时交易面板。<strong>照这条建议做会把它们搞坏。</strong></p>
+<p><b>为什么会这样</b> —— 三环相扣，都可自行复核：</p>
+<ol>
+<li><code>tools/optimization-audit/src/index.ts:55</code> 调用 <code>createOptimizationFindings({ slots, traces })</code>。<strong><code>dataDependencies</code> 根本没有被传进去。</strong></li>
+<li><code>packages/optimizer/src/index.ts:461-468</code> —— <code>findStaticSlotCandidates</code> 里有一道本该拦住这些的护栏：<code>dependencies.some(d =&gt; d.privacy === "user-private" || d.freshness === "realtime" || d.freshness === "client-local")</code>。由于输入永远是 <code>[]</code>，这道护栏<strong>永远为 false</strong>。</li>
+<li><code>packages/optimizer/src/index.ts:470-474</code> —— 幸存下来的判据是 <code>(slot.strategy ?? "dynamic-ssr") === "dynamic-ssr" &amp;&amp; (slot.dependsOn ?? []).length === 0</code>。而 <code>dependsOn</code> 是<strong>槽位之间的排序</strong>。<code>book</code> 没有 <code>dependsOn</code> 是因为没有别的槽位等它，不是因为它静态。</li>
+</ol>
+<p>两者之下是同一个结构性问题：片段<em>确实</em>声明了自己的数据（<code>fragments/order-book/src/manifest.ts:30</code> → <code>dataDependencies: ["book.l2.&lt;symbol&gt;"]</code>），优化器读的是页面那一侧，而<strong>没有任何东西把两边对账</strong>。</p>
+<div class="note bad">
+<p><b>对 agent 的严重性。</b>这些发现是 <code>info</code> 级，所以闸门通过、人类会一眼扫过去。但一个读 <code>reports/optimization-findings.json</code> 的 agent 看到的是 19 个槽位中 10 个带着结构化的 <code>recommendation</code> 字段，而<strong>没有任何信号告诉它这是错的</strong>。</p>
+</div>
+<p><b>修复形态：</b>把片段声明的依赖传进审计输入，并让规则以声明的 freshness 为判据，而不是以 <code>dependsOn</code>。</p>
+
+<hr />
+
+<h2 id="f2">F2 · <code>&lt;FRAGMENT&gt;_URL</code> 移动服务，却不移动它的岛屿资源 — OPS，中</h2>
+<p><code>packages/registry/src/registry.ts</code> 的 <code>withOverride()</code> 从环境变量覆盖改写 <code>serviceUrl</code> 和 <code>manifestUrl</code>，却把 <code>assetsUrl</code> <strong>原样透传</strong>。代码自己就写了这一点：</p>
+<blockquote><p>「不相对被覆盖的主机改写 …… 真正的发布需要 <code>assetsUrl</code> 也从同一个覆盖派生，而不只是 <code>serviceUrl</code>。」</p></blockquote>
+<p>所以把一个片段指向另一台主机，它的岛屿 JavaScript 仍然从注册时的地址加载。影响今天唯一带 <code>assetsUrl</code> 的片段：<code>canary</code> 上的 <code>order-form</code>。</p>
+<p>由于环境变量覆盖正是「不写注册表也能改指向」的官方路径，这一条<strong>削弱了那条路径</strong>对任何自带岛屿 bundle 的片段的价值。</p>
+
+<hr />
+
+<h2 id="f3">F3 · <s>三个环境变量声明了却无人读取</s> — 已修复</h2>
+<p><code>turbo.json</code> 的 <code>globalPassThroughEnv</code> 里曾列有 <code>REGISTRY_URL</code>、<code>REGISTRY_USERNAME</code> 和 <code>REGISTRY_PASSWORD</code>，而全仓库搜索显示<strong>零处读取</strong>。它们暗示了一个并不存在的、带鉴权的远程注册表集成，运维完全可能设置它们并期待有效果。</p>
+<p>已删除。<code>globalPassThroughEnv</code> 现在是 <code>SHELL_URL</code>、<code>PAGE_*_URL</code>、<code>*_URL</code>、<code>RECENTLY_VIEWED_COOKIE_SECRET</code> —— 全部都有人读。</p>
+<p>保留在这一页上，是作为一类腐化的记录：<strong>加一条 passthrough 环境变量声明零成本，而它失效时没有任何告警</strong>。</p>
+
+<hr />
+
+<h2 id="f4">F4 · 两个 CLI flag 只存在于代码里 — AX，中</h2>
+<p>每个生命周期脚本的权威 flag 清单，是它传给 <code>unknownFlagError</code> 的白名单。与操作手册对照：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>脚本</th><th>代码里的 flag</th><th><code>CLAUDE.md</code> 里有吗？</th></tr></thead>
+<tbody>
+<tr><td><code>mount-slot</code></td><td><code>--depends-on</code></td><td>没有</td></tr>
+<tr><td><code>register-fragment</code></td><td><code>--manifest-url</code></td><td>没有</td></tr>
+<tr><td><code>register-fragment</code></td><td><code>--assets-url</code></td><td>没有</td></tr>
+</tbody></table></div>
+<p><code>--depends-on</code> 是从 CLI 声明槽位排序的<strong>唯一</strong>途径，而槽位排序是这个框架的差异化特性之一。一个只读手册的 agent 无从发现它，于是它会转而手改 manifest —— 而同一份手册禁止这么做。</p>
+
+<hr />
+
+<h2 id="f5">F5 · 网关自己的 HTTP 面没有任何文档 — DX，中</h2>
+<p><code>apps/shell-gateway/src/server.ts</code> 提供 <code>/manifest/routes</code>、<code>/manifest/fragments</code>、<code>/_shell/theme</code> 和 <code>/_shell/locale</code>（第 239–252 行）。这四个在 <code>CLAUDE.md</code> 和 <code>docs/</code> 里<strong>一处都没有出现</strong>。</p>
+<p><code>/manifest/fragments</code> 尤其重要：它返回<em>应用环境变量覆盖之后</em>的注册表，是排查槽位指向错误最快的工具。它在<a href="reference/http-endpoints.html">HTTP 端点</a>里第一次被写下来。</p>
+
+<hr />
+
+<h2 id="f6">F6 · 晋级路径只在 14 个片段中的 2 个上被操练过 — OPS，中</h2>
+<p><code>registry/registry.data.json</code>：只有 <code>promotion-banner</code>（stable + canary）和 <code>recommendation-widget</code>（stable）有 <code>stable</code> 条目。其余 12 个只有 <code>canary</code>，而 <code>page-trade</code>、<code>page-markets</code>、<code>page-portfolio</code> 的每一个槽位挂的都是 <code>channel: "canary"</code>。</p>
+<p>两个后果：</p>
+<ul>
+<li>被文档化的 <code>canary → stable</code> 生命周期，实际只在 2 个单元上演示过。把晋级和回滚路径当作<strong>操练不足</strong>来对待。</li>
+<li>指向片段所没有的通道的槽位，会<strong>静默地</strong>解析成降级内容。没有任何构建期检查保证每个槽位的通道在注册表里存在 —— 这本是一道很便宜的闸门，而且正好能抓住这个问题。</li>
+</ul>
+<p><code>recommendation-widget</code> 另外没有 <code>versions</code> 历史，所以 <code>rollback-fragment</code> 因缺少记录目标而正确地拒绝它。</p>
+
+<hr />
+
+<h2 id="f7">F7 · 七个页面里有两个什么都不组合 — DOCS，低</h2>
+<p><code>apps/page-referrals/src/manifest.slots.json</code> 和 <code>apps/page-vaults/src/manifest.slots.json</code> 都是 <code>[]</code>。「七个页面组合片段」是夸大：实际是<strong>五个页面组合，共 19 个槽位</strong>。</p>
+<p>因此它们 102 KB 的首屏 JS 是纯框架基线，而预算是 110 KB —— <strong>只有 7.5 KB 余量</strong>。给这两个页面加一个岛屿就需要改预算。</p>
+
+<hr />
+
+<h2 id="f8">F8 · <code>dev:*</code> 脚本只覆盖 22 个单元中的 4 个 — DX，低</h2>
+<p>根 <code>package.json</code> 有 <code>dev:shell</code>、<code>dev:page-home</code>、<code>dev:page-product</code>、<code>dev:fragment:promotion-banner</code>、<code>dev:fragment:recommendation-widget</code>。<strong>没有 <code>dev:page-trade</code></strong>，尽管 <code>page-trade</code> 正是其余一切用来举例的那个九槽位 demo。</p>
+<p><code>pnpm --filter @mvp/page-trade dev</code> 完全可用 —— 这些脚本是个没做完的便利设施，而它们的<em>部分存在</em>反而暗示 filter 写法是兜底而非常规。</p>
+
+<hr />
+
+<h2 id="f9">F9 · <code>pnpm verify</code> 的 14 道闸门严格串行 — DX，低</h2>
+<p><code>scripts/verify.mts:51</code> —— <code>commands.map(({cmd, args}) =&gt; spawnSync(...))</code>。六个审计彼此独立，也独立于 <code>test</code>/<code>build</code>，却没有任何重叠。</p>
+<p>这是延迟问题而非正确性问题；热跑约 32 秒，所以很少真的疼。但值得知道，免得有人据此断定这些闸门天生就慢。</p>
+
+<hr />
+
+<h2 id="f10">F10 · 四个岛屿超标，而没有人认领 — DX，低</h2>
+<p><code>reports/server-client-boundary-report.json</code> 里有四条 <code>severity: "warn"</code> 的 <code>large-client-component</code> 未处理：</p>
+<div class="chips">
+<span class="chip r">apps/page-trade/src/hydrate.tsx</span>
+<span class="chip r">fragments/chart-panel/src/island.tsx</span>
+<span class="chip r">fragments/market-header/src/island.tsx</span>
+<span class="chip r">fragments/order-form/src/island.tsx</span>
+</div>
+<p><code>warn</code> 不会让闸门失败，这条参考线在任何 <code>budget.ts</code> 里都没有数字，也没有单元认领这个告警。它是一盏<strong>永久的黄灯</strong>：要么给它一个预算字段让它能失败，要么把规则去掉。</p>
+
+<hr />
+
+<h2 id="f11">F11 · 11 个预算字段里有 5 个哪里都没人管 — DOCS，中</h2>
+<p><code>PerformanceBudgetSchema</code> 定义了 11 条上限。真正强制它们的是：</p>
+<div class="table-wrap"><table>
+<thead><tr><th>强制方式</th><th>字段</th></tr></thead>
+<tbody>
+<tr><td>被 <code>pnpm verify</code> 闸住</td><td><code>jsBytes</code>、<code>cssBytes</code></td></tr>
+<tr><td>只被 <code>pnpm verify:runtime</code> 闸住（需要活的 URL，<b>不属于</b> verify）</td><td><code>maxTTFBMs</code>、<code>maxLCPMs</code>、<code>maxCLS</code></td></tr>
+<tr><td>运行时才可测，已被承认</td><td><code>rscPayloadBytes</code></td></tr>
+<tr><td><b>哪里都没人管</b></td><td><code>maxNetworkRequests</code>、<code>maxINPMs</code>、<code>maxFragmentLatencyMs</code>、<code>maxRenderMs</code>、<code>maxMemoryMB</code></td></tr>
+</tbody></table></div>
+<p>「性能预算是硬闸门：超出 component/fragment/page 预算会让 <code>pnpm verify</code> 失败」这句无限定的表述，<strong>只对 11 个字段中的 2 个成立</strong>。</p>
+<p>对工具公平一点：<code>audit:bundle</code> 对自己的范围是坦白的 —— 报告带 <code>unmeasured</code> 数组逐条说明跳过原因，还有一条 <code>notes</code> 声明运行时指标不在闸门内。缺口在 <strong>schema 与闸门之间</strong>，以及<strong>闸门与那句总结性表述之间</strong>。</p>
+<div class="note bad">
+<p><b>最尖锐的一例：</b>14 个片段每一个都声明了 <code>maxFragmentLatencyMs</code> 和 <code>maxRenderMs</code> —— 一个片段最具运维意义的两个数字 —— 而<strong>没有任何东西读它们</strong>。同样地，每个页面都声明 <code>maxINPMs: 200</code>，而运行时闸门实现了 LCP、CLS、TTFB 三项检查，<strong>唯独没有 INP</strong>。</p>
+</div>
+
+<hr />
+
+<h2 id="f12">F12 · <s>脚手架文件数三处写 9、三处写 11</s> — 已修复</h2>
+<p>脚手架实际写 <strong>11</strong> 个文件（<code>tools/create-component/src/index.ts</code> 的 <code>createFragment</code>）。</p>
+<div class="table-wrap"><table>
+<thead><tr><th>写 11（正确）</th><th>写 9（过期）</th></tr></thead>
+<tbody>
+<tr><td><code>CLAUDE.md:48</code></td><td><code>packages/mcp/src/tools.ts:72</code> —— <b>MCP 工具描述</b></td></tr>
+<tr><td><code>tools/create-component/AGENT.md:49</code></td><td><code>docs/AI_NATIVE_DEVX.md:215</code></td></tr>
+<tr><td><code>docs/OPERATIONS.md:27</code></td><td><code>docs/trade-demo/07-deployment-examples.md:56</code></td></tr>
+</tbody></table></div>
+<p>错的那个数字，恰好在 AI agent 默认唯一会读到的地方：工具列表显示的就是 MCP 工具描述。而 <code>CLAUDE.md</code> 把验收标准写成 <code>files.length === 11</code>，所以一个相信工具描述、断言 9 的 agent，会挂在手册定义正确的那道检查上。</p>
+<p>三处过期已全部改成 11。<code>tools/create-component/src/fragmentTemplate.ts:7</code> 仍写 9，<strong>刻意不动</strong> —— 那句注释讲的是<em>旧</em>脚手架（曾产出 9 个文件、既不能回答 <code>/render</code> 也构建不出镜像），在上下文里是对的。</p>
+<p>保留在这一页上，是因为根因还在：<strong>没有任何检查比对「散文里断言的文件数」与「脚手架实际写出的文件数」。</strong>脚手架自己的测试也不断言总数，所以下一次偏移会同样静默。</p>
+
+<hr />
+
+<h2 id="f13">F13 · 交互 ACL 没有被拿去和现实对账 — DX，低</h2>
+<p><code>domains/trade-contracts/src/slices.ts:164</code> 把 <code>order-preview</code> 列为 <code>trade.order-draft</code> 的订阅者。而 <code>order-preview</code> 在仓库里<strong>别处都不存在</strong> —— 没有片段、没有岛屿、没有 owner id。</p>
+<p>没有任何东西校验「声明的发布者或订阅者 id 是否对应一个存在的东西」，所以 ACL 可以和它所治理的系统漂移。对比：实时面板契约由 <code>apps/page-trade/src/liveContract.test.ts</code> 在构建期抓住的，正是同一类漂移。</p>
+<p>另有一个<em>不是缺陷但稳定地让人困惑</em>的点：发布者和订阅者 id 是<strong>逻辑组件 id，不是片段名</strong>。<code>symbol-switcher</code> 是 <code>apps/page-trade/src/hydrate.tsx:173</code> 使用的 owner 身份，不是 <code>fragments/</code> 下的服务。</p>
+
+<hr />
+
+<h2 id="f14">F14 · 渲染契约有两层，而层级信号被丢掉了 — OPS，中</h2>
+<p><code>parseFragmentRenderRequest</code>（<code>packages/contracts/src/index.ts</code>）先试严格的 <code>FragmentRenderRequestSchema</code>，失败后回落到 <code>FragmentRenderRequestEnvelopeSchema</code>（其中 <code>ctx</code> 为 <code>.partial().optional()</code>），并返回 <code>strict: boolean</code> 说明命中了哪一层。只有两层都失败才返回 <code>ok: false</code>。</p>
+<p>已实测：<code>POST /render</code> 带 <code>{"ctx":{"locale":"en-US","tenant":"default"}}</code> —— 一个缺了必填 <code>traceId</code>、<code>requestId</code>、<code>featureFlags</code> 和 <code>timestamp</code> 的上下文 —— 返回 <strong>200 和真实 HTML</strong>。</p>
+<p>两层设计本身是合理的。问题在于 <strong>没有任何东西读 <code>strict</code></strong>：全仓库搜索，测试之外没有任何消费方。<code>packages/fragment-host/src/index.ts:209</code> 解构了结果，用了 <code>parsed.ok</code> 和 <code>parsed.request</code>，<strong>忽略 <code>parsed.strict</code></strong> —— 没有日志、没有响应头、没有指标标签。</p>
+<div class="note bad">
+<p><b>后果：</b>线上你<strong>无法知道</strong>自己的页面是在发送合法上下文，还是在静默降级到宽容层。这意味着一个悄悄不再传 <code>traceId</code> 的页面，看起来和正常页面一模一样，而它下游的每一条 trace 都在丢失父级。</p>
+<p>加一个 counter label 就能修。</p>
+</div>
+
+<hr />
+
+<h2 id="f15">F15 · 一个已声明的交互频道对依赖图不可见 — DX，低</h2>
+<p><code>tradeSliceContracts</code> 声明了 7 个频道。<code>pnpm graph</code> 报告 <strong>6</strong> 个 slice 单元。缺的那个是 <code>trade.book-grouping</code>。</p>
+<p><code>tools/release-tools/src/unit-graph.ts:178-184</code> 通过 upsert 各片段 manifest 的 <code>consumes.slices</code> / <code>produces.slices</code> 来建 slice 节点。没有任何 manifest 提到 <code>trade.book-grouping</code>，于是它没有节点也没有边 —— <strong>affected 引擎因此无法知道，改动这个频道的载荷会影响 <code>order-book</code></strong>。</p>
+<p>与 <a href="#f1">F1</a> 是同一种形状：两侧各自声明相关的事实，而<strong>没有任何闸门去比对</strong>。那些 manifest 字段还在 <code>FragmentManifestSchema</code> 之外，所以连拼写都没人校验。</p>
+
+<hr />
+
+<h2 id="看起来像缺陷但不是">看起来像缺陷，但不是</h2>
+<p>值得单列，因为下面每一条都会被当成 bug 报上来：</p>
+<div class="note good">
+<ul>
+<li><b>岛屿静默地不水合。</b>那是版本握手在工作。四种明确原因会上报给 <code>onSnapshotMismatch</code>；SSR 标记被<em>刻意</em>原样保留。</li>
+<li><b>没有运行时版本协商。</b>这是刻意的范围取舍，也是 Module Federation 更强的那条主轴。我们检测并拒绝，从不去加载另一个 remote。</li>
+<li><b>页面仍然静态 import 每个岛屿和实时面板。</b>这个仓库没有运行时模块加载。新增一个<em>可交互</em>片段是两行页面改动；改变一个已有片段做什么则不是。</li>
+<li><b><code>/health</code> 和 <code>/ready</code> 返回完全一样的载荷。</b>同一个 handler 提供两者。如果你需要存活与就绪有区别，那是一个待补的缺口，不是一个精妙设计。</li>
+<li><b>页面健康信号是隐藏 <code>div</code> 而不是 <code>&lt;meta&gt;</code>。</b>刻意如此：它是给网关的信号，不是文档元数据。React 19 <em>会</em>把 <code>&lt;meta&gt;</code> 提升进 <code>&lt;head&gt;</code>，而那恰好是降级标记最不该去的地方。</li>
+<li><b><code>reports/</code> 一直在变。</b>机器产物，每次 <code>pnpm verify</code> 重写。手写的那份在 <code>docs/reports/</code>。</li>
+</ul>
+</div>
+
+<h2 id="怎么用这一页">怎么用这一页</h2>
+<p><b>如果你在做选型：</b>会改变决策的是 <a href="#f1">F1</a>、<a href="#f11">F11</a> 和 <a href="#f14">F14</a> —— 一个给出错误建议的工具、一条比实现更宽的表述、一个在主边界上的可观测性空洞。三条都不是设计死胡同，每条大约各一天工作量。</p>
+<p><b>如果你是在这里干活的 agent：</b>照任何优化器建议行动之前先读 <a href="#f1">F1</a>；断定某个 flag 不存在之前先读 <a href="#f4">F4</a>。</p>
+<p><a href="#f3">F3</a> 和 <a href="#f12">F12</a> 标记为已修复但<strong>保留</strong>，因为让它们发生的<em>机制</em>还在：passthrough 环境变量失效时没有告警，也没有测试比对文档写的文件数与脚手架实际产出。</p>

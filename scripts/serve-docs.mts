@@ -176,10 +176,13 @@ export function renderToc(
 ): string {
   if (entries.length < 2) return '<nav class="toc"></nav>';
   const label = lang === "zh" ? "本页内容" : "On this page";
+  // NOT escaped again: `entry.text` was lifted out of the authored HTML, so a
+  // documented `<FRAGMENT>_URL` is already `&lt;FRAGMENT&gt;_URL` there. Escaping
+  // a second time renders the entities themselves.
   const links = entries
     .map(
       (entry) =>
-        `<a class="${entry.level === 3 ? "l3" : ""}" href="#${entry.id}">${escapeHtml(entry.text)}</a>`,
+        `<a class="${entry.level === 3 ? "l3" : ""}" href="#${entry.id}">${entry.text}</a>`,
     )
     .join("");
   return `<nav class="toc"><h5>${label}</h5>${links}</nav>`;
@@ -222,7 +225,7 @@ export function renderShell(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escapeHtml(heading)} · ai-first-web-frame</title>
+<title>${heading} · ai-first-web-frame</title>
 <link rel="stylesheet" href="/assets/docs.css">
 </head>
 <body>

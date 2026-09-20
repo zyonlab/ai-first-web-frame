@@ -1,5 +1,9 @@
 <h1 id="realtime-subscriptions">Realtime subscriptions</h1>
 <p>A server-rendered panel that stays live without React: subscribe to a source, fold each frame into an in-place DOM patch. <strong>The fragment declares what it listens to; the page only binds parameters.</strong></p>
+<figure class="figure">
+<!--@figure:realtime-flow-->
+<figcaption><b>The declaration sits on the side that owns the fact.</b> The page still statically imports each panel, but changing what an existing fragment subscribes to now needs no page edit at all — and that is the half that matters for deployment.</figcaption>
+</figure>
 <h2 id="why-it-is-built-this-way">Why it is built this way</h2>
 <p>The first version put all of it in the page: which fragments were live, which source each needed, and how to patch each one's DOM — about 540 lines in <code>apps/page-trade/src/realtime.ts</code>. A fragment therefore could not become live, or change what it subscribed to, without a page edit. That breaks the claim that a fragment is the unit of deployment.</p>
 <h2 id="1-declare-in-the-fragment-manifest">1. Declare in the fragment manifest</h2>

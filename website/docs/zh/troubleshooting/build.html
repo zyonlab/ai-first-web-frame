@@ -1,0 +1,36 @@
+<p class="eyebrow">排错</p>
+<h1>构建</h1>
+
+<h2 id="pnpm-build-很慢"><code>pnpm build</code> 很慢</h2>
+<p>第二次起不该慢。<code>build</code> 和 <code>test</code> 走 Turborepo（<code>turbo.json</code>）；热缓存能把 <code>pnpm verify</code> 从约 165 秒压到约 32 秒，而且 Turborepo 会从缓存恢复被删掉的 <code>dist/</code> 和 <code>.next/</code>，而不是重建。</p>
+<p>如果每次都在全量重建，说明有东西在让缓存失效。两条规则：</p>
+<ol>
+<li><b>任务从自己包<em>之外</em>读取的任何东西都必须声明</b>，否则缓存会返回一个过期的「通过」。<code>packages/mcp/turbo.json</code> 是范例 —— 它的测试 shell out 到 <code>scripts/*.mts</code>，后者读 <code>registry/*.json</code> 和页面 manifest，所以这些被列为 <code>$TURBO_ROOT$</code> 输入。</li>
+<li><b>会改变任务行为的环境变量进 <code>globalEnv</code></b>；只用于寻址外部环境的值（<code>*_URL</code>、密钥）进 <code>globalPassThroughEnv</code>，这样它们永远不进缓存键。</li>
+</ol>
+<p>任何 <code>globalDependencies</code> 条目（<code>pnpm-lock.yaml</code>、根 <code>package.json</code>、<code>tsconfig.base.json</code>、<code>vitest.config.ts</code>、<code>biome.json</code>、<code>oxlint.json</code>、<code>dependency-audit.json</code>）的变化都会按设计让全部缓存失效。</p>
+
+<h2 id="找不到某个-mvp-包">找不到某个 <code>@mvp/*</code> 包</h2>
+<p>该包的 <code>dist/</code> 缺失或过期。跑 <code>pnpm build</code>。<strong>不要</strong>为了绕开而从 <code>src/</code> import —— 包的 exports 是刻意指向 <code>dist/</code> 的。</p>
+<p>如果这发生在全新克隆的 <code>pnpm test</code> 期间，前置构建本应处理掉它；请读构建错误而不是测试错误。</p>
+
+<h2 id="新导出子路径在测试里解析不了">新导出子路径在测试里解析不了</h2>
+<p>Vitest 别名由 <code>scripts/workspaceAliases.mts</code> 从各包的 <code>exports</code> 映射推导。生成器读的是导出<strong>目标</strong>，不是子路径名 —— <code>@mvp/fragment-order-book/patch</code> 映射到 <code>src/ladder.ts</code>，所以从名字猜 <code>src/patch.ts</code> 是错的。把子路径加进 <code>package.json</code> 的 <code>exports</code>，别名会自动跟上，不需要手改任何东西。</p>
+
+<h2 id="只有某一个页面应用-next-build-失败">只有某一个页面应用 <code>next build</code> 失败</h2>
+<p>页面应用是独立可部署物，各有自己的 <code>tsconfig.json</code>。只构建那一个：</p>
+<pre><code>pnpm --filter @mvp/page-trade build</code></pre>
+
+<h2 id="tsgo-与-tsc">tsgo 与 tsc</h2>
+<p><code>pnpm typecheck</code> 用 tsgo 跑各 project 的 tsconfig，并写出 <code>reports/typecheck-report.json</code>（每个 project 一条结果）。<code>pnpm typecheck:legacy</code>（<code>tsc -b</code>）作为兜底保留，用于 tsgo 诊断信息不清楚时 —— 它更慢，边界情况下偶尔与 tsgo 有分歧。</p>
+
+<h2 id="docker">Docker</h2>
+<pre><code>docker compose -f infra/docker/docker-compose.yml config   # 注册片段后校验
+docker compose -f infra/docker/docker-compose.yml up
+pnpm smoke                                                  # 对运行中的栈做健康检查</code></pre>
+<p>每个片段一个 Dockerfile。<code>register-fragment --with-compose</code> 会加入服务，并拒绝已被占用的端口；遇到冲突就显式传一个空闲的 <code>--port</code>。</p>
+
+<h2 id="浏览器-vendor-bundle">浏览器 vendor bundle</h2>
+<p><code>page-trade</code> 为「岛屿经 import map 加载」这个探索构建了一份自托管 vendor bundle：</p>
+<pre><code>pnpm --filter @mvp/page-trade build:spike-vendor</code></pre>
+<p>产物落在 <code>apps/page-trade/public/spike-vendor/</code>（已 gitignore，按需构建）。它从 <code>node_modules</code> 打包 <code>react</code>、<code>react-dom/client</code>、<code>react/jsx-runtime</code>、<code>@mvp/trade-contracts</code> 和 <code>@mvp/ui/shadcn</code>，所以它跟随你实际安装的 React 版本。<strong>不从任何 CDN 拉取。</strong></p>
