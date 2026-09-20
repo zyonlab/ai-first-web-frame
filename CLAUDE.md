@@ -109,6 +109,28 @@ and exits 1 without writing — just rerun the same command.
   (`ctx.extensions`, propagated as `x-mvp-ctx-<name>`), NOT by widening
   `RequestContextSchema` — that keeps business vocabulary out of the framework package.
 
+## Realtime subscriptions (fragment-declared)
+
+- A live, non-React panel declares its own feeds in `src/manifest.ts` as source-id
+  **templates**: `subscriptions: ["book.l2.<symbol>"]`. Separate from
+  `dataDependencies` (what SSR reads once) — a fragment can read a source at render
+  time without holding it open in the browser. `GET /manifest` publishes it, so a
+  new fragment version can change what it listens to and ship on its own.
+- The fragment ships the browser half from a `./live` export: a `LivePanel`
+  (`fragment`, `subscriptions` passed straight from the manifest,
+  `mount(ctx) -> { onFrame, stop? }`). See `fragments/order-book/src/live.ts`.
+- The page contributes only the panel list (`TRADE_LIVE_PANELS` in
+  `apps/page-trade/src/realtime.ts`, the non-React counterpart of the island
+  registry), the parameter values, and a `subscribe` adapter onto its data client.
+  `startLivePanels` from `@mvp/runtime/live` does discovery, resolution,
+  re-subscribe and teardown generically — do NOT add per-fragment wiring to a page.
+- `ctx.remounted` is `true` only when a parameter THAT PANEL binds changed; that is
+  how a panel knows its SSR rows went stale. A parameter-free source (`positions`)
+  keeps its rows across a symbol switch.
+- `apps/page-trade/src/liveContract.test.ts` fails the build if a panel declares a
+  template that does not resolve to a known source id, or binds a parameter the
+  page cannot supply (which would mount a panel that never receives a frame).
+
 ## Minimum deployable unit
 
 A fragment is the smallest unit that ships on its own, and that is an executable claim:

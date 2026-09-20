@@ -389,6 +389,23 @@ export const FragmentManifestSchema = z.object({
       ]),
     )
     .default({}),
+  /**
+   * Source-id **templates** this fragment's BROWSER panel keeps subscribed,
+   * in the `<param>` placeholder vocabulary (`book.l2.<symbol>`). The page
+   * binds the parameters at mount time and re-subscribes when one changes;
+   * a template with no placeholder is a global source that survives a
+   * parameter change untouched.
+   *
+   * Deliberately separate from the SSR-time `dataDependencies`: a fragment can
+   * read a source once while rendering without holding it open in the browser,
+   * and the two sets differ in practice (order-form reads `account` at render
+   * time and subscribes to nothing).
+   *
+   * This is the declaration that lets a fragment become live — or change what
+   * it listens to — without a page edit: `GET /manifest` publishes it, and
+   * `@mvp/runtime/live` resolves and subscribes it generically.
+   */
+  subscriptions: z.array(z.string().min(1)).default([]),
   budget: PerformanceBudgetSchema.refine(
     (value) => value.scope === "fragment",
     "fragment budget required",

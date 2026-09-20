@@ -40,6 +40,11 @@ export const positionsTableManifest = {
   layoutHint: { shape: "table" },
   // Realtime data dependency: the C5 global `positions` source (user-private).
   dataDependencies: ["positions"],
+  // Source-id TEMPLATES this fragment's browser panel subscribes to. Distinct
+  // from `dataDependencies`, which is what SSR reads: a fragment can read a
+  // source once at render time without keeping it live. `positions` binds no
+  // parameter, so the panel's rows survive a symbol switch untouched.
+  subscriptions: ["positions"],
   metadata: {
     category: "trading",
     description:

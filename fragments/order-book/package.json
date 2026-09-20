@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "exports": {
-    "./patch": "./src/ladder.ts"
+    "./patch": "./src/ladder.ts",
+    "./live": "./src/live.ts"
   },
   "scripts": {
     "dev": "tsx src/server.ts",
@@ -21,6 +22,7 @@
     "@mvp/interaction": "workspace:*",
     "@mvp/observability": "workspace:*",
     "@mvp/request-context": "workspace:*",
+    "@mvp/runtime": "workspace:*",
     "@mvp/trade-contracts": "workspace:*",
     "@mvp/trade-data": "workspace:*",
     "fastify": "^4.28.1",
