@@ -2,7 +2,7 @@
 
 Status: warn
 
-Traces: 214 snapshot(s) from reports/traces (7 file(s), 0 malformed line(s) skipped)
+Traces: 218 snapshot(s) from reports/traces (7 file(s), 0 malformed line(s) skipped)
 
 ## INFO (10)
 

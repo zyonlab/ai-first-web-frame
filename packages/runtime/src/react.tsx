@@ -1,11 +1,13 @@
 import type { FragmentRenderResponse } from "@mvp/contracts";
 import type { ReactElement, ReactNode } from "react";
 import {
+  buildServerTiming,
   type FragmentSlotResult,
   type FragmentSlotsExecution,
   failedRequiredSlotNames,
   PAGE_HEALTH_ATTR,
   PAGE_HEALTH_FAILED_ATTR,
+  PAGE_TIMING_ATTR,
 } from "./index";
 
 /**
@@ -142,6 +144,22 @@ export type PageHealthMetaProps = {
   execution: FragmentSlotsExecution;
 };
 
+/**
+ * `<PageTimingMeta>` — stamps per-slot `Server-Timing` into the markup so the
+ * gateway can promote it to a real response header.
+ *
+ * Render it beside `<PageHealthMeta>`. Same mechanism, same reason: a page
+ * component cannot set a header, and the gateway already reads the body.
+ */
+export function PageTimingMeta({ execution }: PageHealthMetaProps): ReactNode {
+  return (
+    <div
+      hidden
+      {...{ [PAGE_TIMING_ATTR]: buildServerTiming(execution.slots) }}
+    />
+  );
+}
+
 export function PageHealthMeta({ execution }: PageHealthMetaProps): ReactNode {
   const failed = failedRequiredSlotNames(execution);
   return (
@@ -161,6 +179,26 @@ export function PageHealthMeta({ execution }: PageHealthMetaProps): ReactNode {
  * is still in the response body the gateway reads, and a page that never
  * resolves one is simply treated as not participating.
  */
+/**
+ * Streaming counterpart of {@link PageTimingMeta}. Per-slot durations are only
+ * known once the aggregate settles, so this awaits it — which places the marker
+ * late in the body. That is fine: the gateway buffers the body to translate the
+ * status code anyway, so it sees the marker before it writes any header.
+ */
+export async function PageTimingMetaStream({
+  execution,
+}: {
+  execution: Promise<FragmentSlotsExecution>;
+}) {
+  const resolved = await execution;
+  return (
+    <div
+      hidden
+      {...{ [PAGE_TIMING_ATTR]: buildServerTiming(resolved.slots) }}
+    />
+  );
+}
+
 export async function PageHealthMetaStream({
   execution,
 }: {

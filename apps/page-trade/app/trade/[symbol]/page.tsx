@@ -1,4 +1,8 @@
-import { FragmentSlot, PageHealthMeta } from "@mvp/runtime/react";
+import {
+  FragmentSlot,
+  PageHealthMeta,
+  PageTimingMeta,
+} from "@mvp/runtime/react";
 import { isDiagnosticsEnabled } from "@mvp/runtime/seo";
 import { readThemePreference, resolveLocalePreference } from "@mvp/trade-prefs";
 import { AppNav } from "@mvp/ui/AppNav";
@@ -265,6 +269,7 @@ export default async function TradePage({ params }: TradePageProps) {
             REQUIRED slot (marketHeader) makes the composed route answer 503
             rather than a 200 full of degraded markup. */}
         <PageHealthMeta execution={fragmentHtml.execution} />
+        <PageTimingMeta execution={fragmentHtml.execution} />
 
         {/* Framework-observability drawer: the request trace as a bottom-docked
             waterfall (spans on a shared time axis) plus scheduler hints. Pure
