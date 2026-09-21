@@ -3,6 +3,8 @@ import {
   createRequestTrace,
   exportTrace as defaultExportTrace,
   type RequestTrace,
+  recordWebVital,
+  type WebVitalName,
 } from "@mvp/observability";
 import { fragmentRegistry } from "@mvp/registry";
 import { matchRoute, routeRegistry } from "@mvp/routes";
@@ -28,6 +30,7 @@ import {
   createShellMetrics,
   ensureTraceExportConfigured,
   isMeteredRoute,
+  isWebVitalName,
   PROMETHEUS_CONTENT_TYPE,
   type ShellMetrics,
 } from "./observability";
@@ -244,6 +247,50 @@ export function buildServer(options: BuildServerOptions = {}) {
   // Shell-owned theme / locale switch endpoints. No-JS safe: a plain GET link
   // writes the public preference cookie via `@mvp/storage` and 302s back to the
   // origin page, so the next SSR render paints the new theme/locale with no flash.
+  // ── Real-user monitoring ─────────────────────────────────────────────────
+  // One ingestion route on the single public origin, so every page reports to
+  // the same place and samples aggregate across them. It previously lived in
+  // one page app with a process-local registry, which meant six of seven pages
+  // reported nothing and the seventh's numbers did not survive a restart.
+  //
+  // Landing them in the shell registry also makes them scrapeable: `/metrics`
+  // already serves it as Prometheus text.
+  server.post("/_shell/rum", async (request, reply) => {
+    const body = request.body as {
+      name?: unknown;
+      value?: unknown;
+      route?: unknown;
+      source?: unknown;
+      traceparent?: unknown;
+    } | null;
+
+    if (!isWebVitalName(body?.name) || typeof body?.value !== "number") {
+      reply.code(400);
+      return { status: "error", reason: "invalid-metric" };
+    }
+    if (!Number.isFinite(body.value)) {
+      reply.code(400);
+      return { status: "error", reason: "non-finite-value" };
+    }
+
+    recordWebVital(metrics.registry, {
+      name: body.name,
+      value: body.value,
+      route: typeof body.route === "string" ? body.route : "/",
+    });
+
+    // `recordWebVital` aggregates and drops per-sample detail, so the trace id
+    // is echoed rather than silently discarded: an endpoint that accepts a
+    // field and forgets it is indistinguishable from one that never got it.
+    return {
+      status: "recorded",
+      name: body.name,
+      ...(typeof body.traceparent === "string"
+        ? { traceparent: body.traceparent }
+        : {}),
+    };
+  });
+
   server.get("/_shell/theme", async (request, reply) => {
     const value = normalizeTheme(readQuery(request, "value"));
     if (!value) return badPref(reply, "theme");

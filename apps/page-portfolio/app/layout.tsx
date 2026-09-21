@@ -4,6 +4,7 @@ import {
   createAssetHtmlTags,
 } from "@mvp/assets";
 import { baseResetCss, createAllThemeVariables } from "@mvp/design-system";
+import { RumBeacon } from "@mvp/runtime/rum";
 import { readThemePreference, resolveLocalePreference } from "@mvp/trade-prefs";
 import { createTradeAliasVariables } from "@mvp/trade-theme";
 import { AppNav, appNavCss } from "@mvp/ui/AppNav";
@@ -104,6 +105,7 @@ export default async function RootLayout({
           locale={locale}
         />
         {children}
+        <RumBeacon />
       </body>
     </html>
   );

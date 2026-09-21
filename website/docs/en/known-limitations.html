@@ -4,7 +4,7 @@
 <p>The list is ordered by what would hurt first, and each entry says who it hurts: <b>AX</b> an AI agent working in the repository, <b>DX</b> a human developer, <b>OPS</b> someone running it, <b>DOCS</b> a claim that is not true as stated.</p>
 <div class="facts">
   <div class="fact"><b>17</b><span>verified findings</span></div>
-  <div class="fact"><b>4</b><span>already fixed</span></div>
+  <div class="fact"><b>5</b><span>already fixed</span></div>
   <div class="fact"><b>3</b><span>would change a decision</span></div>
 </div>
 <hr />
@@ -30,7 +30,7 @@
 <p>So pointing a fragment at another host still loads its island JavaScript from wherever it was registered. Affects the one fragment that has <code>assetsUrl</code> today: <code>order-form</code> on <code>canary</code>.</p>
 <p>Since the env override is the documented way to repoint a fragment without a registry write, this undercuts that path for any fragment serving its own island bundle.</p>
 <hr />
-<h2 id="f3">F3 · <del>Three env vars are declared and read nowhere</del> — FIXED</h2>
+<h2 id="f3">F3 · <s>Three env vars are declared and read nowhere</s> — FIXED</h2>
 <p><code>turbo.json</code> <code>globalPassThroughEnv</code> listed <code>REGISTRY_URL</code>, <code>REGISTRY_USERNAME</code> and <code>REGISTRY_PASSWORD</code>, which a repository-wide search showed were read <strong>nowhere</strong>. They implied an authenticated remote-registry integration that does not exist, and an operator could reasonably have set them and expected an effect.</p>
 <p>Removed. <code>globalPassThroughEnv</code> is now <code>SHELL_URL</code>, <code>PAGE_*_URL</code>, <code>*_URL</code>, <code>RECENTLY_VIEWED_COOKIE_SECRET</code> — all of which are read. Kept on this page as a record of the class of rot to watch for: a passthrough env declaration costs nothing to add and nothing warns when it stops (or never starts) being used.</p>
 <hr />
@@ -85,7 +85,7 @@
 <p><code>maxINPMs</code> moved but did not land: INP is now genuinely measured in the browser (<a href="#f16">F16</a>), so the number exists — but the runtime gate still implements LCP, CLS and TTFB checks and no INP check, so the declared ceiling is still not a ceiling. Measured-and-ungated is a different problem from unmeasured, and a smaller one.</p>
 </div>
 <hr />
-<h2 id="f12">F12 · <del>The scaffold file count is stated as 9 in three places and 11 in three others</del> — FIXED</h2>
+<h2 id="f12">F12 · <s>The scaffold file count is stated as 9 in three places and 11 in three others</s> — FIXED</h2>
 <p>The scaffolder writes <strong>11</strong> files (<code>tools/create-component/src/index.ts</code>, <code>createFragment</code>): <code>src/{server,render,manifest,budget,fixtures,render.test}.ts</code>, <code>tests/server.test.ts</code>, <code>package.json</code>, <code>tsconfig.json</code>, <code>Dockerfile</code>, <code>README.md</code>.</p>
 <div class="table-wrap"><table><thead><tr><th>Says 11 (correct)</th><th>Says 9 (stale)</th></tr></thead><tbody><tr><td><code>CLAUDE.md:48</code></td><td><code>packages/mcp/src/tools.ts:72</code> — the <strong>MCP tool description</strong></td></tr><tr><td><code>tools/create-component/AGENT.md:49</code></td><td><code>docs/AI_NATIVE_DEVX.md:215</code></td></tr><tr><td><code>docs/OPERATIONS.md:27</code></td><td><code>docs/trade-demo/07-deployment-examples.md:56</code></td></tr></tbody></table></div>
 <p>The wrong number was in the one place an AI agent reads by default: the MCP tool description is what a tool listing shows. <code>CLAUDE.md</code> states the accept criterion as <code>files.length === 11</code>, so an agent that trusted the tool description and asserted 9 would fail a check the manual defines correctly.</p>
@@ -121,12 +121,32 @@
 
 <hr />
 
-<h2 id="f17">F17 · Real-user monitoring reaches one page of seven — OPS, medium</h2>
-<p><code>@mvp/observability/rum</code> now measures LCP, CLS, INP, TTFB and long tasks properly, and tags every sample with the server's trace id so a client-side vital joins the server spans of the same page load. But only <code>page-home</code> installs it. <code>page-trade</code> — the nine-slot realtime terminal, the page where jank and interaction latency actually matter — reports nothing.</p>
-<p>The ingestion endpoint is also per-app (<code>apps/page-home/app/api/rum/route.ts</code>) and holds its registry in process memory, so samples neither survive a restart nor aggregate across pages.</p>
-<div class="note">
-<p>This replaced a worse problem rather than creating one: the previous sample was <code>{ name: "INP", value: performance.now() }</code> at island mount — not INP, and never an interaction. One page reporting real numbers beats seven reporting a confident wrong one, but it is not coverage.</p>
+<h2 id="f17">F17 · <s>Real-user monitoring reaches one page of seven</s> — FIXED</h2>
+<p>Measurement was correct but its wiring was not: the observers lived inside one
+page's feature island, so six of seven pages reported nothing — including
+<code>page-trade</code>, the nine-slot realtime terminal, the page where jank and
+interaction latency are the things anyone would actually want measured.
+Ingestion was per-app with a process-local registry, so samples neither survived
+a restart nor aggregated across pages.</p>
+<div class="note good">
+<p><b>Both halves moved to where they are shared.</b> <code>&lt;RumBeacon /&gt;</code>
+(<code>@mvp/runtime/rum</code>) is one line in each app's <code>layout.tsx</code>, so it
+covers every route in that app rather than one component. Ingestion moved to
+<code>POST /_shell/rum</code> on the gateway — the single public origin every page
+already talks to — and lands in the registry <code>/metrics</code> already serves, so
+the samples are aggregated <em>and</em> scrapeable.</p>
 </div>
+<p>Verified in the browser on the page that previously reported nothing: loading
+<code>/trade/BTC</code> and backgrounding it produces two beacons to
+<code>/_shell/rum</code> (LCP 600 ms, CLS 0.034), both carrying the same
+<code>traceparent</code> as the server spans of that load. <code>/metrics</code> then
+carries <code>web_vitals_*</code> series for <code>/trade/BTC</code>,
+<code>/markets</code>, <code>/portfolio</code>, <code>/vaults</code> and
+<code>/referrals</code> in one registry.</p>
+<p>Kept on this page because the lesson generalises: <b>telemetry that has to be
+hand-wired per page ends up wired on the page that needed it least.</b> The fix
+was not better measurement, it was moving the wiring to a place a page cannot
+forget.</p>
 
 <hr />
 

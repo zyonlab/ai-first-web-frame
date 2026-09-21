@@ -3,6 +3,7 @@ import {
   collectAssets,
   createAssetHtmlTags,
 } from "@mvp/assets";
+import { RumBeacon } from "@mvp/runtime/rum";
 import { readThemePreference, resolveLocalePreference } from "@mvp/trade-prefs";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
@@ -62,7 +63,10 @@ export default async function RootLayout({
           <AssetTag key={assetTagKey(tag)} tag={tag} />
         ))}
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <RumBeacon />
+      </body>
     </html>
   );
 }
