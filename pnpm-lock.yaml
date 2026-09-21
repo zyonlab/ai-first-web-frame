@@ -1092,6 +1092,12 @@ importers:
 
   packages/mcp:
     devDependencies:
+      '@mvp/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@mvp/trade-data':
+        specifier: workspace:*
+        version: link:../../domains/trade-data
       tsdown:
         specifier: ^0.11.0
         version: 0.11.13(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@5.9.3)
