@@ -25,7 +25,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium, type Page } from "@playwright/test";
+import { type Browser, chromium, type Page } from "@playwright/test";
 import {
   evaluateRuntime,
   type PaneObservation,
@@ -216,11 +216,38 @@ async function measurePanesWithFallback(
   };
 }
 
+/**
+ * esbuild's `keepNames` (which tsx hardcodes on) rewrites function definitions
+ * to `__name(fn, "name")`. Playwright serialises an `evaluate` callback with
+ * `Function.prototype.toString()` and runs that source in the page, where no
+ * `__name` exists — so every callback below would die with
+ * `ReferenceError: __name is not defined`. It applies to nested `const fn = ()
+ * => {}` too, so "just avoid named functions" is not a rule that holds.
+ *
+ * Passed as a string on purpose: an init script written as a function would go
+ * through the same transform and need the helper it is supposed to install.
+ */
+const KEEP_NAMES_SHIM =
+  'globalThis.__name = globalThis.__name || function (fn, name) { try { Object.defineProperty(fn, "name", { value: name, configurable: true }); } catch {} return fn; };';
+
 async function main() {
   const browser = await chromium.launch();
+  try {
+    await runGate(browser);
+  } finally {
+    // Every exit path, including a thrown error. Without this the browser
+    // stayed up, the event loop never emptied, and the process hung: in CI the
+    // gate printed its failure JSON in 4.5 seconds and then sat there for two
+    // and a half hours until the job was cancelled.
+    await browser.close();
+  }
+}
+
+async function runGate(browser: Browser) {
   const page = await browser.newPage({
     viewport: { width: 1680, height: 1000 },
   });
+  await page.addInitScript({ content: KEEP_NAMES_SHIM });
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
   const staticRequests: { url: string; status: number }[] = [];
@@ -248,7 +275,6 @@ async function main() {
   }
 
   if (!reachable) {
-    await browser.close();
     const msg = `target not reachable: ${url} (is the stack up?)`;
     process.stdout.write(
       json
@@ -301,10 +327,8 @@ async function main() {
           detail: "no order-book on this page — skipped",
         };
 
-  // Before the browser closes: the vitals observers need the live page.
+  // The vitals observers need the live page; main()'s finally closes it.
   const webVitals = await measureWebVitals(page);
-
-  await browser.close();
 
   const obs: RuntimeObservation = {
     pageErrors,
