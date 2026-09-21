@@ -1,27 +1,70 @@
-<h1 id="ai-first-web-frame">ai-first-web-frame</h1>
-<p>An SSR-first micro-frontend framework where <strong>a fragment is the unit of deployment</strong> and <strong>every contract is machine-checkable</strong>.</p>
-<p>A page is a composition of independently deployed HTTP services. Each service owns its markup, its data, its budget and its release channel. The page names slots; the framework resolves each slot against a registry per request, runs them as a dependency graph, and degrades slot-by-slot when one fails.</p>
+<p class="eyebrow">Outward docs · code is the only source of truth</p>
+<h1>ai-first-web-frame</h1>
+<p class="lede">An SSR-first micro-frontend framework with two positions running through it: <strong>a fragment is the unit of deployment</strong>, and <strong>every boundary is a machine-checkable contract</strong>.</p>
+
+<p>A page is not a build artefact. It is a composition of independently deployed HTTP services, each owning its own markup, data, performance budget and release channel. The page only names slots; the framework resolves each one into a concrete version and address on <em>every request</em>, runs them as a dependency graph, and degrades slot by slot when one fails.</p>
+
 <figure class="figure">
 <!--@figure:architecture-->
 <figcaption><b>One request, four hops.</b> The browser only ever sees the gateway. A page names slots; the registry turns each one into a concrete version and URL <em>per request</em>, which is why shipping a new fragment build needs no page rebuild.</figcaption>
 </figure>
+
 <h2 id="what-is-actually-in-the-box">What is actually in the box</h2>
-<p>Counts below are from the repository, not from a roadmap:</p>
-<div class="table-wrap"><table><thead><tr><th>Thing</th><th>Count</th><th>Where</th></tr></thead><tbody><tr><td>Deployable units</td><td>22</td><td>1 gateway + 7 page apps + 14 fragment services</td></tr><tr><td>Workspace packages</td><td>55</td><td><code>apps/</code> <code>fragments/</code> <code>domains/</code> <code>packages/</code> <code>tools/</code></td></tr><tr><td>Exported Zod schemas</td><td>35</td><td><code>packages/contracts/src/index.ts</code> (+ 6 pre-generated JSON Schemas)</td></tr><tr><td>Composed slots</td><td>19</td><td>across 5 pages (<code>page-referrals</code> and <code>page-vaults</code> compose none)</td></tr><tr><td>Verification gates</td><td>14</td><td><code>scripts/verify.mts</code></td></tr><tr><td>Machine-readable rule codes</td><td>18</td><td><code>reference/diagnostics.md</code></td></tr><tr><td>MCP tools for agents</td><td>8</td><td><code>packages/mcp/src/tools.ts</code></td></tr></tbody></table></div>
+<p>Every number below is measured from the repository, not taken from a roadmap:</p>
+
+<div class="facts">
+  <div class="fact"><b>22</b><span>deployable units</span></div>
+  <div class="fact"><b>55</b><span>workspace packages</span></div>
+  <div class="fact"><b>35</b><span>exported Zod contracts</span></div>
+  <div class="fact"><b>19</b><span>composed slots</span></div>
+  <div class="fact"><b>14</b><span>verification gates</span></div>
+  <div class="fact"><b>18</b><span>machine-readable rule codes</span></div>
+  <div class="fact"><b>8</b><span>MCP tools for agents</span></div>
+</div>
+
+<div class="table-wrap"><table>
+<thead><tr><th>Thing</th><th>Count</th><th>Where</th></tr></thead>
+<tbody>
+<tr><td>Deployable units</td><td>22</td><td>1 gateway + 7 page apps + 14 fragment services</td></tr>
+<tr><td>Workspace packages</td><td>55</td><td><code>apps/</code> <code>fragments/</code> <code>domains/</code> <code>packages/</code> <code>tools/</code></td></tr>
+<tr><td>Exported Zod schemas</td><td>35</td><td><code>packages/contracts/src/index.ts</code> (+ 6 pre-generated JSON Schemas)</td></tr>
+<tr><td>Composed slots</td><td>19</td><td>across 5 pages (<code>page-referrals</code> and <code>page-vaults</code> compose none)</td></tr>
+<tr><td>Verification gates</td><td>14</td><td><code>scripts/verify.mts</code></td></tr>
+<tr><td>Machine-readable rule codes</td><td>18</td><td><a href="reference/diagnostics.html">Diagnostics</a></td></tr>
+<tr><td>MCP tools</td><td>8</td><td><code>packages/mcp/src/tools.ts</code></td></tr>
+</tbody></table></div>
+
 <h2 id="start-here">Start here</h2>
-<ul>
-<li>New to it: <a href="introduction/what-is-it.html">What is it</a> → <a href="getting-started/quick-start.html">Quick start</a></li>
-<li>Building a fragment: <a href="getting-started/your-first-fragment.html">Your first fragment</a></li>
-<li>Driving it with an AI agent: <a href="getting-started/ai-setup.html">AI setup</a></li>
-<li>Evaluating it: <a href="introduction/how-it-compares.html">How it compares</a> and <a href="known-limitations.html">Known limitations</a> — read both.</li>
-</ul>
+
+<div class="cards three">
+  <div class="card t">
+    <h4>First contact</h4>
+    <p><a href="introduction/what-is-it.html">What is it</a> → <a href="getting-started/quick-start.html">Quick start</a>. Booting all 22 services and looking at them is faster than reading ten pages of description.</p>
+  </div>
+  <div class="card i">
+    <h4>Building a fragment</h4>
+    <p><a href="getting-started/your-first-fragment.html">Your first fragment</a>: scaffold → implement → register → mount → verify → promote, each step with a machine-readable acceptance signal.</p>
+  </div>
+  <div class="card r">
+    <h4>Evaluating it</h4>
+    <p><a href="introduction/how-it-compares.html">How it compares</a> and <a href="known-limitations.html">Known limitations</a> — read both. The second one is what a decision should rest on.</p>
+  </div>
+</div>
+
+<h2 id="what-a-developer-actually-does">What a developer actually does</h2>
 <figure class="figure">
 <!--@figure:user-journey-->
-<figcaption><b>Five stages, each with an acceptance signal a program can judge.</b> That property is what makes the loop drivable by an agent, not just by a person.</figcaption>
+<figcaption><b>Five stages, each with an acceptance signal a program can judge.</b> That property is what makes the loop drivable by an agent rather than only by a person — an agent cannot act on "looks right", it needs <code>status: "registered"</code>.</figcaption>
 </figure>
+
 <h2 id="reading-these-docs-locally">Reading these docs locally</h2>
-<pre><code class="lang-sh">pnpm docs:serve           # http://localhost:4301
+<pre><code>pnpm docs:serve           # http://localhost:4301
 pnpm docs:serve --open    # and open a browser</code></pre>
-<p>Zero dependencies and no build step: one script renders the Markdown on request. URLs mirror the file paths, so every relative link in the source works unchanged.</p>
+<p>Zero dependencies and no build step: one script wraps hand-authored HTML in the shared chrome. The figures are inline SVG painted with the page's own CSS variables, so a single file serves light theme, dark theme, English and 中文.</p>
+
 <h2 id="a-note-on-these-docs">A note on these docs</h2>
-<p>Every factual claim here was checked against the source tree, and paths are cited so you can re-check. Where the implementation is narrower than the idea, the docs say so inline rather than in a footnote — and everything that is declared but not enforced, or documented but not true, is collected in <a href="known-limitations.html">Known limitations</a>.</p>
+<p>Every factual claim here was checked against the source tree, and paths are cited so you can re-check. Where the implementation is narrower than the idea, the docs say so inline rather than in a footnote. Everything that is declared but not enforced, or documented but not true, is collected in <a href="known-limitations.html">Known limitations</a> — a first-class page, not an appendix.</p>
+
+<div class="note">
+<p><b>On the Chinese edition.</b> Technical identifiers (<code>dynamic-ssr</code>, <code>canary</code>, <code>POST /render</code>, rule codes, field names) are deliberately left in English there. They are strings you type into a terminal; translating them only manufactures ambiguity. The same rule governs the figures, which is why one SVG serves both languages.</p>
+</div>

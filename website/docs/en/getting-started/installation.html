@@ -1,7 +1,11 @@
+<p class="eyebrow">Getting started</p>
 <h1 id="installation">Installation</h1>
+<p class="lede">There is no bootstrap step. A cold clone can go straight to <code>pnpm test</code>.</p>
 <h2 id="requirements">Requirements</h2>
 <div class="table-wrap"><table><thead><tr><th>Tool</th><th>Version</th><th>Why</th></tr></thead><tbody><tr><td>Node.js</td><td>20+</td><td><code>@types/node</code> is pinned at 20.x; the services are plain Node</td></tr><tr><td>pnpm</td><td>10.13+</td><td>workspace protocol and the lockfile format in the repo</td></tr><tr><td>Docker</td><td>optional</td><td>one image per fragment; <code>infra/docker/docker-compose.yml</code> runs all 22</td></tr></tbody></table></div>
-<p><strong>pnpm only.</strong> <code>npm</code> and <code>yarn</code> will produce a lockfile this workspace does not use. Run tools through <code>pnpm exec &lt;tool&gt;</code> or <code>pnpm --filter &lt;pkg&gt; &lt;script&gt;</code>.</p>
+<div class="note warn">
+<p><b>pnpm only.</b> <code>npm</code> and <code>yarn</code> will produce a lockfile this workspace does not use. Run tools through <code>pnpm exec &lt;tool&gt;</code> or <code>pnpm --filter &lt;pkg&gt; &lt;script&gt;</code>.</p>
+</div>
 <h2 id="install">Install</h2>
 <pre><code class="lang-sh">pnpm install</code></pre>
 <p>That is the whole setup. There is no separate bootstrap step: <code>pnpm test</code>, <code>pnpm verify:manifest-gen</code> and <code>pnpm docs:test</code> each run <code>scripts/ensure-workspace-build.mts</code> first, which delegates to Turborepo and builds <code>packages/</code> + <code>domains/</code> when a needed <code>dist/</code> is missing or stale. A cold clone can therefore go straight to <code>pnpm test</code>.</p>
@@ -15,6 +19,8 @@
 pnpm dev                                 # in another shell: all 22 services
 pnpm e2e</code></pre>
 <p>Without the browser binary the API-only specs still pass and every browser spec fails with <code>Executable doesn't exist</code> — that is a missing download, not a product failure.</p>
-<p>A caveat worth knowing: if <code>pnpm build</code> runs while <code>pnpm dev</code> is serving, the dev servers are reading <code>.next</code> directories that the build is replacing, and the suite reports nonsense. Re-run the stack before trusting an e2e result taken around a build.</p>
+<div class="note bad">
+<p><b>A trap worth knowing.</b> If <code>pnpm build</code> runs while <code>pnpm dev</code> is serving, the dev servers are reading <code>.next</code> directories that the build is replacing, and the suite reports nonsense. Re-run the stack before trusting an e2e result taken around a build.</p>
+</div>
 <h2 id="react-and-next-versions">React and Next versions</h2>
 <p>React <strong>19.3</strong> on Next <strong>15.3</strong>. One declared range repo-wide — <code>audit:deps</code> fails the build on a peer/dependency range split for the same package name.</p>

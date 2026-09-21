@@ -1,5 +1,6 @@
+<p class="eyebrow">Guides</p>
 <h1 id="cross-fragment-communication">Cross-fragment communication</h1>
-<p>Independently deployed fragments still have to talk: clicking a price in the order book has to fill the order form. This is deliberately out of scope for Podium; here it is a contract.</p>
+<p class="lede">Independently deployed fragments still have to talk: clicking a price in the order book has to fill the order form. This is deliberately out of scope for Podium; here it is a contract.</p>
 <h2 id="the-contract">The contract</h2>
 <p>Each channel declares <strong>one publisher</strong>, an explicit subscriber list, and a Zod payload schema:</p>
 <pre><code class="lang-ts">// domains/trade-contracts/src/slices.ts
@@ -14,8 +15,10 @@ export const tradeSliceContracts = [
 ] as const;</code></pre>
 <p>The trade demo declares seven channels:</p>
 <div class="table-wrap"><table><thead><tr><th>Channel</th><th>Publisher</th><th>Subscribers</th></tr></thead><tbody><tr><td><code>trade.active-symbol</code></td><td><code>symbol-switcher</code></td><td>chart-panel, order-book, trades-feed, order-form, market-header, positions-table, account-bar</td></tr><tr><td><code>trade.order-draft.price</code></td><td><code>order-book</code></td><td>order-form</td></tr><tr><td><code>trade.order-draft</code></td><td><code>order-form</code></td><td>order-form, order-preview</td></tr><tr><td><code>trade.chart-interval</code></td><td><code>chart-panel</code></td><td>chart-panel</td></tr><tr><td><code>trade.hovered-price</code></td><td><code>order-book</code></td><td>order-form, chart-panel</td></tr><tr><td><code>trade.book-grouping</code></td><td><code>order-book</code></td><td>order-book</td></tr><tr><td><code>trade.leverage</code></td><td><code>account-bar</code></td><td>account-bar, order-form</td></tr></tbody></table></div>
-<p><strong>Publisher and subscriber ids are logical component ids, not fragment names.</strong> <code>symbol-switcher</code> is an owner identity the page uses (<code>apps/page-trade/src/hydrate.tsx</code>), not a service in <code>fragments/</code>. Getting this wrong is the most common integration mistake here.</p>
+<div class="note warn">
+<p><b>Publisher and subscriber ids are logical component ids, not fragment names.</b> <code>symbol-switcher</code> is an owner identity the page uses (<code>apps/page-trade/src/hydrate.tsx</code>), not a service in <code>fragments/</code>. Getting this wrong is the most common integration mistake here.</p>
 <p><code>publisher</code> is singular: a channel has exactly one. If two components need to publish the same concept, that is two channels or one shared owner identity — not a list.</p>
+</div>
 <h2 id="using-the-bus">Using the bus</h2>
 <pre><code class="lang-ts">import { createInteractionBus, validateInteractionPayload } from "@mvp/interaction";
 
@@ -49,4 +52,6 @@ store.subscribe(TRADE_ACTIVE_SYMBOL, (payload) =&gt; { /* … */ });</code></pre
 <p><code>useStoreSlice</code> is the React binding. Channels and slice keys line up by construction: a slice name is the channel's topic tail, so <code>TradeSlices</code> keys match the contract channels.</p>
 <p>The store is a <strong>client-side mechanism</strong>; the contracts are the source of truth. Two shapes of the same list exist for that reason — <code>tradeSliceContracts</code> (island-level, canonical) and <code>tradeStoreContracts</code> (reshaped for the generic store's type parameter).</p>
 <h2 id="what-is-not-checked">What is not checked</h2>
-<p>Nothing validates that a declared publisher or subscriber id corresponds to a component that exists. <code>order-preview</code> appears as a subscriber and nowhere else in the repository (<a href="../known-limitations.html#f13">F13</a>).</p>
+<div class="note bad">
+<p>Nothing validates that a declared publisher or subscriber id corresponds to a component that exists. <code>order-preview</code> appears as a subscriber and <b>nowhere else in the repository</b> (<a href="../known-limitations.html#f13">F13</a>).</p>
+</div>

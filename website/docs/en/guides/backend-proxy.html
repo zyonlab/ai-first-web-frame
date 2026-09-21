@@ -1,5 +1,6 @@
+<p class="eyebrow">Guides</p>
 <h1 id="fragment-backend-proxy">Fragment backend proxy</h1>
-<p>The channel a hydrated island uses to reach its own backend, without CORS and without leaking the fragment's service address to the browser.</p>
+<p class="lede">The channel a hydrated island uses to reach its own backend, without CORS and without leaking the fragment's service address to the browser.</p>
 <h2 id="the-problem">The problem</h2>
 <p>A fragment can reach its backend during SSR — it is a server, it has <code>@mvp/request</code>. Its hydrated island cannot: the browser knows only the public origin, and the fragment's <code>serviceUrl</code> is internal (and must stay internal). Before this existed there was no standard channel at all.</p>
 <h2 id="declaring-one">Declaring one</h2>
@@ -19,5 +20,7 @@
 buildFragmentProxyUrl(base, rest, search, serviceUrl)
 resolveFragmentProxy(options)          // the whole decision</code></pre>
 <p>A remainder that would escape the declared base is <strong>rejected</strong>, not normalized. A target is reachable only if the manifest declares it.</p>
-<p>One subtlety worth knowing if you write against these functions: an empty remainder must not append a trailing slash. Fastify routes <code>/account</code> and <code>/account/</code> separately, so <code>/_fragment/order-form/account</code> and <code>/_fragment/order-form/account/</code> are different requests and only one of them is the one you declared.</p>
+<div class="note warn">
+<p><b>One subtlety</b> if you write against these functions directly: an empty remainder must <em>not</em> append a trailing slash. Fastify routes <code>/account</code> and <code>/account/</code> separately, so <code>/_fragment/order-form/account</code> and <code>/_fragment/order-form/account/</code> are different requests — and only one of them is the one you declared.</p>
+</div>
 <p>Timeout: <code>SHELL_FRAGMENT_PROXY_TIMEOUT_MS</code>.</p>

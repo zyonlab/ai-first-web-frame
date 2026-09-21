@@ -1,19 +1,45 @@
-<h1 id="glossary">Glossary</h1>
-<p>Terms as the code uses them. Where two words are easy to confuse, the distinction is spelled out, because most integration mistakes in this system are vocabulary mistakes.</p>
-<p><strong>Fragment</strong> — an independently deployable SSR service that answers <code>POST /render</code> with HTML. Lives in <code>fragments/&lt;kebab-name&gt;/</code>, runs on <code>@mvp/fragment-host</code>, owns one Dockerfile and one port. 14 exist.</p>
-<p><strong>Page</strong> — a Next.js App Router app (<code>apps/page-*</code>) that declares slots and composes fragments. 7 exist; 5 compose at least one slot.</p>
-<p><strong>Shell gateway</strong> — the single public origin (<code>:4100</code>). Resolves routes, proxies to page apps, mounts fragment backend proxies, serves <code>robots.txt</code> / <code>sitemap.xml</code>, and turns a page health marker into an HTTP status.</p>
-<p><strong>Slot</strong> — a named position in a page that a fragment fills. Declared in <code>apps/&lt;page&gt;/src/manifest.slots.json</code>. 19 exist.</p>
-<p><strong>Render strategy</strong> — how a slot is produced: <code>static</code> | <code>ttl-cache</code> | <code>cached-ssr</code> | <code>dynamic-ssr</code> (<code>RenderStrategySchema</code>).</p>
-<p><strong>Release channel</strong> — <code>stable</code> | <code>canary</code> | <code>preview</code> (<code>ReleaseChannelSchema</code>). A slot names a channel; the registry resolves it to a concrete version and <code>serviceUrl</code> per request.</p>
-<p><strong><code>dependsOn</code> vs <code>dataDependencies</code></strong> — the single most confused pair. <code>dependsOn</code> orders <strong>slots relative to each other</strong> (slot B renders after slot A). <code>dataDependencies</code> names entries in the page's <strong>data-source registry</strong> that must resolve before the slot runs. They feed the same topological scheduler but mean different things, and a slot with no <code>dependsOn</code> is not therefore static — see <a href="../known-limitations.html#f1">Known limitations</a>.</p>
-<p><strong><code>dataDependencies</code> (fragment manifest) vs <code>subscriptions</code> (fragment manifest)</strong> — the second most confused pair. <code>dataDependencies</code> is what the fragment reads <strong>once while server-rendering</strong>. <code>subscriptions</code> is what its browser panel holds <strong>open</strong>. They are deliberately separate: <code>order-form</code> reads <code>account</code> at render time and subscribes to nothing.</p>
-<p><strong>Source id / source template</strong> — a data source is addressed by a normalized string (<code>book.l2.BTC</code>, <code>positions</code>). A <em>template</em> carries <code>&lt;param&gt;</code> placeholders (<code>book.l2.&lt;symbol&gt;</code>) which the page binds at mount time. Constructors live in <code>domains/trade-data/src/sourceIds.ts</code>; never hand-format an id.</p>
-<p><strong>Island</strong> — a client component hydrated inside otherwise-static SSR markup. The fragment emits the DOM plus an inline JSON snapshot; hydration proceeds only if the snapshot handshake passes.</p>
-<p><strong>Live panel</strong> — the non-React counterpart of an island: a server-rendered panel kept current by folding subscription frames into in-place DOM patches. Ships from the fragment's <code>./live</code> export.</p>
-<p><strong>Snapshot handshake</strong> — the check that decides whether to hydrate. Four failure reasons: <code>version-mismatch</code>, <code>contract-hash-mismatch</code>, <code>invalid-snapshot</code>, <code>invalid-props</code> (<code>packages/islands/src/index.ts</code>). Failure means <em>SSR markup is left alone</em>, never a partial mount.</p>
-<p><strong>Page health</strong> — <code>ok</code> | <code>degraded</code> | <code>unhealthy</code>. A failed <strong>optional</strong> slot is <code>degraded</code> and stays <code>200</code>; a failed <strong>required</strong> slot is <code>unhealthy</code> and the gateway answers <code>503</code>.</p>
-<p><strong>Slice / channel</strong> — a typed cross-fragment communication topic. One declared publisher, an explicit subscriber list, a Zod payload schema. Publisher and subscriber ids are <strong>logical component ids, not fragment names</strong> (<code>symbol-switcher</code> is an owner identity used by the page, not a service).</p>
-<p><strong>Minimum deployable unit</strong> — a fragment, verified as such by <code>pnpm verify:unit --name &lt;fragment&gt;</code>.</p>
-<p><strong>Gate</strong> — one of the 14 commands <code>pnpm verify</code> runs (<code>scripts/verify.mts</code>). A gate either passes or fails the build; advisory output is a <strong>finding</strong>, which does not.</p>
-<p><strong>Unit (release tooling)</strong> — a node in the affected graph: route, page, component, data source or slice. Queried with <code>pnpm graph</code>.</p>
+<p class="eyebrow">Introduction</p>
+<h1>Glossary</h1>
+<p class="lede">Terms as the code uses them. Where two words are easy to confuse, the distinction is spelled out — because most integration mistakes in this system are vocabulary mistakes.</p>
+
+<h2 id="units-of-composition">Units of composition</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><b>Fragment</b></td><td>An independently deployable SSR service that answers <code>POST /render</code> with HTML. Lives in <code>fragments/&lt;kebab-name&gt;/</code>, runs on <code>@mvp/fragment-host</code>, owns one Dockerfile and one port. 14 exist.</td></tr>
+<tr><td><b>Page</b></td><td>A Next.js App Router app (<code>apps/page-*</code>) that declares slots and composes fragments. 7 exist; 5 compose at least one slot.</td></tr>
+<tr><td><b>Shell gateway</b></td><td>The single public origin (<code>:4100</code>). Resolves routes, proxies to page apps, mounts fragment backend proxies, serves <code>robots.txt</code> / <code>sitemap.xml</code>, and turns a page health marker into an HTTP status.</td></tr>
+<tr><td><b>Slot</b></td><td>A named position in a page that a fragment fills. Declared in <code>apps/&lt;page&gt;/src/manifest.slots.json</code>. 19 exist.</td></tr>
+<tr><td><b>Minimum deployable unit</b></td><td>A fragment, proven as such by <code>pnpm verify:unit --name &lt;fragment&gt;</code>.</td></tr>
+<tr><td><b>Unit</b> (release tooling)</td><td>A node in the affected graph: route, page, component, data source or slice. Queried with <code>pnpm graph</code>.</td></tr>
+</tbody></table></div>
+
+<h2 id="the-two-pairs-people-confuse">The two pairs people confuse</h2>
+
+<div class="cards two">
+  <div class="card i">
+    <h4><code>dependsOn</code> vs <code>dataDependencies</code></h4>
+    <p><code>dependsOn</code> orders <strong>slots relative to each other</strong> (slot B renders after slot A). <code>dataDependencies</code> names entries in the page's <strong>data-source registry</strong> that must resolve before the slot runs.</p>
+    <p>Both feed the same topological scheduler but mean different things. And: <em>a slot with no <code>dependsOn</code> is not therefore static</em> — which is exactly <a href="../known-limitations.html#f1">the mistake the optimizer currently makes</a>.</p>
+  </div>
+  <div class="card r">
+    <h4><code>dataDependencies</code> vs <code>subscriptions</code> in a manifest</h4>
+    <p><code>dataDependencies</code> is what the fragment reads <strong>once while server-rendering</strong>. <code>subscriptions</code> is what its browser panel holds <strong>open</strong>.</p>
+    <p>Deliberately separate: <code>order-form</code> reads <code>account</code> at render time and subscribes to nothing.</p>
+  </div>
+</div>
+
+<h2 id="runtime-vocabulary">Runtime vocabulary</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><b>Render strategy</b></td><td>How a slot is produced: <code>static</code> | <code>ttl-cache</code> | <code>cached-ssr</code> | <code>dynamic-ssr</code>.</td></tr>
+<tr><td><b>Release channel</b></td><td><code>stable</code> | <code>canary</code> | <code>preview</code>. A slot names a channel; the registry resolves it to a concrete version and <code>serviceUrl</code> per request.</td></tr>
+<tr><td><b>Source id / template</b></td><td>A data source is addressed by a normalized string (<code>book.l2.BTC</code>, <code>positions</code>). A <em>template</em> carries <code>&lt;param&gt;</code> placeholders (<code>book.l2.&lt;symbol&gt;</code>) which the page binds at mount time. Constructors live in <code>domains/trade-data/src/sourceIds.ts</code>; <strong>never hand-format an id</strong>.</td></tr>
+<tr><td><b>Island</b></td><td>A client component hydrated inside otherwise-static SSR markup. The fragment emits the DOM plus an inline JSON snapshot; hydration proceeds only if the handshake passes.</td></tr>
+<tr><td><b>Live panel</b></td><td>The non-React counterpart of an island: a server-rendered panel kept current by folding subscription frames into in-place DOM patches. Ships from the fragment's <code>./live</code> export.</td></tr>
+<tr><td><b>Snapshot handshake</b></td><td>The check that decides whether to hydrate. Four failure reasons: <code>version-mismatch</code>, <code>contract-hash-mismatch</code>, <code>invalid-snapshot</code>, <code>invalid-props</code>. Failure means <em>SSR markup is left alone</em>, never a partial mount.</td></tr>
+<tr><td><b>Page health</b></td><td><code>ok</code> | <code>degraded</code> | <code>unhealthy</code>. A failed <b>optional</b> slot is <code>degraded</code> and stays <code>200</code>; a failed <b>required</b> slot is <code>unhealthy</code> and the gateway answers <code>503</code>.</td></tr>
+<tr><td><b>Slice / channel</b></td><td>A typed cross-fragment communication topic. One declared publisher, an explicit subscriber list, a Zod payload schema. <strong>Publisher and subscriber ids are logical component ids, not fragment names</strong> — <code>symbol-switcher</code> is an owner identity used by the page, not a service under <code>fragments/</code>.</td></tr>
+<tr><td><b>Gate</b></td><td>One of the 14 commands <code>pnpm verify</code> runs (<code>scripts/verify.mts</code>). A gate passes or fails the build; advisory output is a <b>finding</b>, which does not.</td></tr>
+</tbody></table></div>

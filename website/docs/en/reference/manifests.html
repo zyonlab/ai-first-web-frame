@@ -1,14 +1,17 @@
+<p class="eyebrow">Reference</p>
 <h1 id="manifests">Manifests</h1>
-<p>Three manifest kinds, all Zod-validated.</p>
+<p class="lede">Three manifest kinds, all Zod-validated.</p>
 <h2 id="fragment-manifest-fragments-name-src-manifest-ts">Fragment manifest — <code>fragments/&lt;name&gt;/src/manifest.ts</code></h2>
 <p><code>FragmentManifestSchema</code> fields:</p>
 <div class="table-wrap"><table><thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead><tbody><tr><td><code>name</code></td><td>string</td><td>kebab-case; matches <code>data-fragment</code> in the markup</td></tr><tr><td><code>version</code></td><td>string</td><td>reported by <code>/health</code>, <code>/ready</code>, <code>/manifest</code></td></tr><tr><td><code>owner</code></td><td>string</td><td>team</td></tr><tr><td><code>renderMode</code></td><td><code>ssr</code> \</td><td><code>edge-ssr</code></td><td></td></tr><tr><td><code>renderStrategy</code></td><td><code>RenderStrategy</code></td><td>default <code>dynamic-ssr</code></td></tr><tr><td><code>cachePolicy</code></td><td>optional</td><td><code>{ttl, tags, vary}</code></td></tr><tr><td><code>fallback</code></td><td>string</td><td>HTML substituted on failure</td></tr><tr><td><code>assets</code></td><td><code>{js: string[], css: string[]}</code></td><td></td></tr><tr><td><code>proxy</code></td><td>record</td><td>absolute URL <strong>or</strong> <code>/</code>-prefixed path; default <code>{}</code></td></tr><tr><td><code>subscriptions</code></td><td>string[]</td><td>source-id templates the browser panel holds open; default <code>[]</code></td></tr><tr><td><code>budget</code></td><td><code>PerformanceBudget</code></td><td>must have <code>scope: "fragment"</code></td></tr></tbody></table></div>
 <p>The live manifests also carry fields the schema does not model — <code>endpoint</code>, <code>dependsOn</code>, <code>dataDependencies</code>, <code>consumes</code>, <code>produces</code>, <code>layoutHint</code>, <code>metadata</code>. <code>GET /manifest</code> returns the object <strong>verbatim</strong>, so those fields do reach consumers, and the unit-graph loader validates with <code>FragmentManifestSchema.passthrough()</code> so they survive validation rather than being stripped.</p>
-<p>Two things to know about that validation:</p>
+<div class="note warn">
+<p><b>Two things to know about that validation:</b></p>
 <ul>
 <li>The <strong>host does not do it.</strong> <code>createFragmentServer</code> types its <code>manifest</code> as <code>FragmentManifestLike</code> — <code>{name, version, assets}</code> — and never parses it. Schema enforcement happens in <code>tools/release-tools/src/load-graph.ts</code>, which runs when you use the graph/affected tooling (<code>pnpm graph</code>, <code>pnpm affected:graph</code>), <strong>not</strong> in any of the 14 <code>pnpm verify</code> gates. All 14 real manifests do currently pass (<code>pnpm graph</code> loads 72 units).</li>
 <li>The passthrough fields are <strong>convention, not contract</strong>. <code>consumes.slices</code> / <code>produces.slices</code> in particular feed the unit graph's slice edges, and nothing reconciles them against the authoritative channel list — a declared channel no manifest mentions is invisible to the graph (<a href="../known-limitations.html#f15">F15</a>).</li>
 </ul>
+</div>
 <p><code>dataDependencies</code> vs <code>subscriptions</code> is the distinction to get right — see the <a href="../introduction/glossary.html">glossary</a>.</p>
 <h2 id="page-manifest-slots">Page manifest — slots</h2>
 <p><code>apps/&lt;page&gt;/src/manifest.slots.json</code> is a JSON <strong>array</strong> (not <code>{slots: […]}</code>). Each entry:</p>

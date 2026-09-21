@@ -1,5 +1,6 @@
+<p class="eyebrow">Reference</p>
 <h1 id="cli-reference">CLI reference</h1>
-<p>Flag lists below are the scripts' own allowlists (<code>unknownFlagError</code>), not prose. An unknown flag is rejected with a <code>did you mean --&lt;flag&gt;?</code> suggestion, <code>{"status":"failed"}</code>, exit 1, no write.</p>
+<p class="lede">Flag lists below are the scripts' own allowlists (<code>unknownFlagError</code>), not prose. An unknown flag is rejected with a <code>did you mean --&lt;flag&gt;?</code> suggestion, <code>{"status":"failed"}</code>, exit 1, no write.</p>
 <h2 id="lifecycle">Lifecycle</h2>
 <h3 id="register-fragment"><code>register-fragment</code></h3>
 <pre><code class="lang-sh">pnpm exec tsx scripts/register-fragment.mts --name &lt;kebab&gt; --version &lt;semver&gt; \
@@ -19,7 +20,9 @@
 <h3 id="rollback-fragment"><code>rollback-fragment</code></h3>
 <pre><code class="lang-sh">pnpm exec tsx scripts/rollback-fragment.mts --name &lt;kebab&gt; [--to &lt;version&gt;]</code></pre>
 <p>Statuses: <code>rolled-back</code> · <code>unchanged</code> · <code>conflict</code> · <code>failed</code>. Fails cleanly with no recorded target.</p>
-<blockquote>Shorter aliases exist — <code>pnpm register:fragment</code>, <code>pnpm mount:slot</code>, <code>pnpm promote:fragment</code>, <code>pnpm rollback:fragment</code> — and take the same flags after <code>--</code>.</blockquote>
+<div class="note">
+<p>Shorter aliases exist — <code>pnpm register:fragment</code>, <code>pnpm mount:slot</code>, <code>pnpm promote:fragment</code>, <code>pnpm rollback:fragment</code> — taking the same flags after <code>--</code>.</p>
+</div>
 <h2 id="verification">Verification</h2>
 <div class="table-wrap"><table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody><tr><td><code>pnpm verify</code></td><td>the 14 gates; writes <code>reports/</code>; exit 1 if any fails</td></tr><tr><td><code>pnpm verify:unit --name &lt;f&gt; [--port] [--filter] [--skip-build]</code></td><td>build + boot + version contract for one unit</td></tr><tr><td><code>pnpm verify:manifest-gen [--page &lt;p&gt;] [--check]</code></td><td>slot codegen freshness; statuses <code>fresh</code> · <code>stale</code> · <code>exempt</code> · <code>failed</code></td></tr><tr><td><code>pnpm verify:demos [--check] [--write]</code></td><td><code>docs/DEMOS.md</code> generated block vs each page manifest's <code>demonstrates</code></td></tr><tr><td><code>pnpm verify:runtime --url &lt;url&gt; [--json]</code></td><td>web-vitals checks against a <strong>running</strong> page</td></tr><tr><td><code>pnpm docs:test [--config] [--reporter]</code></td><td>executes AGENT.md fenced blocks</td></tr><tr><td><code>pnpm typecheck</code></td><td>tsgo across 54 projects; writes <code>reports/typecheck-report.json</code></td></tr><tr><td><code>pnpm lint</code> / <code>pnpm check</code> / <code>pnpm format</code></td><td>oxlint / biome check / biome write</td></tr></tbody></table></div>
 <h2 id="audits">Audits</h2>

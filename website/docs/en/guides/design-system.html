@@ -1,5 +1,6 @@
+<p class="eyebrow">Guides</p>
 <h1 id="design-system">Design system</h1>
-<p>The visual layer is a separate package with no business dependencies, so it can be owned by a design team and consumed by product teams without either editing the other's code.</p>
+<p class="lede">The visual layer is a separate package with no business dependencies, so it can be owned by a design team and consumed by product teams without either editing the other's code.</p>
 <h2 id="layers">Layers</h2>
 <pre><code>@mvp/design-tokens    raw scales -&gt; CSS custom properties
 @mvp/design-system    semantic tokens, themes, Tailwind preset, base reset
@@ -38,4 +39,6 @@ export default { presets: [tailwindPreset], content: ["./src/**/*.{ts,tsx}"] };<
 <li>their public surface is tokens + components + a Tailwind preset;</li>
 <li><code>audit:css</code> and <code>audit:similarity</code> gate the two failure modes that a shared UI layer actually suffers from — dead CSS, and a near-duplicate component added instead of reusing one.</li>
 </ul>
-<p>What is <em>not</em> automated is a visual regression suite. There is no screenshot baseline in the repository, so a token change that shifts layout is caught by <code>maxCLS</code> only if a Playwright run happens to measure it — and the web-vitals checks are not part of <code>pnpm verify</code> (<a href="../known-limitations.html#f11">F11</a>).</p>
+<div class="note bad">
+<p><b>What is not automated is visual regression.</b> There is no screenshot baseline in the repository, so a token change that shifts layout is caught by <code>maxCLS</code> only if a Playwright run happens to measure it — and the web-vitals checks are not part of <code>pnpm verify</code> (<a href="../known-limitations.html#f11">F11</a>).</p>
+</div>

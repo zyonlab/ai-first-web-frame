@@ -1,5 +1,6 @@
+<p class="eyebrow">Guides</p>
 <h1 id="islands-and-hydration">Islands and hydration</h1>
-<p>A fragment ships SSR HTML plus an inline JSON snapshot. The page hydrates a React island over that markup — but only if a version handshake passes.</p>
+<p class="lede">A fragment ships SSR HTML plus an inline JSON snapshot. The page hydrates a React island over that markup — but only if a version handshake passes.</p>
 <figure class="figure">
 <!--@figure:hydration-handshake-->
 <figcaption><b>For a mismatch, skipping IS the success case.</b> The page keeps working: server-rendered, readable, indexable, just not interactive there. What must never happen is mounting a component against props it does not understand.</figcaption>
@@ -27,7 +28,9 @@ hydrateIslands(document);   // finds every [data-island], mounts what passes</co
 <h2 id="the-handshake-and-what-failure-means">The handshake, and what failure means</h2>
 <p>Hydration is skipped — leaving the SSR markup untouched — for four distinct reasons (<code>SnapshotMismatchInfo.reason</code>):</p>
 <div class="table-wrap"><table><thead><tr><th>Reason</th><th>Cause</th></tr></thead><tbody><tr><td><code>version-mismatch</code></td><td>snapshot <code>version</code> ≠ the page's expected version</td></tr><tr><td><code>contract-hash-mismatch</code></td><td>the payload contract changed under the same version</td></tr><tr><td><code>invalid-snapshot</code></td><td>the JSON does not satisfy <code>IslandSnapshotSchema</code></td></tr><tr><td><code>invalid-props</code></td><td>snapshot props fail the island's own <code>propsSchema</code></td></tr></tbody></table></div>
-<p><strong>Skipping is the success case for a mismatch.</strong> The page keeps working: server-rendered, readable, indexable, just not interactive in that one spot. What must never happen is mounting a component against props it does not understand — an order form that hydrates without the instrument's tick size and lot size would accept orders the exchange rejects.</p>
+<div class="note good">
+<p><b>Skipping is the success case for a mismatch.</b> The page keeps working: server-rendered, readable, indexable, just not interactive in that one spot. What must never happen is mounting a component against props it does not understand — an order form that hydrates without the instrument's tick size and lot size would accept orders the exchange rejects.</p>
+</div>
 <p>Install a handler to observe it:</p>
 <pre><code class="lang-ts">configureIslandRuntime({
   onSnapshotMismatch: (info) =&gt; reportDrift(info),  // {island, expected, actual, reason}

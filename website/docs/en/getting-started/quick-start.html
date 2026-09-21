@@ -1,5 +1,6 @@
+<p class="eyebrow">Getting started</p>
 <h1 id="quick-start">Quick start</h1>
-<p>Bring up the whole composition and look at it.</p>
+<p class="lede">Bring up the whole composition and look at it.</p>
 <h2 id="start-everything">Start everything</h2>
 <pre><code class="lang-sh">pnpm install
 pnpm dev</code></pre>
@@ -19,7 +20,10 @@ curl -s localhost:4204/assets    | jq   # manifest.assets</code></pre>
   -d '{"props":{"symbol":"BTC"},"ctx":{"locale":"en-US","tenant":"default"}}' | jq 'del(.html)'
 # { "assets": {...}, "cache": {"ttl":0,"tags":["book","book:BTC"]},
 #   "metadata": {"name":"order-book","version":"0.1.0"} }</code></pre>
-<p>That <code>ctx</code> is <strong>not</strong> a complete <code>RequestContext</code> — the full schema also requires <code>traceId</code>, <code>requestId</code>, <code>featureFlags</code> and <code>timestamp</code>. It works anyway because <code>parseFragmentRenderRequest</code> is two-tier: it tries the strict schema, then falls back to a lenient envelope (<code>ctx</code> partial and optional) and only answers <code>400</code> when both fail. Handy for poking at a service by hand; see <a href="../known-limitations.html#f14">known limitations F14</a> for why you cannot currently tell whether <em>production</em> traffic is hitting the lenient tier.</p>
+<div class="note">
+<p><b>That <code>ctx</code> is not a complete <code>RequestContext</code></b> — the full schema also requires <code>traceId</code>, <code>requestId</code>, <code>featureFlags</code> and <code>timestamp</code>. It works anyway because <code>parseFragmentRenderRequest</code> is <b>two-tier</b>: it tries the strict schema, then falls back to a lenient envelope (<code>ctx</code> partial and optional), and only answers <code>400</code> when both fail.</p>
+<p>Handy for poking at a service by hand; see <a href="../known-limitations.html#f14">F14</a> for why you cannot currently tell whether <em>production</em> traffic is landing on that tier.</p>
+</div>
 <p><code>4204</code> is <code>order-book</code>. The full port map is in <a href="../reference/ports.html">reference/ports</a>.</p>
 <h2 id="prove-a-fragment-ships-on-its-own">Prove a fragment ships on its own</h2>
 <pre><code class="lang-sh">pnpm verify:unit --name order-book</code></pre>
@@ -31,7 +35,9 @@ curl -s localhost:4204/assets    | jq   # manifest.assets</code></pre>
 <h2 id="read-the-reports">Read the reports</h2>
 <pre><code class="lang-sh">pnpm verify      # writes reports/
 pnpm reports     # serves docs/reports/ on :4300 — long-form HTML reports about the repo itself</code></pre>
-<p><code>reports/</code> (repo root) is machine output, rewritten by every <code>pnpm verify</code>. <code>docs/reports/</code> is hand-written analysis. They are different directories on purpose.</p>
+<div class="note warn">
+<p><b>Two directories with confusingly similar names.</b> <code>reports/</code> at the repo root is machine output, rewritten by every <code>pnpm verify</code>. <code>docs/reports/</code> is hand-written analysis. They are separate on purpose.</p>
+</div>
 <h2 id="next">Next</h2>
 <ul>
 <li><a href="your-first-fragment.html">Your first fragment</a> — the full scaffold → ship loop.</li>

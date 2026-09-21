@@ -1,5 +1,6 @@
+<p class="eyebrow">Guides</p>
 <h1 id="page-composition">Page composition</h1>
-<p>A page declares slots; the framework fills them. The page never contains per-fragment wiring.</p>
+<p class="lede">A page declares slots; the framework fills them. The page never contains per-fragment wiring.</p>
 <h2 id="the-manifest-is-the-source-of-truth">The manifest is the source of truth</h2>
 <p><code>apps/&lt;page&gt;/src/manifest.slots.json</code> is a JSON <strong>array</strong> of slot objects:</p>
 <pre><code class="lang-json">[
@@ -28,11 +29,17 @@ return (
     &lt;PageHealthMeta health={execution.health} failed={failedRequiredSlotNames(execution)} /&gt;
   &lt;/main&gt;
 );</code></pre>
-<p>Two entry points, one choice:</p>
-<ul>
-<li><code>executeFragmentSlots</code> — one barrier: resolves everything, then you render. Simple.</li>
-<li><code>streamFragmentSlots</code> — returns immediately with one promise per slot plus an aggregate, so the shell and each <code>&lt;Suspense&gt;</code> boundary can flush as its own layer settles. <code>executeFragmentSlots</code> is literally <code>streamFragmentSlots(options).result</code>.</li>
-</ul>
+<div class="cards two">
+  <div class="card t">
+    <h4><code>executeFragmentSlots</code></h4>
+    <p>One barrier: resolve everything, then render. Simple.</p>
+  </div>
+  <div class="card i">
+    <h4><code>streamFragmentSlots</code></h4>
+    <p>Returns immediately with one promise per slot plus an aggregate, so the shell and each <code>&lt;Suspense&gt;</code> boundary can flush as its own layer settles.</p>
+    <p>The former is literally <code>streamFragmentSlots(options).result</code>.</p>
+  </div>
+</div>
 <h2 id="strategies">Strategies</h2>
 <div class="table-wrap"><table><thead><tr><th>Strategy</th><th>Behaviour</th></tr></thead><tbody><tr><td><code>static</code></td><td>no service call; <code>staticHtml</code> from the manifest is emitted</td></tr><tr><td><code>ttl-cache</code></td><td>served from the bounded in-process cache while fresh</td></tr><tr><td><code>cached-ssr</code></td><td>rendered, then cached per <code>cachePolicy</code></td></tr><tr><td><code>dynamic-ssr</code></td><td>rendered per request</td></tr></tbody></table></div>
 <p><code>cachePolicy.vary</code> partitions the cache key by context dimensions (<code>tenant</code>, <code>locale</code>, <code>props</code>). The cache is bounded (<code>DEFAULT_FRAGMENT_CACHE_MAX_ENTRIES</code>) with <code>pruneFragmentCache</code> and tag-based invalidation via <code>invalidateFragmentCacheByTag</code>.</p>
