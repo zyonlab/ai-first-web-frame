@@ -72,6 +72,13 @@ export type RuntimeObservation = {
     lcpMs?: number;
     cls?: number;
     ttfbMs?: number;
+    /**
+     * One line per layout-shift source: score, the shifting element (with its
+     * `data-fragment` / `data-island` marker when it has one) and its y,height
+     * before and after. A bare CLS number says a page shifts but not what
+     * shifted, which is the only question worth asking when the budget fails.
+     */
+    clsSources?: string[];
     budget?: { maxLCPMs?: number; maxCLS?: number; maxTTFBMs?: number };
   };
   /** Optional interaction-contract result (e.g. order-book → order-form price).
@@ -206,10 +213,15 @@ export function evaluateRuntime(
       continue;
     }
     const rounded = unit === "ms" ? Math.round(measured) : measured;
+    const over = measured > ceiling;
+    const sources =
+      over && name === "web-vitals-cls" && obs.webVitals?.clsSources?.length
+        ? ` — shifted: ${obs.webVitals.clsSources.slice(0, 4).join(" | ")}`
+        : "";
     checks.push({
       name,
-      ok: measured <= ceiling,
-      detail: `${rounded}${unit} vs budget ${ceiling}${unit}`,
+      ok: !over,
+      detail: `${rounded}${unit} vs budget ${ceiling}${unit}${sources}`,
     });
   }
 

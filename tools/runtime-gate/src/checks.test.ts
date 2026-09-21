@@ -282,3 +282,40 @@ describe("failed request attribution", () => {
     expect(hydration?.detail).not.toContain("[");
   });
 });
+
+describe("CLS attribution", () => {
+  /**
+   * CI reported `web-vitals-cls 0.2027 vs budget 0.1` and nothing else, and the
+   * shift did not reproduce against a warm local dev server — so the only way
+   * to learn what moves is for the gate to say so.
+   */
+  it("names the shifting elements when CLS is over budget", () => {
+    const { checks } = evaluateRuntime({
+      ...clean,
+      webVitals: {
+        cls: 0.2,
+        budget: { maxCLS: 0.1 },
+        clsSources: [
+          "0.1800 <section data-fragment=promotion-banner> y,h 120,0 -> 120,240",
+        ],
+      },
+    });
+    const cls = checks.find((c) => c.name === "web-vitals-cls");
+    expect(cls?.ok).toBe(false);
+    expect(cls?.detail).toContain("promotion-banner");
+  });
+
+  it("stays quiet when CLS is within budget", () => {
+    const { checks } = evaluateRuntime({
+      ...clean,
+      webVitals: {
+        cls: 0.05,
+        budget: { maxCLS: 0.1 },
+        clsSources: ["0.0500 <div> y,h 0,10 -> 0,20"],
+      },
+    });
+    const cls = checks.find((c) => c.name === "web-vitals-cls");
+    expect(cls?.ok).toBe(true);
+    expect(cls?.detail).not.toContain("shifted");
+  });
+});

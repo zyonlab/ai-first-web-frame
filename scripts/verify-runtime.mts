@@ -110,9 +110,15 @@ async function measureWebVitals(page: Page): Promise<{
   lcpMs?: number;
   cls?: number;
   ttfbMs?: number;
+  clsSources?: string[];
 }> {
   return page.evaluate(async () => {
-    const result: { lcpMs?: number; cls?: number; ttfbMs?: number } = {};
+    const result: {
+      lcpMs?: number;
+      cls?: number;
+      ttfbMs?: number;
+      clsSources?: string[];
+    } = {};
     const navigation = performance.getEntriesByType("navigation")[0] as
       | PerformanceNavigationTiming
       | undefined;
@@ -143,6 +149,45 @@ async function measureWebVitals(page: Page): Promise<{
             };
             if (shift.hadRecentInput) continue;
             result.cls = (result.cls ?? 0) + shift.value;
+            // A bare CLS number says a page shifts but not WHAT shifted, which
+            // is the whole question when the budget fails. `sources` names the
+            // elements and their before/after boxes.
+            const sources =
+              (
+                shift as unknown as {
+                  sources?: {
+                    node?: Node | null;
+                    previousRect?: DOMRectReadOnly;
+                    currentRect?: DOMRectReadOnly;
+                  }[];
+                }
+              ).sources ?? [];
+            for (const source of sources) {
+              const node = source.node;
+              const element =
+                node && node.nodeType === 1 ? (node as Element) : undefined;
+              const marker = element
+                ? [
+                    element.tagName.toLowerCase(),
+                    element.getAttribute("data-fragment") &&
+                      `data-fragment=${element.getAttribute("data-fragment")}`,
+                    element.getAttribute("data-island") &&
+                      `data-island=${element.getAttribute("data-island")}`,
+                    element.getAttribute("id") &&
+                      `#${element.getAttribute("id")}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                : "(non-element)";
+              const box = (rect?: DOMRectReadOnly) =>
+                rect
+                  ? `${Math.round(rect.y)},${Math.round(rect.height)}`
+                  : "none";
+              result.clsSources = [
+                ...(result.clsSources ?? []),
+                `${shift.value.toFixed(4)} <${marker}> y,h ${box(source.previousRect)} -> ${box(source.currentRect)}`,
+              ];
+            }
           }
         }).observe({ type: "layout-shift", buffered: true });
       } catch {
