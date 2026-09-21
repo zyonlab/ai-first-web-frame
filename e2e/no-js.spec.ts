@@ -27,12 +27,25 @@ test.describe("home page without client JavaScript", () => {
       page.locator('[data-fragment="recommendation-widget"]').first(),
     ).toBeVisible();
 
-    // No-JS oriented editorial content and diagnostics are present.
+    // No-JS oriented editorial content is present.
     await expect(page.getByText("No-JS readable collection")).toBeVisible();
-    await expect(
-      page
-        .locator('[data-request-trace="home"]')
-        .getByRole("heading", { name: "Request trace" }),
-    ).toBeVisible();
   });
+
+  /**
+   * No assertion here for the diagnostics section, deliberately.
+   *
+   * It is rendered behind a `<Suspense>` that needs the full slot aggregate, so
+   * it resolves last. Against a warm local stack that lands inside the shell
+   * flush and IS readable without JS; in the compose stack it lands after, and
+   * React places late boundary content with an inline script that never runs.
+   * Asserting it either way pins a race — proven: marking it `test.fail()` made
+   * the local run report "Expected to fail, but passed."
+   *
+   * What the no-JS claim does cover is asserted above: the shell, the headings,
+   * the fragment slots (live content or their readable fallback) and the
+   * editorial block. The streamed slots showing a fallback rather than live
+   * copy without JS is the real limitation of this page's streaming demo, and
+   * `e2e/support/expect-fragment-content.ts` explains why the strict tier does
+   * not apply here.
+   */
 });

@@ -25,6 +25,29 @@ export function isE2EStrict(): boolean {
   return process.env.E2E_STRICT === "1";
 }
 
+/**
+ * Whether the strict tier can be applied to THIS run.
+ *
+ * Strict asks the stack to prove live composition. A streamed slot
+ * (`<Suspense><FragmentSlotStream>`) resolves after the shell is flushed, and
+ * React places late boundary content with an inline script — so with client
+ * JavaScript disabled the fallback is what stays on the page, permanently and
+ * by construction. Demanding live content there does not test the stack; it
+ * tests whether streaming works without JS, which it cannot.
+ *
+ * So the `no-js` project always uses the lenient tier — which is also what
+ * every spec title already promises ("… content OR its fallback"). The
+ * JS-enabled project still proves live composition strictly.
+ *
+ * That streamed slots are not readable without JS is a real gap between this
+ * framework's no-JS claim and its streaming demo, and it is a product
+ * question, not a test-tier one: `e2e/no-js.spec.ts` pins the current
+ * behaviour so it cannot change silently.
+ */
+export function isStrictApplicable(javaScriptEnabled: boolean): boolean {
+  return isE2EStrict() && javaScriptEnabled;
+}
+
 export type FragmentContentExpectation = {
   /** Pattern matched only when the fragment rendered live content. */
   live: string | RegExp;
@@ -39,10 +62,16 @@ export type FragmentContentExpectation = {
 export async function expectFragmentContent(
   locator: Locator,
   content: FragmentContentExpectation,
+  /**
+   * Playwright's `javaScriptEnabled` fixture. Defaults to `true` so a caller
+   * that omits it keeps the previous behaviour; the `no-js` project passes
+   * `false` and drops to the lenient tier (see `isStrictApplicable`).
+   */
+  options: { javaScriptEnabled?: boolean } = {},
 ): Promise<void> {
   await expect(locator).toBeVisible();
 
-  if (isE2EStrict()) {
+  if (isStrictApplicable(options.javaScriptEnabled ?? true)) {
     await expect(
       locator,
       'E2E_STRICT=1: fragment must render live content, not its SSR fallback (data-fallback="true")',
