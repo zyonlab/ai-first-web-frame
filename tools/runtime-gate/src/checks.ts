@@ -37,6 +37,16 @@ export type RuntimeObservation = {
   consoleErrors: string[];
   /** Requests to /_next/static or /assets (asset-delivery plane). */
   staticRequests: StaticRequest[];
+  /**
+   * Every response with a 4xx/5xx status, whatever its path. `staticRequests`
+   * deliberately covers only the asset plane, so a failing request anywhere
+   * else reached the report as nothing but the browser's unattributed
+   * "Failed to load resource: the server responded with a status of 400"
+   * console line — which is how a broken `<Image>` on the product page cost a
+   * local stack reproduction to identify. Optional so existing fixtures and
+   * older callers stay valid.
+   */
+  failedRequests?: StaticRequest[];
   /** Panes with their fill geometry (layout-fit plane); see `paneSource`. */
   panes: PaneObservation[];
   /** Which selector `panes` came from. Defaults to inferring from `panes`
@@ -105,13 +115,23 @@ export function evaluateRuntime(
 
   // Hydration — no uncaught errors at all.
   const allErrors = [...obs.pageErrors, ...obs.consoleErrors];
+  // A generic "Failed to load resource" says nothing about WHICH resource, so
+  // attribute it from the observed 4xx/5xx responses.
+  const failed = obs.failedRequests ?? [];
+  const failedDetail =
+    failed.length > 0
+      ? ` [${failed
+          .map((r) => `${r.status} ${r.url}`)
+          .join(", ")
+          .slice(0, 300)}]`
+      : "";
   checks.push({
     name: "hydration-clean",
     ok: allErrors.length === 0,
     detail:
       allErrors.length === 0
         ? "0 page/console errors"
-        : `${allErrors.length} error(s): ${allErrors[0]?.slice(0, 120)}`,
+        : `${allErrors.length} error(s): ${allErrors[0]?.slice(0, 120)}${failedDetail}`,
   });
 
   // React #418 specifically (the shell-wrap hydration mismatch class).

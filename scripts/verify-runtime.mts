@@ -251,6 +251,7 @@ async function runGate(browser: Browser) {
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
   const staticRequests: { url: string; status: number }[] = [];
+  const failedRequests: { url: string; status: number }[] = [];
 
   page.on("pageerror", (e) => pageErrors.push(String(e)));
   page.on("console", (m) => {
@@ -261,6 +262,7 @@ async function runGate(browser: Browser) {
     const u = r.url();
     if (/\/_next\/static\/|\/assets\//.test(u))
       staticRequests.push({ url: u, status: r.status() });
+    if (r.status() >= 400) failedRequests.push({ url: u, status: r.status() });
   });
 
   let reachable = true;
@@ -334,6 +336,7 @@ async function runGate(browser: Browser) {
     pageErrors,
     consoleErrors,
     staticRequests,
+    failedRequests,
     panes,
     paneSource,
     horizontalOverflowPx,

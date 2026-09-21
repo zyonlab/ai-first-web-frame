@@ -246,3 +246,39 @@ describe("core web vitals against the declared budget", () => {
     expect(names).not.toContain("web-vitals-inp");
   });
 });
+
+describe("failed request attribution", () => {
+  /**
+   * The browser's console line for a failed subresource names no URL, so a
+   * broken `<Image>` on the product page reached CI as "1 error(s): Failed to
+   * load resource: the server responded with a status of 400" and nothing more.
+   * The failing responses are observed separately and named in the detail.
+   */
+  it("names the 4xx responses alongside the console error", () => {
+    const { checks } = evaluateRuntime({
+      ...clean,
+      consoleErrors: [
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+      ],
+      failedRequests: [
+        {
+          url: "http://localhost:4100/_next/image?url=%2Fmissing.jpg",
+          status: 400,
+        },
+      ],
+    });
+    const hydration = checks.find((c) => c.name === "hydration-clean");
+    expect(hydration?.ok).toBe(false);
+    expect(hydration?.detail).toContain("400");
+    expect(hydration?.detail).toContain("_next/image");
+  });
+
+  it("says nothing extra when no request failed", () => {
+    const { checks } = evaluateRuntime({
+      ...clean,
+      consoleErrors: ["some other error"],
+    });
+    const hydration = checks.find((c) => c.name === "hydration-clean");
+    expect(hydration?.detail).not.toContain("[");
+  });
+});
