@@ -197,7 +197,44 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - name: Build compose stack
-        run: docker compose -f infra/docker/docker-compose.yml build --provenance=false --sbom=false
+        # Two runner-specific constraints, both found by actually running this
+        # job for the first time:
+        #
+        # 1. No `--provenance=false --sbom=false`, unlike the README's local
+        #    recipe and the `docker` job's buildx call. Those flags exist for a
+        #    Docker Desktop problem (README: concurrent attestation export
+        #    caused intermittent snapshot errors on the dev machine), and
+        #    `compose build` only gained them in Compose v5 — this runner logs
+        #    v2.38.2 and failed the step with `unknown flag: --provenance`.
+        #    buildx does accept them, so the `docker` job keeps them.
+        #
+        # 2. Bounded concurrency. Every unit is independently deployable, so
+        #    each of the 22 Dockerfiles does its own `COPY . .` +
+        #    `pnpm install` + `pnpm --filter <unit>... build`. That property is
+        #    deliberate and worth keeping, but building all 22 at once (compose's
+        #    default) runs 7 concurrent `next build`s on 4 vCPUs: the runner went
+        #    silent for 16 minutes and was terminated with SIGTERM (exit 143),
+        #    with even the `if: always()` steps skipped — a killed runner, not a
+        #    failed command. So the services are built in fixed-size batches:
+        #    the 7 `next build` pages two at a time, the 15 fastify units four
+        #    at a time. Each batch is one bake solve, so BuildKit still dedups
+        #    the `pnpm install` layer the units share. The list is sorted
+        #    because `config --services` is not ordered, and an unordered list
+        #    puts a random number of `next build`s in the same batch — peak load
+        #    has to be reproducible for this bound to mean anything.
+        run: |
+          set -euo pipefail
+          CF=infra/docker/docker-compose.yml
+          # Recorded because this step's compatibility depends on them.
+          docker compose version
+          docker buildx version
+          df -h / | tail -1
+          free -m | head -2
+          docker compose -f "$CF" config --services | grep '^page-' | sort \
+            | xargs -n 2 docker compose -f "$CF" build
+          docker compose -f "$CF" config --services | grep -v '^page-' | sort \
+            | xargs -n 4 docker compose -f "$CF" build
+          df -h / | tail -1
       - name: Start compose stack
         run: docker compose -f infra/docker/docker-compose.yml up -d --no-build
       # docker-smoke derives its full-fleet check list from
