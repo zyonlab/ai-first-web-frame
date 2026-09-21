@@ -92,7 +92,11 @@ const fetcher: HttpFetcher = async (url) => {
     redirect: "follow",
     signal: AbortSignal.timeout(10_000),
   });
-  return { status: response.status, body: await response.text() };
+  return {
+    status: response.status,
+    body: await response.text(),
+    headers: Object.fromEntries(response.headers),
+  };
 };
 
 async function main(): Promise<void> {

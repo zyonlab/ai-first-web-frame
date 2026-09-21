@@ -88,6 +88,25 @@ describe("deriveSmokeChecks", () => {
     expect(trade?.expectSubstrings).toEqual(['"status":"ok"', "page-trade"]);
   });
 
+  /**
+   * The composed shell checks are the reason this exists. The gateway is a
+   * transparent proxy (058f13b): it returns the page's HTML verbatim and injects
+   * no marker, so only a header it stamps proves the request went through it.
+   * This pins that the suite asks for the header and does NOT ask for the
+   * long-removed `data-shell-gateway` marker — the drift that made docker-smoke
+   * contradict the gateway's own unit test and both e2e specs.
+   */
+  it("requires the gateway trace header, not a body marker, on composed routes", () => {
+    const checks = deriveSmokeChecks(registry, routes);
+    for (const id of ["shell-home-composed", "shell-product-composed"]) {
+      const composed = checks.find((entry) => entry.id === id);
+      expect(composed?.expectHeaders).toEqual(["x-trace-id"]);
+      expect(composed?.expectSubstrings.join(" ")).not.toContain(
+        "data-shell-gateway",
+      );
+    }
+  });
+
   it("keeps the shell health and composed shell-route marker checks", () => {
     const ids = deriveSmokeChecks(registry, routes).map((entry) => entry.id);
     expect(ids[0]).toBe("shell-gateway-health");
@@ -138,7 +157,11 @@ describe("evaluateCheck", () => {
       status: 200,
       body: '{"status":"ok","service":"shell-gateway"}',
     });
-    expect(result).toEqual({ ok: true, missingSubstrings: [] });
+    expect(result).toEqual({
+      ok: true,
+      missingSubstrings: [],
+      missingHeaders: [],
+    });
   });
 
   it("fails on unexpected status", () => {
@@ -150,12 +173,42 @@ describe("evaluateCheck", () => {
   it("reports missing marker substrings", () => {
     const result = evaluateCheck(
       check({
-        expectSubstrings: ['data-page="home"', 'data-shell-gateway="true"'],
+        expectSubstrings: ['data-page="home"', 'data-absent-marker="1"'],
       }),
       { status: 200, body: '<main data-page="home"></main>' },
     );
     expect(result.ok).toBe(false);
-    expect(result.missingSubstrings).toEqual(['data-shell-gateway="true"']);
+    expect(result.missingSubstrings).toEqual(['data-absent-marker="1"']);
+  });
+});
+
+describe("expectHeaders", () => {
+  it("fails when an expected header is absent or empty", () => {
+    const absent = evaluateCheck(
+      check({ expectSubstrings: [], expectHeaders: ["x-trace-id"] }),
+      { status: 200, body: "", headers: { "content-type": "text/html" } },
+    );
+    expect(absent.ok).toBe(false);
+    expect(absent.missingHeaders).toEqual(["x-trace-id"]);
+
+    const blank = evaluateCheck(
+      check({ expectSubstrings: [], expectHeaders: ["x-trace-id"] }),
+      { status: 200, body: "", headers: { "x-trace-id": "   " } },
+    );
+    expect(blank.ok).toBe(false);
+    expect(blank.missingHeaders).toEqual(["x-trace-id"]);
+  });
+
+  it("passes on a present header, matching case-insensitively", () => {
+    const result = evaluateCheck(
+      check({ expectSubstrings: [], expectHeaders: ["X-Trace-Id"] }),
+      { status: 200, body: "", headers: { "x-trace-id": "trace-1" } },
+    );
+    expect(result).toEqual({
+      ok: true,
+      missingSubstrings: [],
+      missingHeaders: [],
+    });
   });
 });
 
@@ -222,7 +275,7 @@ describe("runSmokeSuite", () => {
     });
 
     const suite = await runSmokeSuite(
-      [check({ expectSubstrings: ['data-shell-gateway="true"'] })],
+      [check({ expectSubstrings: ['data-absent-marker="1"'] })],
       fetcher,
       { timeoutMs: 1, intervalMs: 5, sleep: async () => {} },
     );
@@ -230,7 +283,7 @@ describe("runSmokeSuite", () => {
     expect(suite.ok).toBe(false);
     expect(suite.checks[0].status).toBe(200);
     expect(suite.checks[0].missingSubstrings).toEqual([
-      'data-shell-gateway="true"',
+      'data-absent-marker="1"',
     ]);
   });
 });
