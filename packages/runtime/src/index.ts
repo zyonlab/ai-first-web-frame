@@ -466,9 +466,25 @@ export function createFallbackResponse(
  */
 export function isFallbackResponse(response: FragmentRenderResponse): boolean {
   if (response.metadata.fallback === true) return true;
-  // Deprecated: legacy HTML marker sniff; remove once all fragments set
-  // metadata.fallback = true in their degraded responses.
-  return response.html.includes('data-fallback="true"');
+  // Deprecated: legacy HTML marker sniff, for fragments predating the metadata
+  // flag. All 14 fragments in this repo now set it, so this only covers
+  // externally built ones — which is why it is narrowed rather than removed.
+  //
+  // It must not read the marker out of a fragment's own stylesheet. markets-table
+  // inlines `[data-fragment="markets-table"][data-fallback="true"] { ... }` to
+  // style its degraded state, so EVERY healthy render carried the marker string
+  // and was classified as a fallback. Its slot is `required`, so the page
+  // reported `health: "unhealthy"` and the gateway answered /markets with 503 —
+  // on every request, for every visitor.
+  return markerOutsideInertContent(response.html);
+}
+
+/** `<style>` / `<script>` bodies are not markup; a marker inside one is text. */
+function markerOutsideInertContent(html: string): boolean {
+  return html
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .includes('data-fallback="true"');
 }
 
 export function createFragmentHeaders(

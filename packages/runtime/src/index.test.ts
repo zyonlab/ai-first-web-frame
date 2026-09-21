@@ -1038,6 +1038,39 @@ describe("@mvp/runtime", () => {
       expect(cache.size).toBe(0);
     });
 
+    it("does not read the marker out of the fragment's own stylesheet", () => {
+      // The exact shape that made /markets answer 503 on every request:
+      // markets-table inlines a rule that styles its degraded state, so the
+      // marker string appeared in every healthy response.
+      expect(
+        isFallbackResponse({
+          html: [
+            '<style data-fragment-style="markets-table">',
+            '[data-fragment="markets-table"][data-fallback="true"] { opacity: 0.6; }',
+            "</style>",
+            '<section data-fragment="markets-table"><table></table></section>',
+          ].join(""),
+          assets: { js: [], css: [] },
+          cache: { ttl: 5, tags: ["markets"] },
+          metadata: { name: "markets-table", version: "0.1.0" },
+        }),
+      ).toBe(false);
+    });
+
+    it("still catches the marker on real markup that follows a stylesheet", () => {
+      expect(
+        isFallbackResponse({
+          html: [
+            '<style>[data-fallback="true"] { color: red; }</style>',
+            '<section data-fallback="true">Markets unavailable</section>',
+          ].join(""),
+          assets: { js: [], css: [] },
+          cache: { ttl: 0, tags: [] },
+          metadata: { name: "markets-table", version: "0.1.0" },
+        }),
+      ).toBe(true);
+    });
+
     it("keeps the deprecated HTML sniff for fragments without metadata", () => {
       expect(
         isFallbackResponse({
