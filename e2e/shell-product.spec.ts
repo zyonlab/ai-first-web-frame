@@ -24,6 +24,7 @@ test.describe("product route via shell-gateway", () => {
 
   test("renders static block, ISR promotion and dynamic recommendations", async ({
     page,
+    javaScriptEnabled,
   }) => {
     await page.goto("/product/123");
 
@@ -37,6 +38,7 @@ test.describe("product route via shell-gateway", () => {
         live: /Static product proof/,
         fallback: /Static product proof is unavailable/,
       },
+      { javaScriptEnabled },
     );
 
     // Promotion (ISR strategy on product page) and dynamic recommendations.
@@ -46,6 +48,7 @@ test.describe("product route via shell-gateway", () => {
         live: /Limited time offer|限时优惠/,
         fallback: /Product promotion is loading|Promotion unavailable/,
       },
+      { javaScriptEnabled },
     );
     await expectFragmentContent(
       page.locator('[data-fragment="recommendation-widget"]').first(),
@@ -53,6 +56,7 @@ test.describe("product route via shell-gateway", () => {
         live: /Recommended for you/,
         fallback: /Related products are loading|Recommendations unavailable/,
       },
+      { javaScriptEnabled },
     );
 
     // Render strategy diagnostics advertise the expected strategies.
@@ -62,7 +66,22 @@ test.describe("product route via shell-gateway", () => {
     await expect(strategies).toContainText("dynamic-ssr:");
   });
 
-  test("renders the product request trace section", async ({ page }) => {
+  test("renders the product request trace section", async ({
+    page,
+    javaScriptEnabled,
+  }) => {
+    // JS-enabled runs only. This section is rendered by the diagnostics
+    // component, which needs the FULL slot aggregate, so its `<Suspense>`
+    // boundary resolves last. Whether that lands inside the shell flush (and so
+    // is readable without JS) or after it (and so needs the inline script React
+    // uses to place late boundary content) is a timing race: it resolves in
+    // time against a warm local stack and does not in the compose stack. A
+    // no-JS contract cannot be built on a race, so the no-JS claim covers the
+    // shell and the slots, not this.
+    test.skip(
+      javaScriptEnabled === false,
+      "diagnostics resolve after the shell flush; placing them needs client JS",
+    );
     await page.goto("/product/123");
     const trace = page.locator('[data-request-trace="product"]');
     await expect(trace).toHaveCount(1);

@@ -24,6 +24,13 @@ export type SmokeCheck = {
   url: string;
   expectStatus: number;
   expectSubstrings: string[];
+  /**
+   * Response headers that must be present and non-empty. The shell gateway is a
+   * transparent proxy — it returns the page's HTML verbatim and injects no
+   * marker — so a header it stamps is the only body-independent proof that the
+   * request went through it. Names are compared lowercase.
+   */
+  expectHeaders?: string[];
 };
 
 export type SmokeCheckResult = {
@@ -32,6 +39,7 @@ export type SmokeCheckResult = {
   ok: boolean;
   status?: number;
   missingSubstrings: string[];
+  missingHeaders: string[];
   error?: string;
   attempts: number;
 };
@@ -42,7 +50,12 @@ export type SmokeSuiteResult = {
   checks: SmokeCheckResult[];
 };
 
-export type HttpResponseLike = { status: number; body: string };
+export type HttpResponseLike = {
+  status: number;
+  body: string;
+  /** Optional so existing fakes keep working; absent means "none observed". */
+  headers?: Record<string, string>;
+};
 export type HttpFetcher = (url: string) => Promise<HttpResponseLike>;
 export type SleepFn = (ms: number) => Promise<void>;
 
@@ -59,7 +72,9 @@ export type SmokeFragmentRegistryData = {
 
 /** Minimal slice of `@mvp/routes`'s RouteRegistry the derivation needs. */
 export type SmokeRouteRegistryData = {
-  routes: ReadonlyArray<{ id: string; serviceUrl: string }>;
+  /** `path` is what the composed-route checks need; the real route registry
+   * always carries it (`/`, `/product/:id`, …). */
+  routes: ReadonlyArray<{ id: string; path: string; serviceUrl: string }>;
 };
 
 /** The shell gateway is not a registry entry; its port is fixed. */
@@ -114,21 +129,60 @@ export function deriveSmokeChecks(
       expectSubstrings: ['"status":"ok"', `page-${route.id}`],
     });
   }
-  checks.push(
-    {
-      id: "shell-home-composed",
-      url: `http://${host}:${SHELL_GATEWAY_PORT}/`,
+  // One composed check per route in the registry, not a hand-picked pair.
+  //
+  // This list used to be two entries — `/` and `/product/123` — while the
+  // per-service health checks above were derived. That gap is why /markets
+  // answered 503 to every visitor without any gate noticing: its page was
+  // healthy, its fragment was healthy, and nothing asked the gateway for the
+  // composed route.
+  //
+  // It also absorbs cold start. A page's first request is what triggers its
+  // fragments' first `/render`, and market-header's took 172ms of a 200ms slot
+  // budget on a fresh container — over that budget the required slot fails, the
+  // page reports unhealthy and the gateway answers 503. This suite retries
+  // until the deadline, so it is the right place to pay that cost; the runtime
+  // gate that runs after it then sees a warm stack.
+  //
+  // No `data-shell-gateway="true"`: 058f13b made the gateway a transparent
+  // proxy that returns the page's HTML verbatim and injects no chrome wrapper.
+  // `apps/shell-gateway/tests/server.test.ts` and both `e2e/shell-*.spec.ts`
+  // assert that marker is ABSENT. Passage through the gateway is proven the way
+  // the e2e specs prove it: the trace header it stamps on the response.
+  for (const route of routes.routes) {
+    checks.push({
+      id: `shell-${route.id}-composed`,
+      url: `http://${host}:${SHELL_GATEWAY_PORT}${resolveRoutePath(route.path)}`,
       expectStatus: 200,
-      expectSubstrings: ['data-shell-gateway="true"', 'data-page="home"'],
-    },
-    {
-      id: "shell-product-composed",
-      url: `http://${host}:${SHELL_GATEWAY_PORT}/product/123`,
-      expectStatus: 200,
-      expectSubstrings: ['data-shell-gateway="true"', 'data-page="product"'],
-    },
-  );
+      // Every composed page stamps its route id as `data-page`.
+      expectSubstrings: [`data-page="${route.id}"`],
+      expectHeaders: ["x-trace-id"],
+    });
+  }
   return checks;
+}
+
+/**
+ * Sample values for the registry's path parameters, so a pattern like
+ * `/trade/:symbol` becomes a URL that can actually be fetched. They match what
+ * `e2e/` and the runtime gate use, so all three exercise the same pages.
+ */
+const ROUTE_PARAM_SAMPLES: Record<string, string> = {
+  id: "123",
+  symbol: "BTC",
+};
+
+/** `/product/:id` -> `/product/123`. An unknown parameter keeps its name, which
+ * makes the resulting 404 name the parameter that needs a sample. */
+export function resolveRoutePath(path: string): string {
+  return path
+    .split("/")
+    .map((segment) =>
+      segment.startsWith(":")
+        ? (ROUTE_PARAM_SAMPLES[segment.slice(1)] ?? segment)
+        : segment,
+    )
+    .join("/");
 }
 
 /**
@@ -146,14 +200,27 @@ export function createDefaultSmokeChecks(host = "localhost"): SmokeCheck[] {
 export function evaluateCheck(
   check: SmokeCheck,
   response: HttpResponseLike,
-): { ok: boolean; missingSubstrings: string[] } {
+): { ok: boolean; missingSubstrings: string[]; missingHeaders: string[] } {
+  const expectHeaders = check.expectHeaders ?? [];
   if (response.status !== check.expectStatus) {
-    return { ok: false, missingSubstrings: check.expectSubstrings };
+    return {
+      ok: false,
+      missingSubstrings: check.expectSubstrings,
+      missingHeaders: expectHeaders,
+    };
   }
   const missingSubstrings = check.expectSubstrings.filter(
     (substring) => !response.body.includes(substring),
   );
-  return { ok: missingSubstrings.length === 0, missingSubstrings };
+  const headers = response.headers ?? {};
+  const missingHeaders = expectHeaders.filter(
+    (name) => !(headers[name.toLowerCase()] ?? "").trim(),
+  );
+  return {
+    ok: missingSubstrings.length === 0 && missingHeaders.length === 0,
+    missingSubstrings,
+    missingHeaders,
+  };
 }
 
 /**
@@ -187,6 +254,7 @@ export async function runSmokeSuite(
         url: check.url,
         ok: false,
         missingSubstrings: check.expectSubstrings,
+        missingHeaders: check.expectHeaders ?? [],
         attempts: 0,
       },
     ]),
@@ -206,6 +274,7 @@ export async function runSmokeSuite(
         const evaluated = evaluateCheck(check, response);
         current.status = response.status;
         current.missingSubstrings = evaluated.missingSubstrings;
+        current.missingHeaders = evaluated.missingHeaders;
         current.error = undefined;
         current.ok = evaluated.ok;
       } catch (error) {

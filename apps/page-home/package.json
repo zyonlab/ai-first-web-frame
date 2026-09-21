@@ -20,6 +20,7 @@
     "@mvp/registry": "workspace:*",
     "@mvp/request-context": "workspace:*",
     "@mvp/runtime": "workspace:*",
+    "@mvp/trade-prefs": "workspace:*",
     "@mvp/ui": "workspace:*",
     "next": "^15.3.4",
     "react": "^19.3.0",

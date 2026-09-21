@@ -37,6 +37,7 @@ const FIELD_ORDER: Array<keyof GenerableManifestSlot> = [
   "dependsOn",
   "dataDependencies",
   "required",
+  "reserveHeightPx",
 ];
 
 export class InvalidManifestSlotsError extends Error {}

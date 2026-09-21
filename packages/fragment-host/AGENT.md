@@ -66,9 +66,11 @@ export async function renderMyFragment(
 }
 ```
 
-Degraded output must set `metadata.fallback: true` — that is what
-`@mvp/runtime`'s `isFallbackResponse` reads (the legacy HTML-marker sniff is
-deprecated).
+Degraded output must set `metadata.fallback: true` — that is the ONLY thing
+`@mvp/runtime`'s `isFallbackResponse` reads. The legacy HTML-marker sniff is
+removed, so a degraded response that omits the flag is counted as live.
+`data-fallback="true"` stays on the markup for CSS and the e2e specs; it no
+longer classifies anything.
 
 ## Example
 

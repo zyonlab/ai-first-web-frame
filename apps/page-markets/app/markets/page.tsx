@@ -2,6 +2,7 @@ import {
   FragmentSlotStream,
   PageHealthMetaStream,
   PageTimingMetaStream,
+  reserveFallbacks,
 } from "@mvp/runtime/react";
 import { isDiagnosticsEnabled } from "@mvp/runtime/seo";
 import { headers } from "next/headers";
@@ -10,6 +11,7 @@ import {
   type MarketsFragmentAggregate,
   streamMarketsFragmentSlots,
 } from "../../src/fragmentSlots";
+import { fragmentSlots } from "../../src/fragmentSlots.gen";
 import { MARKETS_LAYOUT_CLASS } from "../../src/gridStyles";
 import { marketsSeoCopy } from "../../src/render";
 
@@ -24,6 +26,18 @@ const MARKETS_TABLE_FALLBACK = (
     Markets table is loading.
   </section>
 );
+
+/**
+ * The same fallbacks, each holding the height its slot declares in
+ * `manifest.slots.json` (`reserveHeightPx`). A streamed slot shows a one-line
+ * placeholder until its HTML arrives; without a reservation the swap grows the
+ * box and moves everything below it. Used for both the `<Suspense>` fallback and
+ * `<FragmentSlotStream>`'s resolved-but-empty fallback, so the space is held on
+ * every path a slot can take.
+ */
+const FALLBACKS = reserveFallbacks(fragmentSlots, {
+  marketsTable: MARKETS_TABLE_FALLBACK,
+});
 
 /**
  * Scheduler health/hints + request-trace section (refactor plan §4.4). This
@@ -131,10 +145,10 @@ export default async function MarketsPage() {
           block) is the one deliberate hand-edit A1 carves out.
         */}
         <div data-area="markets-table" data-slot="marketsTable">
-          <Suspense fallback={MARKETS_TABLE_FALLBACK}>
+          <Suspense fallback={FALLBACKS.marketsTable}>
             <FragmentSlotStream
               slotPromise={stream.slotPromises.marketsTable}
-              fallback={MARKETS_TABLE_FALLBACK}
+              fallback={FALLBACKS.marketsTable}
             />
           </Suspense>
         </div>

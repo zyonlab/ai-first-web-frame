@@ -289,8 +289,17 @@ describe("query_registry handler (in-process, real repo)", () => {
   });
 });
 
-describe("mount_slot --check handler (in-process, real repo)", () => {
-  it("reports page-home's generated fragmentSlots.gen.ts as fresh (checked into the repo, untouched by this test)", async () => {
+describe("mount_slot --check handler (real repo, spawns the script)", () => {
+  // This is the one test here that leaves the process: the `mount_slot` handler
+  // runs `pnpm exec tsx scripts/mount-slot.mts` through spawnSync, so its cost
+  // is pnpm + tsx startup (~0.7s on an idle machine), not the check itself. Under
+  // `pnpm test` the whole turbo graph builds and tests concurrently, and on a
+  // contended CI runner that startup went past vitest's implicit 5s default and
+  // failed the gate. The budget is explicit so a slow runner is not a red build,
+  // while still being tight enough that a genuine hang surfaces quickly.
+  it("reports page-home's generated fragmentSlots.gen.ts as fresh (checked into the repo, untouched by this test)", {
+    timeout: 30_000,
+  }, async () => {
     const tool = devxTools().find((t) => t.name === "mount_slot");
     if (!tool) throw new Error("mount_slot missing");
     const result = await tool.handler(

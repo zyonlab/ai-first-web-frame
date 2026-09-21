@@ -18,6 +18,7 @@ export const fragmentSlots: FragmentSlotDefinition[] = [
     staticHtml:
       '<section data-fragment="static-editorial-note" data-render-strategy="static"><h2>Static SSG sample</h2><p>This editorial block is emitted without a runtime fragment service call.</p></section>',
     required: false,
+    reserveHeightPx: 66,
   },
   {
     name: "promotion",
@@ -36,6 +37,7 @@ export const fragmentSlots: FragmentSlotDefinition[] = [
     },
     dataDependencies: ["home-featured-content"],
     required: true,
+    reserveHeightPx: 52,
   },
   {
     name: "recommendations",
@@ -48,5 +50,6 @@ export const fragmentSlots: FragmentSlotDefinition[] = [
       limit: 3,
     },
     required: false,
+    reserveHeightPx: 262,
   },
 ];

@@ -18,6 +18,7 @@ export const fragmentSlots: FragmentSlotDefinition[] = [
     staticHtml:
       '<section data-fragment="static-product-proof" data-render-strategy="static"><h2>Static product proof</h2><p>This proof block is safe to prerender as static HTML.</p></section>',
     required: false,
+    reserveHeightPx: 66,
   },
   {
     name: "promotion",
@@ -36,6 +37,7 @@ export const fragmentSlots: FragmentSlotDefinition[] = [
     },
     dataDependencies: ["product-promotion"],
     required: false,
+    reserveHeightPx: 52,
   },
   {
     name: "recommendations",
@@ -49,5 +51,6 @@ export const fragmentSlots: FragmentSlotDefinition[] = [
     },
     dataDependencies: ["product-price"],
     required: false,
+    reserveHeightPx: 262,
   },
 ];

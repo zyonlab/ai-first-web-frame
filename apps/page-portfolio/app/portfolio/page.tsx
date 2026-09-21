@@ -2,6 +2,7 @@ import {
   FragmentSlotStream,
   PageHealthMetaStream,
   PageTimingMetaStream,
+  reserveFallbacks,
 } from "@mvp/runtime/react";
 import { isDiagnosticsEnabled } from "@mvp/runtime/seo";
 import { headers } from "next/headers";
@@ -10,6 +11,7 @@ import {
   type PortfolioFragmentAggregate,
   streamPortfolioFragmentSlots,
 } from "../../src/fragmentSlots";
+import { fragmentSlots } from "../../src/fragmentSlots.gen";
 import { PORTFOLIO_LAYOUT_CLASS } from "../../src/gridStyles";
 import { portfolioSeoCopy } from "../../src/render";
 
@@ -42,6 +44,19 @@ const PORTFOLIO_SUMMARY_FALLBACK = (
 const PNL_CHART_FALLBACK = (
   <PanelFallback fragment="pnl-chart">PnL chart is loading.</PanelFallback>
 );
+
+/**
+ * The same fallbacks, each holding the height its slot declares in
+ * `manifest.slots.json` (`reserveHeightPx`). A streamed slot shows a one-line
+ * placeholder until its HTML arrives; without a reservation the swap grows the
+ * box and moves everything below it. Used for both the `<Suspense>` fallback and
+ * `<FragmentSlotStream>`'s resolved-but-empty fallback, so the space is held on
+ * every path a slot can take.
+ */
+const FALLBACKS = reserveFallbacks(fragmentSlots, {
+  portfolioSummary: PORTFOLIO_SUMMARY_FALLBACK,
+  pnlChart: PNL_CHART_FALLBACK,
+});
 
 /**
  * Scheduler health/hints + request-trace section (refactor plan §4.4). This
@@ -143,20 +158,20 @@ export default async function PortfolioPage() {
         */}
         {/* Overview: equity / margin usage / PnL — request-time SSR fragment. */}
         <div data-area="portfolio-summary" data-slot="portfolioSummary">
-          <Suspense fallback={PORTFOLIO_SUMMARY_FALLBACK}>
+          <Suspense fallback={FALLBACKS.portfolioSummary}>
             <FragmentSlotStream
               slotPromise={stream.slotPromises.portfolioSummary}
-              fallback={PORTFOLIO_SUMMARY_FALLBACK}
+              fallback={FALLBACKS.portfolioSummary}
             />
           </Suspense>
         </div>
 
         {/* Cumulative PnL chart — ISR fragment (cache-friendly series). */}
         <div data-area="portfolio-chart" data-slot="pnlChart">
-          <Suspense fallback={PNL_CHART_FALLBACK}>
+          <Suspense fallback={FALLBACKS.pnlChart}>
             <FragmentSlotStream
               slotPromise={stream.slotPromises.pnlChart}
-              fallback={PNL_CHART_FALLBACK}
+              fallback={FALLBACKS.pnlChart}
             />
           </Suspense>
         </div>

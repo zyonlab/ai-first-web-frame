@@ -126,8 +126,12 @@ scheduling implementation: `executeFragmentSlots(options)` is literally
   `createFallbackResponse` (`<section data-fragment="..."
   data-fallback="true">`, cache TTL 5) — it never rejects and never breaks
   the page. Fragments mark degraded output via
-  `metadata.fallback: true` (`isFallbackResponse`; the HTML-marker sniff is
-  deprecated).
+  `metadata.fallback: true`, and that flag is the only thing
+  `isFallbackResponse` reads. The HTML-marker sniff it used to fall back on is
+  gone: a fragment that inlines a rule styling its own degraded state put
+  `data-fallback="true"` in every healthy response, and markets-table did
+  exactly that — every render was misclassified, its required slot "failed",
+  and the gateway answered /markets with 503.
 - **Failure propagation**: a failed *data* node, or a failed **required**
   slot, blocks its downstream dependents, which settle as
   `status: "skipped-dependency"` fallbacks. A failed *non-required* slot

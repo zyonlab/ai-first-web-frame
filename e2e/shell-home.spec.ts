@@ -38,19 +38,25 @@ test.describe("shell-gateway composed home page", () => {
 
   test("renders promotion banner fragment content or its fallback", async ({
     page,
+    javaScriptEnabled,
   }) => {
     await page.goto("/");
     const promotion = page.locator('[data-fragment="promotion-banner"]');
     // Live fragment copy by default; E2E_STRICT=1 rejects the SSR fallback
     // copy ("Featured offers are loading." / "Promotion unavailable: ...").
-    await expectFragmentContent(promotion.first(), {
-      live: /Limited time offer|限时优惠/,
-      fallback: /Featured offers are loading|Promotion unavailable/,
-    });
+    await expectFragmentContent(
+      promotion.first(),
+      {
+        live: /Limited time offer|限时优惠/,
+        fallback: /Featured offers are loading|Promotion unavailable/,
+      },
+      { javaScriptEnabled },
+    );
   });
 
   test("renders recommendation widget fragment content or its fallback", async ({
     page,
+    javaScriptEnabled,
   }) => {
     await page.goto("/");
     const recommendations = page.locator(
@@ -58,13 +64,32 @@ test.describe("shell-gateway composed home page", () => {
     );
     // Live fragment copy by default; E2E_STRICT=1 rejects the SSR fallback
     // copy ("Recommendations are loading." / "Recommendations unavailable: ...").
-    await expectFragmentContent(recommendations.first(), {
-      live: /Recommended for you/,
-      fallback: /Recommendations are loading|Recommendations unavailable/,
-    });
+    await expectFragmentContent(
+      recommendations.first(),
+      {
+        live: /Recommended for you/,
+        fallback: /Recommendations are loading|Recommendations unavailable/,
+      },
+      { javaScriptEnabled },
+    );
   });
 
-  test("renders the request trace section", async ({ page }) => {
+  test("renders the request trace section", async ({
+    page,
+    javaScriptEnabled,
+  }) => {
+    // JS-enabled runs only. This section is rendered by the diagnostics
+    // component, which needs the FULL slot aggregate, so its `<Suspense>`
+    // boundary resolves last. Whether that lands inside the shell flush (and so
+    // is readable without JS) or after it (and so needs the inline script React
+    // uses to place late boundary content) is a timing race: it resolves in
+    // time against a warm local stack and does not in the compose stack. A
+    // no-JS contract cannot be built on a race, so the no-JS claim covers the
+    // shell and the slots, not this.
+    test.skip(
+      javaScriptEnabled === false,
+      "diagnostics resolve after the shell flush; placing them needs client JS",
+    );
     await page.goto("/");
     const trace = page.locator('[data-request-trace="home"]');
     await expect(trace).toHaveCount(1);

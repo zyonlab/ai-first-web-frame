@@ -47,7 +47,7 @@ export function renderProductHtml(
     <article>
       <h1>${escapeHtml(product.title)}</h1>
       <p>${escapeHtml(product.price)}</p>
-      <img src="/products/${escapeHtml(product.id)}.jpg" alt="${escapeHtml(product.imageAlt)}" />
+      <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.imageAlt)}" width="640" height="480" />
       <p>${escapeHtml(product.description)}</p>
       <script type="application/ld+json">${jsonLd}</script>
     </article>

@@ -41,7 +41,12 @@ type AuditIssue = {
     | "fragment-server-not-hosted"
     // Declarative layering (tags + depConstraints); replaces the hard-coded
     // `domain-code-in-framework-package` check when a config supplies them.
-    | "layer-constraint-violation";
+    | "layer-constraint-violation"
+    // A deployable unit importing a workspace package it does not declare.
+    // Invisible to a whole-repo `pnpm build` (which builds everything anyway)
+    // and fatal to `pnpm --filter <unit>... build`, which is how the unit is
+    // built in its own Dockerfile.
+    | "undeclared-workspace-import";
   severity: "warn" | "fail";
   file?: string;
   packageName?: string;
@@ -84,6 +89,7 @@ export function runDependencyAudit(
   );
   issues.push(...auditIslandBusEscapeHatch(root));
   issues.push(...auditFragmentServerHost(root));
+  issues.push(...auditUndeclaredWorkspaceImports(root));
 
   const report: DependencyReport = {
     tool: "dependency-audit",
@@ -650,6 +656,94 @@ export function auditFragmentServerHost(root: string): AuditIssue[] {
     });
   }
   return issues;
+}
+
+/**
+ * Every `apps/*` and `fragments/*` unit is deployable on its own, and its
+ * Dockerfile builds it with `pnpm --filter <unit>... build`. That closure is
+ * computed from DECLARED dependencies, so a workspace package that a unit
+ * imports but does not declare is never built: its `dist/` is absent and the
+ * import fails to resolve. A whole-repo `pnpm build` cannot see this, because
+ * it builds every package regardless of who declared what — so the repo's own
+ * `pnpm verify` passed while `docker compose build` failed with
+ * `Module not found: Can't resolve '@mvp/trade-prefs'`.
+ *
+ * Scope is the unit's shipped source only. Test files are excluded because they
+ * are not part of the image, and `tools/*` is excluded because a scaffolder's
+ * templates and this audit's own fixtures contain import specifiers inside
+ * string literals — text that is not an import (the same false-positive class
+ * `stripCommentsAndStrings` exists for, which cannot help here since an
+ * import specifier IS a string).
+ */
+export function auditUndeclaredWorkspaceImports(root: string): AuditIssue[] {
+  const issues: AuditIssue[] = [];
+  const workspacePackages = new Map<string, string>();
+  for (const area of ["apps", "fragments", "packages", "domains"]) {
+    const areaDir = join(root, area);
+    if (!existsSync(areaDir)) continue;
+    for (const entry of readdirSync(areaDir)) {
+      const manifestPath = join(areaDir, entry, "package.json");
+      if (!existsSync(manifestPath)) continue;
+      const manifest = readJson<{ name?: string }>(manifestPath);
+      if (manifest?.name) workspacePackages.set(manifest.name, manifestPath);
+    }
+  }
+
+  for (const area of ["apps", "fragments"]) {
+    const areaDir = join(root, area);
+    if (!existsSync(areaDir)) continue;
+    for (const entry of readdirSync(areaDir)) {
+      const unitDir = join(areaDir, entry);
+      const manifestPath = join(unitDir, "package.json");
+      if (!existsSync(manifestPath)) continue;
+      const manifest = readJson<{
+        name?: string;
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+        peerDependencies?: Record<string, string>;
+      }>(manifestPath);
+      if (!manifest?.name) continue;
+      const declared = new Set([
+        ...Object.keys(manifest.dependencies ?? {}),
+        ...Object.keys(manifest.devDependencies ?? {}),
+        ...Object.keys(manifest.peerDependencies ?? {}),
+      ]);
+      // First file that reveals each missing package, so the report points at
+      // one concrete import rather than repeating the package per file.
+      const missing = new Map<string, string>();
+      for (const file of walkFiles(unitDir, isSourceFile)) {
+        for (const specifier of parseImports(readFileSync(file, "utf8"))) {
+          const packageName = workspacePackageName(specifier);
+          if (
+            packageName !== manifest.name &&
+            workspacePackages.has(packageName) &&
+            !declared.has(packageName) &&
+            !missing.has(packageName)
+          ) {
+            missing.set(packageName, file);
+          }
+        }
+      }
+      for (const [packageName, file] of missing) {
+        issues.push({
+          code: "undeclared-workspace-import",
+          severity: "fail",
+          file: relativePosix(root, file),
+          packageName,
+          detail: `${manifest.name} imports ${packageName} but does not declare it, so \`pnpm --filter ${manifest.name}... build\` never builds it and the import cannot resolve in the unit's own image`,
+        });
+      }
+    }
+  }
+  return issues;
+}
+
+/** `@mvp/runtime/react` -> `@mvp/runtime`; `next/headers` -> `next`. */
+function workspacePackageName(specifier: string): string {
+  const segments = specifier.split("/");
+  return specifier.startsWith("@")
+    ? segments.slice(0, 2).join("/")
+    : segments[0];
 }
 
 function isBusinessCodeFile(path: string): boolean {

@@ -37,6 +37,16 @@ export type RuntimeObservation = {
   consoleErrors: string[];
   /** Requests to /_next/static or /assets (asset-delivery plane). */
   staticRequests: StaticRequest[];
+  /**
+   * Every response with a 4xx/5xx status, whatever its path. `staticRequests`
+   * deliberately covers only the asset plane, so a failing request anywhere
+   * else reached the report as nothing but the browser's unattributed
+   * "Failed to load resource: the server responded with a status of 400"
+   * console line — which is how a broken `<Image>` on the product page cost a
+   * local stack reproduction to identify. Optional so existing fixtures and
+   * older callers stay valid.
+   */
+  failedRequests?: StaticRequest[];
   /** Panes with their fill geometry (layout-fit plane); see `paneSource`. */
   panes: PaneObservation[];
   /** Which selector `panes` came from. Defaults to inferring from `panes`
@@ -62,6 +72,13 @@ export type RuntimeObservation = {
     lcpMs?: number;
     cls?: number;
     ttfbMs?: number;
+    /**
+     * One line per layout-shift source: score, the shifting element (with its
+     * `data-fragment` / `data-island` marker when it has one) and its y,height
+     * before and after. A bare CLS number says a page shifts but not what
+     * shifted, which is the only question worth asking when the budget fails.
+     */
+    clsSources?: string[];
     budget?: { maxLCPMs?: number; maxCLS?: number; maxTTFBMs?: number };
   };
   /** Optional interaction-contract result (e.g. order-book → order-form price).
@@ -105,13 +122,23 @@ export function evaluateRuntime(
 
   // Hydration — no uncaught errors at all.
   const allErrors = [...obs.pageErrors, ...obs.consoleErrors];
+  // A generic "Failed to load resource" says nothing about WHICH resource, so
+  // attribute it from the observed 4xx/5xx responses.
+  const failed = obs.failedRequests ?? [];
+  const failedDetail =
+    failed.length > 0
+      ? ` [${failed
+          .map((r) => `${r.status} ${r.url}`)
+          .join(", ")
+          .slice(0, 300)}]`
+      : "";
   checks.push({
     name: "hydration-clean",
     ok: allErrors.length === 0,
     detail:
       allErrors.length === 0
         ? "0 page/console errors"
-        : `${allErrors.length} error(s): ${allErrors[0]?.slice(0, 120)}`,
+        : `${allErrors.length} error(s): ${allErrors[0]?.slice(0, 120)}${failedDetail}`,
   });
 
   // React #418 specifically (the shell-wrap hydration mismatch class).
@@ -186,10 +213,15 @@ export function evaluateRuntime(
       continue;
     }
     const rounded = unit === "ms" ? Math.round(measured) : measured;
+    const over = measured > ceiling;
+    const sources =
+      over && name === "web-vitals-cls" && obs.webVitals?.clsSources?.length
+        ? ` — shifted: ${obs.webVitals.clsSources.slice(0, 4).join(" | ")}`
+        : "";
     checks.push({
       name,
-      ok: measured <= ceiling,
-      detail: `${rounded}${unit} vs budget ${ceiling}${unit}`,
+      ok: !over,
+      detail: `${rounded}${unit} vs budget ${ceiling}${unit}${sources}`,
     });
   }
 

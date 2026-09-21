@@ -25,7 +25,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium, type Page } from "@playwright/test";
+import { type Browser, chromium, type Page } from "@playwright/test";
 import {
   evaluateRuntime,
   type PaneObservation,
@@ -110,9 +110,15 @@ async function measureWebVitals(page: Page): Promise<{
   lcpMs?: number;
   cls?: number;
   ttfbMs?: number;
+  clsSources?: string[];
 }> {
   return page.evaluate(async () => {
-    const result: { lcpMs?: number; cls?: number; ttfbMs?: number } = {};
+    const result: {
+      lcpMs?: number;
+      cls?: number;
+      ttfbMs?: number;
+      clsSources?: string[];
+    } = {};
     const navigation = performance.getEntriesByType("navigation")[0] as
       | PerformanceNavigationTiming
       | undefined;
@@ -135,7 +141,7 @@ async function measureWebVitals(page: Page): Promise<{
             result.lcpMs = Math.max(result.lcpMs ?? 0, entry.startTime);
           }
         }).observe({ type: "largest-contentful-paint", buffered: true });
-        new PerformanceObserver((list) => {
+        const clsObserver = new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
             const shift = entry as PerformanceEntry & {
               value: number;
@@ -143,8 +149,55 @@ async function measureWebVitals(page: Page): Promise<{
             };
             if (shift.hadRecentInput) continue;
             result.cls = (result.cls ?? 0) + shift.value;
+            // A bare CLS number says a page shifts but not WHAT shifted, which
+            // is the whole question when the budget fails. `sources` names the
+            // elements and their before/after boxes.
+            const sources =
+              (
+                shift as unknown as {
+                  sources?: {
+                    node?: Node | null;
+                    previousRect?: DOMRectReadOnly;
+                    currentRect?: DOMRectReadOnly;
+                  }[];
+                }
+              ).sources ?? [];
+            for (const source of sources) {
+              const node = source.node;
+              const element =
+                node && node.nodeType === 1 ? (node as Element) : undefined;
+              const marker = element
+                ? [
+                    element.tagName.toLowerCase(),
+                    element.getAttribute("data-fragment") &&
+                      `data-fragment=${element.getAttribute("data-fragment")}`,
+                    element.getAttribute("data-island") &&
+                      `data-island=${element.getAttribute("data-island")}`,
+                    element.getAttribute("id") &&
+                      `#${element.getAttribute("id")}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                : "(non-element)";
+              const box = (rect?: DOMRectReadOnly) =>
+                rect
+                  ? `${Math.round(rect.y)},${Math.round(rect.height)}`
+                  : "none";
+              result.clsSources = [
+                ...(result.clsSources ?? []),
+                `${shift.value.toFixed(4)} <${marker}> y,h ${box(source.previousRect)} -> ${box(source.currentRect)}`,
+              ];
+            }
           }
-        }).observe({ type: "layout-shift", buffered: true });
+        });
+        clsObserver.observe({ type: "layout-shift", buffered: true });
+        // A page that never shifted has CLS 0 — that is a measurement, and a
+        // passing one. Leaving `cls` undefined reported it as "not measured"
+        // and SKIPPED the budget, so the same page could SKIP on one run and
+        // FAIL on the next with no way to tell a stable page from an
+        // unobserved one. Only a browser that cannot observe `layout-shift`
+        // at all now reports nothing.
+        result.cls = result.cls ?? 0;
       } catch {
         // A browser without these entry types reports nothing rather than 0.
       }
@@ -216,14 +269,42 @@ async function measurePanesWithFallback(
   };
 }
 
+/**
+ * esbuild's `keepNames` (which tsx hardcodes on) rewrites function definitions
+ * to `__name(fn, "name")`. Playwright serialises an `evaluate` callback with
+ * `Function.prototype.toString()` and runs that source in the page, where no
+ * `__name` exists — so every callback below would die with
+ * `ReferenceError: __name is not defined`. It applies to nested `const fn = ()
+ * => {}` too, so "just avoid named functions" is not a rule that holds.
+ *
+ * Passed as a string on purpose: an init script written as a function would go
+ * through the same transform and need the helper it is supposed to install.
+ */
+const KEEP_NAMES_SHIM =
+  'globalThis.__name = globalThis.__name || function (fn, name) { try { Object.defineProperty(fn, "name", { value: name, configurable: true }); } catch {} return fn; };';
+
 async function main() {
   const browser = await chromium.launch();
+  try {
+    await runGate(browser);
+  } finally {
+    // Every exit path, including a thrown error. Without this the browser
+    // stayed up, the event loop never emptied, and the process hung: in CI the
+    // gate printed its failure JSON in 4.5 seconds and then sat there for two
+    // and a half hours until the job was cancelled.
+    await browser.close();
+  }
+}
+
+async function runGate(browser: Browser) {
   const page = await browser.newPage({
     viewport: { width: 1680, height: 1000 },
   });
+  await page.addInitScript({ content: KEEP_NAMES_SHIM });
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
   const staticRequests: { url: string; status: number }[] = [];
+  const failedRequests: { url: string; status: number }[] = [];
 
   page.on("pageerror", (e) => pageErrors.push(String(e)));
   page.on("console", (m) => {
@@ -234,22 +315,33 @@ async function main() {
     const u = r.url();
     if (/\/_next\/static\/|\/assets\//.test(u))
       staticRequests.push({ url: u, status: r.status() });
+    if (r.status() >= 400) failedRequests.push({ url: u, status: r.status() });
   });
 
   let reachable = true;
+  // Why it was unreachable, not just that it was. `/markets` failed here while
+  // the gateway's own trace showed it answering that request 200 in 102ms, and
+  // the bare message could not tell a navigation error from a 4xx.
+  let unreachableReason = "";
   try {
     const res = await page.goto(url, {
       waitUntil: "networkidle",
       timeout: 30000,
     });
-    if (!res || res.status() >= 400) reachable = false;
-  } catch {
+    if (!res) {
+      reachable = false;
+      unreachableReason = "navigation returned no response";
+    } else if (res.status() >= 400) {
+      reachable = false;
+      unreachableReason = `HTTP ${res.status()}`;
+    }
+  } catch (error) {
     reachable = false;
+    unreachableReason = String(error).split("\n")[0] ?? "navigation threw";
   }
 
   if (!reachable) {
-    await browser.close();
-    const msg = `target not reachable: ${url} (is the stack up?)`;
+    const msg = `target not reachable: ${url} — ${unreachableReason}`;
     process.stdout.write(
       json
         ? `${JSON.stringify({ status: "failed", error: msg })}\n`
@@ -301,15 +393,14 @@ async function main() {
           detail: "no order-book on this page — skipped",
         };
 
-  // Before the browser closes: the vitals observers need the live page.
+  // The vitals observers need the live page; main()'s finally closes it.
   const webVitals = await measureWebVitals(page);
-
-  await browser.close();
 
   const obs: RuntimeObservation = {
     pageErrors,
     consoleErrors,
     staticRequests,
+    failedRequests,
     panes,
     paneSource,
     horizontalOverflowPx,

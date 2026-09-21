@@ -16,13 +16,25 @@
 name: ci
 
 on:
+  # `labeled` is not one of pull_request's default activity types (those are
+  # opened / synchronize / reopened), so without it the `e2e` label below could
+  # be applied but would never trigger a run — the documented escape hatch was
+  # inert. Listing the defaults explicitly is required once `types` is given.
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # Every job carries a deadline because a hung step otherwise runs to
+    # GitHub's 360-minute default: the runtime gate below printed its failure
+    # in 4.5 seconds and then held the runner for two and a half hours. These
+    # are generous against observed times (verify ~2min, affected ~2min,
+    # e2e ~20min of which the 22-image build is ~17min), so they catch a hang,
+    # not a slow runner.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -46,9 +58,49 @@ jobs:
             turbo-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
+      # `pnpm verify` captures each gate's stdout into the report rather than
+      # streaming it, so a failing gate shows as `FAIL <cmd>` and nothing else
+      # in the job log. Print the failing gate's own output so a CI-only
+      # failure is diagnosable from the log alone.
+      - name: Show failing gate output
+        if: failure()
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const path = "reports/verify-report.json";
+            // `reports/` is committed, so a verify that died before writing
+            // the report leaves the PREVIOUS run file on disk. Print
+            // `generatedAt` so the log says which run this output came from.
+            if (!fs.existsSync(path)) {
+              console.log("no " + path + " — verify failed before writing it");
+              process.exit(0);
+            }
+            const report = JSON.parse(fs.readFileSync(path, "utf8"));
+            console.log("verify-report.json generatedAt=" + report.generatedAt);
+            const failed = report.results.filter((x) => x.status === "failed");
+            if (failed.length === 0) {
+              console.log(
+                "report lists no failed gate; verify likely crashed outside a gate",
+              );
+            }
+            for (const entry of failed) {
+              console.log("::group::" + entry.command);
+              console.log(entry.stdout ?? "");
+              console.log(entry.stderr ?? "");
+              console.log("::endgroup::");
+            }
+          '
+      - name: Upload verify reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-reports
+          path: reports/
+          retention-days: 7
 
   affected:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       has_units: ${{ steps.affected.outputs.has_units }}
       units: ${{ steps.affected.outputs.units }}
@@ -96,6 +148,14 @@ jobs:
       github.ref == 'refs/heads/main' &&
       needs.affected.outputs.has_units == 'true'
     runs-on: ubuntu-latest
+    # The `secrets` context is NOT available in a step-level `if:` — GitHub
+    # rejects the whole workflow at validation time with
+    # "Unrecognized named-value: 'secrets'", which surfaces as a 0-second run
+    # with no jobs and no logs. It IS available in a job-level `env`, and `env`
+    # IS available in a step `if:`, so the check is hoisted here.
+    timeout-minutes: 45
+    env:
+      REGISTRY_READY: ${{ vars.REGISTRY_URL != '' && secrets.REGISTRY_USERNAME != '' && secrets.REGISTRY_PASSWORD != '' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.affected.outputs.matrix) }}
@@ -113,14 +173,14 @@ jobs:
           -t ${{ matrix.unit }}:latest
           .
       - name: Log in to registry
-        if: ${{ vars.REGISTRY_URL != '' && secrets.REGISTRY_USERNAME != '' && secrets.REGISTRY_PASSWORD != '' }}
+        if: env.REGISTRY_READY == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ vars.REGISTRY_URL }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - name: Push image
-        if: ${{ vars.REGISTRY_URL != '' && secrets.REGISTRY_USERNAME != '' && secrets.REGISTRY_PASSWORD != '' }}
+        if: env.REGISTRY_READY == 'true'
         run: |
           for TAG in "${{ github.sha }}" latest; do
             docker tag "${{ matrix.unit }}:$TAG" "${{ vars.REGISTRY_URL }}/${{ matrix.unit }}:$TAG"
@@ -134,6 +194,7 @@ jobs:
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       contains(github.event.pull_request.labels.*.name, 'e2e')
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -146,7 +207,44 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - name: Build compose stack
-        run: docker compose -f infra/docker/docker-compose.yml build --provenance=false --sbom=false
+        # Two runner-specific constraints, both found by actually running this
+        # job for the first time:
+        #
+        # 1. No `--provenance=false --sbom=false`, unlike the README's local
+        #    recipe and the `docker` job's buildx call. Those flags exist for a
+        #    Docker Desktop problem (README: concurrent attestation export
+        #    caused intermittent snapshot errors on the dev machine), and
+        #    `compose build` only gained them in Compose v5 — this runner logs
+        #    v2.38.2 and failed the step with `unknown flag: --provenance`.
+        #    buildx does accept them, so the `docker` job keeps them.
+        #
+        # 2. Bounded concurrency. Every unit is independently deployable, so
+        #    each of the 22 Dockerfiles does its own `COPY . .` +
+        #    `pnpm install` + `pnpm --filter <unit>... build`. That property is
+        #    deliberate and worth keeping, but building all 22 at once (compose's
+        #    default) runs 7 concurrent `next build`s on 4 vCPUs: the runner went
+        #    silent for 16 minutes and was terminated with SIGTERM (exit 143),
+        #    with even the `if: always()` steps skipped — a killed runner, not a
+        #    failed command. So the services are built in fixed-size batches:
+        #    the 7 `next build` pages two at a time, the 15 fastify units four
+        #    at a time. Each batch is one bake solve, so BuildKit still dedups
+        #    the `pnpm install` layer the units share. The list is sorted
+        #    because `config --services` is not ordered, and an unordered list
+        #    puts a random number of `next build`s in the same batch — peak load
+        #    has to be reproducible for this bound to mean anything.
+        run: |
+          set -euo pipefail
+          CF=infra/docker/docker-compose.yml
+          # Recorded because this step's compatibility depends on them.
+          docker compose version
+          docker buildx version
+          df -h / | tail -1
+          free -m | head -2
+          docker compose -f "$CF" config --services | grep '^page-' | sort \
+            | xargs -n 2 docker compose -f "$CF" build
+          docker compose -f "$CF" config --services | grep -v '^page-' | sort \
+            | xargs -n 4 docker compose -f "$CF" build
+          df -h / | tail -1
       - name: Start compose stack
         run: docker compose -f infra/docker/docker-compose.yml up -d --no-build
       # docker-smoke derives its full-fleet check list from

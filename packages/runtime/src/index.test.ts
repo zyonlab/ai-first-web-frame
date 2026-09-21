@@ -1038,7 +1038,62 @@ describe("@mvp/runtime", () => {
       expect(cache.size).toBe(0);
     });
 
-    it("keeps the deprecated HTML sniff for fragments without metadata", () => {
+    it("does not read the marker out of the fragment's own stylesheet", () => {
+      // The exact shape that made /markets answer 503 on every request:
+      // markets-table inlines a rule that styles its degraded state, so the
+      // marker string appeared in every healthy response. Kept after the sniff
+      // was removed entirely, because it is the regression that must not return.
+      expect(
+        isFallbackResponse({
+          html: [
+            '<style data-fragment-style="markets-table">',
+            '[data-fragment="markets-table"][data-fallback="true"] { opacity: 0.6; }',
+            "</style>",
+            '<section data-fragment="markets-table"><table></table></section>',
+          ].join(""),
+          assets: { js: [], css: [] },
+          cache: { ttl: 5, tags: ["markets"] },
+          metadata: { name: "markets-table", version: "0.1.0" },
+        }),
+      ).toBe(false);
+    });
+
+    it("classifies by metadata alone, not by the marker on real markup", () => {
+      const html = [
+        '<style>[data-fallback="true"] { color: red; }</style>',
+        '<section data-fallback="true">Markets unavailable</section>',
+      ].join("");
+      // Same markup, two metadata values, two answers. The attribute is still
+      // what CSS and the e2e specs read off the DOM; it is no longer what the
+      // runtime classifies by, because a marker string can appear in any text a
+      // fragment renders and a search over HTML cannot tell those apart.
+      expect(
+        isFallbackResponse({
+          html,
+          assets: { js: [], css: [] },
+          cache: { ttl: 0, tags: [] },
+          metadata: { name: "markets-table", version: "0.1.0" },
+        }),
+      ).toBe(false);
+      expect(
+        isFallbackResponse({
+          html,
+          assets: { js: [], css: [] },
+          cache: { ttl: 0, tags: [] },
+          metadata: {
+            name: "markets-table",
+            version: "0.1.0",
+            fallback: true,
+          },
+        }),
+      ).toBe(true);
+    });
+
+    it("no longer infers a fallback from markup alone", () => {
+      // This is the removed behaviour, pinned inverted so it cannot creep back.
+      // A fragment that renders the marker without setting `metadata.fallback`
+      // now counts as live: the metadata flag is the contract, and an unmarked
+      // degraded response is a fragment bug rather than something to guess at.
       expect(
         isFallbackResponse({
           html: '<section data-fallback="true">legacy</section>',
@@ -1046,7 +1101,7 @@ describe("@mvp/runtime", () => {
           cache: { ttl: 0, tags: [] },
           metadata: { name: "legacy", version: "0.1.0" },
         }),
-      ).toBe(true);
+      ).toBe(false);
       expect(
         isFallbackResponse({
           html: "<section>ok</section>",
