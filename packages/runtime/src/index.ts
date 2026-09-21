@@ -463,31 +463,35 @@ export function createFallbackResponse(
 }
 
 /**
- * A render response is a fallback when its contract metadata says so.
- * The HTML sniff is deprecated and only kept until every fragment stamps
- * metadata.fallback on its own degraded path.
+ * A render response is a fallback when, and only when, its contract metadata
+ * says so.
+ *
+ * There used to be a second path: sniffing the HTML for `data-fallback="true"`,
+ * kept "until every fragment stamps metadata.fallback on its own degraded
+ * path". All 14 fragments do, so the condition that path was waiting for is met
+ * and it is gone.
+ *
+ * It was not merely redundant, it was wrong. A fragment that inlines a rule to
+ * style its own degraded state — markets-table ships
+ * `[data-fragment="markets-table"][data-fallback="true"] { ... }` — puts the
+ * marker string in EVERY healthy response. Narrowing the sniff to skip `<style>`
+ * and `<script>` bodies fixed that instance; it did not fix the class, because
+ * the marker can legitimately appear in any text a fragment renders (a code
+ * sample, a docs snippet, an escaped attribute). A string search over arbitrary
+ * HTML cannot decide this. The metadata flag can, so it is the only signal.
+ *
+ * `data-fallback="true"` itself stays: fragments still stamp it, CSS still
+ * styles it, and `e2e/support/expect-fragment-content.ts` still reads it off
+ * the DOM. What changed is that the RUNTIME no longer classifies by it.
+ *
+ * A fragment built elsewhere that returns a degraded response without
+ * `metadata.fallback` is now counted as live. That is the deliberate trade:
+ * `FragmentRenderResponseSchema` is the contract a fragment must meet, and an
+ * unmarked fallback is a fragment bug the schema should grow to catch, not
+ * something to guess at from markup.
  */
 export function isFallbackResponse(response: FragmentRenderResponse): boolean {
-  if (response.metadata.fallback === true) return true;
-  // Deprecated: legacy HTML marker sniff, for fragments predating the metadata
-  // flag. All 14 fragments in this repo now set it, so this only covers
-  // externally built ones — which is why it is narrowed rather than removed.
-  //
-  // It must not read the marker out of a fragment's own stylesheet. markets-table
-  // inlines `[data-fragment="markets-table"][data-fallback="true"] { ... }` to
-  // style its degraded state, so EVERY healthy render carried the marker string
-  // and was classified as a fallback. Its slot is `required`, so the page
-  // reported `health: "unhealthy"` and the gateway answered /markets with 503 —
-  // on every request, for every visitor.
-  return markerOutsideInertContent(response.html);
-}
-
-/** `<style>` / `<script>` bodies are not markup; a marker inside one is text. */
-function markerOutsideInertContent(html: string): boolean {
-  return html
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-    .includes('data-fallback="true"');
+  return response.metadata.fallback === true;
 }
 
 export function createFragmentHeaders(

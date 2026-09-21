@@ -67,7 +67,9 @@ the **SSR↔island seam** (initial snapshot + patch).
 
 Fallback contract (all fragments): on missing/invalid props or error, return
 `{ statusCode: 200, body: <no-js-readable fallback section data-fallback="true"> }`, exactly like
-`createPromotionFallback`. The runtime treats `data-fallback="true"` as a degraded slot.
+`createPromotionFallback`. The runtime decides degraded/live from
+`metadata.fallback: true` alone — `data-fallback="true"` is for CSS and e2e
+assertions, and no longer classifies the slot.
 
 ---
 
