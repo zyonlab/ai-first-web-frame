@@ -2,6 +2,7 @@ import {
   FragmentSlotStream,
   PageHealthMetaStream,
   PageTimingMetaStream,
+  reserveFallbacks,
 } from "@mvp/runtime/react";
 import { isDiagnosticsEnabled } from "@mvp/runtime/seo";
 import { headers } from "next/headers";
@@ -10,6 +11,7 @@ import {
   type HomeFragmentAggregate,
   streamHomeFragmentSlots,
 } from "../src/fragmentSlots";
+import { fragmentSlots } from "../src/fragmentSlots.gen";
 import { computeRealtimeSnapshot } from "../src/realtimeInsights";
 import { homeSeoCopy } from "../src/render";
 import { RealtimeInsights } from "./RealtimeInsights";
@@ -35,6 +37,21 @@ const RECOMMENDATIONS_FALLBACK = (
     Recommendations are loading.
   </section>
 );
+
+/**
+ * The same three fallbacks, each holding the height its slot declares in
+ * `manifest.slots.json` (`reserveHeightPx`). A streamed slot shows a one-line
+ * placeholder until its HTML arrives; without a reservation the swap grew the
+ * box and moved everything below it, which is what put this page's CLS at
+ * 0.2027 against a 0.1 budget. Used for both the `<Suspense>` fallback and
+ * `<FragmentSlotStream>`'s resolved-but-empty fallback, so the space is held on
+ * every path a slot can take.
+ */
+const FALLBACKS = reserveFallbacks(fragmentSlots, {
+  staticEditorial: STATIC_EDITORIAL_FALLBACK,
+  promotion: PROMOTION_FALLBACK,
+  recommendations: RECOMMENDATIONS_FALLBACK,
+});
 
 /**
  * Diagnostics/scheduler-health/trace-log section (refactor plan §4.4). This
@@ -131,20 +148,6 @@ export default async function HomePage() {
         <PageTimingMetaStream execution={stream.execution} />
       </Suspense>
       {/*
-        Internal diagnostics (scheduler health, per-slot strategy/source, the
-        request-trace dependency graph) are DEV/E2E affordances, not page
-        content: they used to render unconditionally, putting internal timings
-        and topology into every production response as visible <h2> sections.
-        `isDiagnosticsEnabled()` keeps them on outside production and requires
-        an explicit MVP_DIAGNOSTICS=on in production — which the compose stack
-        sets, so the e2e and runtime-gate assertions still see them.
-      */}
-      {isDiagnosticsEnabled() && (
-        <Suspense fallback={null}>
-          <SchedulerDiagnostics aggregate={stream.aggregate} />
-        </Suspense>
-      )}
-      {/*
         `stream.slotPromises` is now `Record<string, Promise<FragmentRenderResponse>>`
         (@mvp/runtime's own generic shape — see fragmentSlots.ts). Dot access
         below still type-checks (this repo's tsconfig does not set
@@ -159,16 +162,16 @@ export default async function HomePage() {
         JSX (a new <Suspense><FragmentSlotStream/></Suspense> block) is the
         one deliberate hand-edit A1 carves out.
       */}
-      <Suspense fallback={STATIC_EDITORIAL_FALLBACK}>
+      <Suspense fallback={FALLBACKS.staticEditorial}>
         <FragmentSlotStream
           slotPromise={stream.slotPromises.staticEditorial}
-          fallback={STATIC_EDITORIAL_FALLBACK}
+          fallback={FALLBACKS.staticEditorial}
         />
       </Suspense>
-      <Suspense fallback={PROMOTION_FALLBACK}>
+      <Suspense fallback={FALLBACKS.promotion}>
         <FragmentSlotStream
           slotPromise={stream.slotPromises.promotion}
-          fallback={PROMOTION_FALLBACK}
+          fallback={FALLBACKS.promotion}
         />
       </Suspense>
       <RealtimeInsights initialSnapshot={initialSnapshot} />
@@ -179,12 +182,33 @@ export default async function HomePage() {
           products without requiring client JavaScript.
         </p>
       </section>
-      <Suspense fallback={RECOMMENDATIONS_FALLBACK}>
+      <Suspense fallback={FALLBACKS.recommendations}>
         <FragmentSlotStream
           slotPromise={stream.slotPromises.recommendations}
-          fallback={RECOMMENDATIONS_FALLBACK}
+          fallback={FALLBACKS.recommendations}
         />
       </Suspense>
+      {/*
+        Internal diagnostics (scheduler health, per-slot strategy/source, the
+        request-trace dependency graph) are DEV/E2E affordances, not page
+        content: they used to render unconditionally, putting internal timings
+        and topology into every production response as visible <h2> sections.
+        `isDiagnosticsEnabled()` keeps them on outside production and requires
+        an explicit MVP_DIAGNOSTICS=on in production — which the compose stack
+        sets, so the e2e and runtime-gate assertions still see them.
+
+        LAST in `<main>`, like page-markets and page-portfolio already have it.
+        This block needs the FULL aggregate, so it resolves after every slot;
+        rendered above the content it inserted 578px into the page after first
+        paint and pushed everything below it down — 578 of the 683px that made
+        this page's CLS 0.2027 against a 0.1 budget. Diagnostics are an
+        appendix, so their late arrival must not move page content.
+      */}
+      {isDiagnosticsEnabled() && (
+        <Suspense fallback={null}>
+          <SchedulerDiagnostics aggregate={stream.aggregate} />
+        </Suspense>
+      )}
     </main>
   );
 }
