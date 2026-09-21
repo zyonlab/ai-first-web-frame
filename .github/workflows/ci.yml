@@ -28,6 +28,13 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # Every job carries a deadline because a hung step otherwise runs to
+    # GitHub's 360-minute default: the runtime gate below printed its failure
+    # in 4.5 seconds and then held the runner for two and a half hours. These
+    # are generous against observed times (verify ~2min, affected ~2min,
+    # e2e ~20min of which the 22-image build is ~17min), so they catch a hang,
+    # not a slow runner.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -93,6 +100,7 @@ jobs:
 
   affected:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       has_units: ${{ steps.affected.outputs.has_units }}
       units: ${{ steps.affected.outputs.units }}
@@ -145,6 +153,7 @@ jobs:
     # "Unrecognized named-value: 'secrets'", which surfaces as a 0-second run
     # with no jobs and no logs. It IS available in a job-level `env`, and `env`
     # IS available in a step `if:`, so the check is hoisted here.
+    timeout-minutes: 45
     env:
       REGISTRY_READY: ${{ vars.REGISTRY_URL != '' && secrets.REGISTRY_USERNAME != '' && secrets.REGISTRY_PASSWORD != '' }}
     strategy:
@@ -185,6 +194,7 @@ jobs:
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       contains(github.event.pull_request.labels.*.name, 'e2e')
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
