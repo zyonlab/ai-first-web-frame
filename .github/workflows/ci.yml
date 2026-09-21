@@ -16,7 +16,12 @@
 name: ci
 
 on:
+  # `labeled` is not one of pull_request's default activity types (those are
+  # opened / synchronize / reopened), so without it the `e2e` label below could
+  # be applied but would never trigger a run — the documented escape hatch was
+  # inert. Listing the defaults explicitly is required once `types` is given.
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
 
@@ -46,6 +51,45 @@ jobs:
             turbo-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
+      # `pnpm verify` captures each gate's stdout into the report rather than
+      # streaming it, so a failing gate shows as `FAIL <cmd>` and nothing else
+      # in the job log. Print the failing gate's own output so a CI-only
+      # failure is diagnosable from the log alone.
+      - name: Show failing gate output
+        if: failure()
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const path = "reports/verify-report.json";
+            // `reports/` is committed, so a verify that died before writing
+            // the report leaves the PREVIOUS run file on disk. Print
+            // `generatedAt` so the log says which run this output came from.
+            if (!fs.existsSync(path)) {
+              console.log("no " + path + " — verify failed before writing it");
+              process.exit(0);
+            }
+            const report = JSON.parse(fs.readFileSync(path, "utf8"));
+            console.log("verify-report.json generatedAt=" + report.generatedAt);
+            const failed = report.results.filter((x) => x.status === "failed");
+            if (failed.length === 0) {
+              console.log(
+                "report lists no failed gate; verify likely crashed outside a gate",
+              );
+            }
+            for (const entry of failed) {
+              console.log("::group::" + entry.command);
+              console.log(entry.stdout ?? "");
+              console.log(entry.stderr ?? "");
+              console.log("::endgroup::");
+            }
+          '
+      - name: Upload verify reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-reports
+          path: reports/
+          retention-days: 7
 
   affected:
     runs-on: ubuntu-latest
@@ -96,6 +140,13 @@ jobs:
       github.ref == 'refs/heads/main' &&
       needs.affected.outputs.has_units == 'true'
     runs-on: ubuntu-latest
+    # The `secrets` context is NOT available in a step-level `if:` — GitHub
+    # rejects the whole workflow at validation time with
+    # "Unrecognized named-value: 'secrets'", which surfaces as a 0-second run
+    # with no jobs and no logs. It IS available in a job-level `env`, and `env`
+    # IS available in a step `if:`, so the check is hoisted here.
+    env:
+      REGISTRY_READY: ${{ vars.REGISTRY_URL != '' && secrets.REGISTRY_USERNAME != '' && secrets.REGISTRY_PASSWORD != '' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.affected.outputs.matrix) }}
@@ -113,14 +164,14 @@ jobs:
           -t ${{ matrix.unit }}:latest
           .
       - name: Log in to registry
-        if: ${{ vars.REGISTRY_URL != '' && secrets.REGISTRY_USERNAME != '' && secrets.REGISTRY_PASSWORD != '' }}
+        if: env.REGISTRY_READY == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ vars.REGISTRY_URL }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - name: Push image
-        if: ${{ vars.REGISTRY_URL != '' && secrets.REGISTRY_USERNAME != '' && secrets.REGISTRY_PASSWORD != '' }}
+        if: env.REGISTRY_READY == 'true'
         run: |
           for TAG in "${{ github.sha }}" latest; do
             docker tag "${{ matrix.unit }}:$TAG" "${{ vars.REGISTRY_URL }}/${{ matrix.unit }}:$TAG"
