@@ -123,7 +123,12 @@ async function ProductDiagnostics({
         {diag.dag.hints.length > 0 ? (
           <ul data-dag-hints="product">
             {diag.dag.hints.map((hint) => (
-              <li key={hint.kind}>{hint.message}</li>
+              // Composite key like the other four pages: two hints can share
+              // a `kind` (one per slot group), and keying on `kind` alone made
+              // React warn about duplicate children on every product render.
+              <li key={`${hint.kind}:${hint.slots.join(",")}`}>
+                {hint.message}
+              </li>
             ))}
           </ul>
         ) : (
@@ -167,7 +172,7 @@ export default async function ProductPage({
         <h1>{product.title}</h1>
         <p>{product.price}</p>
         <Image
-          src={`/products/${product.id}.jpg`}
+          src={product.image}
           alt={product.imageAlt}
           width={640}
           height={480}
