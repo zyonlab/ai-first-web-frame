@@ -141,7 +141,7 @@ async function measureWebVitals(page: Page): Promise<{
             result.lcpMs = Math.max(result.lcpMs ?? 0, entry.startTime);
           }
         }).observe({ type: "largest-contentful-paint", buffered: true });
-        new PerformanceObserver((list) => {
+        const clsObserver = new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
             const shift = entry as PerformanceEntry & {
               value: number;
@@ -189,7 +189,15 @@ async function measureWebVitals(page: Page): Promise<{
               ];
             }
           }
-        }).observe({ type: "layout-shift", buffered: true });
+        });
+        clsObserver.observe({ type: "layout-shift", buffered: true });
+        // A page that never shifted has CLS 0 — that is a measurement, and a
+        // passing one. Leaving `cls` undefined reported it as "not measured"
+        // and SKIPPED the budget, so the same page could SKIP on one run and
+        // FAIL on the next with no way to tell a stable page from an
+        // unobserved one. Only a browser that cannot observe `layout-shift`
+        // at all now reports nothing.
+        result.cls = result.cls ?? 0;
       } catch {
         // A browser without these entry types reports nothing rather than 0.
       }
@@ -311,18 +319,29 @@ async function runGate(browser: Browser) {
   });
 
   let reachable = true;
+  // Why it was unreachable, not just that it was. `/markets` failed here while
+  // the gateway's own trace showed it answering that request 200 in 102ms, and
+  // the bare message could not tell a navigation error from a 4xx.
+  let unreachableReason = "";
   try {
     const res = await page.goto(url, {
       waitUntil: "networkidle",
       timeout: 30000,
     });
-    if (!res || res.status() >= 400) reachable = false;
-  } catch {
+    if (!res) {
+      reachable = false;
+      unreachableReason = "navigation returned no response";
+    } else if (res.status() >= 400) {
+      reachable = false;
+      unreachableReason = `HTTP ${res.status()}`;
+    }
+  } catch (error) {
     reachable = false;
+    unreachableReason = String(error).split("\n")[0] ?? "navigation threw";
   }
 
   if (!reachable) {
-    const msg = `target not reachable: ${url} (is the stack up?)`;
+    const msg = `target not reachable: ${url} — ${unreachableReason}`;
     process.stdout.write(
       json
         ? `${JSON.stringify({ status: "failed", error: msg })}\n`
