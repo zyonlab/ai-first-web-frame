@@ -458,6 +458,18 @@ export const PageManifestSchema = z.object({
       // scheduler's data-dependency graph, not just the fragment slot list).
       dataDependencies: z.array(z.string()).default([]).optional(),
       required: z.boolean().optional(),
+      /**
+       * Height in CSS px to hold for this slot before its HTML streams in.
+       * A streamed slot's `<Suspense>` fallback is a one-line placeholder, so
+       * when the real markup arrives the box grows and everything below it
+       * moves — measured at CLS 0.2027 on page-home against a 0.1 budget.
+       * Declared per slot rather than per fragment because the page must know
+       * it synchronously, BEFORE the fragment answers, which is the whole
+       * point; and because the same fragment occupies different heights in
+       * different slots. Optional and additive: a slot without it reserves
+       * nothing and behaves exactly as before.
+       */
+      reserveHeightPx: z.number().int().positive().optional(),
     }),
   ),
 });

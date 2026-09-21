@@ -1,5 +1,5 @@
 import type { FragmentRenderResponse } from "@mvp/contracts";
-import type { ReactElement, ReactNode } from "react";
+import { cloneElement, type ReactElement, type ReactNode } from "react";
 import {
   buildServerTiming,
   type FragmentSlotResult,
@@ -113,6 +113,62 @@ function isFragmentSlotsExecution(
  * (a `<section data-fragment=... data-fallback="true">` block), so this is
  * not a practical restriction.
  */
+/**
+ * `reserveSlotHeight(fallback, px)` — the fallback element with `min-height`
+ * held at `px`.
+ *
+ * A streamed slot shows its `<Suspense>` fallback until the fragment's HTML
+ * arrives. The fallback is one line of text; the real markup is hundreds of
+ * pixels, so the swap grows the box and moves everything below it. On page-home
+ * that measured CLS 0.2027 against a 0.1 budget.
+ *
+ * The style goes on the fallback element ITSELF rather than a wrapper, for two
+ * reasons: a wrapper would add a node around every streamed slot, and the
+ * runtime gate's `layout-fit` check measures `[data-fragment]` boxes for
+ * content voids — a reserved-but-taller parent is exactly the void it reports.
+ * Any `style` the caller already set is preserved and wins.
+ *
+ * Returns the element untouched when no height is declared, so a slot without
+ * `reserveHeightPx` renders exactly the markup it did before.
+ */
+export function reserveSlotHeight(
+  fallback: ReactElement,
+  reserveHeightPx?: number,
+): ReactElement {
+  if (!reserveHeightPx || reserveHeightPx <= 0) return fallback;
+  const existing = (fallback.props as { style?: React.CSSProperties }).style;
+  return cloneElement(fallback, {
+    style: { minHeight: `${reserveHeightPx}px`, ...existing },
+  } as Partial<unknown> & { style: React.CSSProperties });
+}
+
+/**
+ * `reserveFallbacks(slots, fallbacks)` — the same fallbacks, each holding the
+ * height its slot declares in the page manifest.
+ *
+ * One call per page, then the returned element is used for BOTH the
+ * `<Suspense fallback>` (what React shows while the slot streams) and
+ * `<FragmentSlotStream fallback>` (what renders if the slot resolves empty), so
+ * a slot reserves its space on every path it can take. A name with no
+ * `reserveHeightPx` in the manifest comes back untouched.
+ */
+export function reserveFallbacks<K extends string>(
+  slots: readonly { name: string; reserveHeightPx?: number }[],
+  fallbacks: Record<K, ReactElement>,
+): Record<K, ReactElement> {
+  const byName = new Map(
+    slots.map((slot) => [slot.name, slot.reserveHeightPx]),
+  );
+  const reserved = {} as Record<K, ReactElement>;
+  for (const [name, element] of Object.entries(fallbacks) as [
+    K,
+    ReactElement,
+  ][]) {
+    reserved[name] = reserveSlotHeight(element, byName.get(name));
+  }
+  return reserved;
+}
+
 export type FragmentSlotStreamProps = {
   slotPromise: Promise<FragmentRenderResponse>;
   fallback: ReactElement;

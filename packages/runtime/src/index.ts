@@ -62,6 +62,9 @@ export type FragmentSlotDefinition = {
   dependsOn?: string[];
   dataDependencies?: string[];
   required?: boolean;
+  /** CSS px to hold for this slot until its HTML arrives; see the page
+   * manifest's `reserveHeightPx`. Applied to the streamed fallback element. */
+  reserveHeightPx?: number;
 };
 
 export type FragmentSlotStatus = "ok" | "fallback" | "skipped-dependency";

@@ -46,7 +46,8 @@ const USAGE =
   "usage: mount-slot --page <page-home|page-product> --slot <name> --fragment <fragment> " +
   "[--strategy static|ttl-cache|cached-ssr|dynamic-ssr] [--channel stable|canary|preview] " +
   "[--timeout-ms <n>] [--props <json>] [--static-html <string>] [--cache-policy <json>] " +
-  "[--data-dependencies <json-array>] [--required] [--allow-unregistered] " +
+  "[--data-dependencies <json-array>] [--required] [--reserve-height-px <n>] " +
+  "[--allow-unregistered] " +
   "| mount-slot --page <page> --slot <name> --remove " +
   "| mount-slot --page <page> --check (verifies fragmentSlots.gen.ts is in sync with manifest.slots.json, writes nothing)";
 
@@ -67,6 +68,7 @@ const KNOWN_FLAGS = [
   "data-dependencies",
   "depends-on",
   "required",
+  "reserve-height-px",
   "remove",
   "check",
   "allow-unregistered",
@@ -302,6 +304,17 @@ function buildSlot(
   if (typeof flags["depends-on"] === "string")
     slot.dependsOn = JSON.parse(flags["depends-on"]);
   slot.required = flags.required === true || flags.required === "true";
+  // Height held for the slot until its HTML streams in; see the manifest
+  // schema's `reserveHeightPx`. Omitted means "reserve nothing", which is the
+  // pre-existing behaviour, so this stays additive.
+  if (typeof flags["reserve-height-px"] === "string") {
+    const reserveHeightPx = Number(flags["reserve-height-px"]);
+    if (!Number.isInteger(reserveHeightPx) || reserveHeightPx <= 0)
+      throw new Error(
+        `--reserve-height-px "${flags["reserve-height-px"]}" is invalid`,
+      );
+    slot.reserveHeightPx = reserveHeightPx;
+  }
   return slot as PageSlot;
 }
 
