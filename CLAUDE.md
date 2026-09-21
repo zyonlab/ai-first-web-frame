@@ -193,4 +193,9 @@ A fragment is the smallest unit that ships on its own, and that is an executable
 - `layer-constraint-violation`: layering is declarative in `dependency-audit.json`
   (`tags` + `depConstraints`, modelled on `@nx/enforce-module-boundaries`). Fix the import,
   or change the constraint deliberately — do not add a tag to dodge it.
+- `undeclared-workspace-import`: an `apps/*` or `fragments/*` unit imports a `@mvp/*`
+  package missing from its `package.json`. Declare it — do not delete the import. A
+  whole-repo `pnpm build` cannot see this (it builds everything regardless of who declared
+  what), but the unit's own Dockerfile runs `pnpm --filter <unit>... build`, whose closure
+  is the DECLARED deps, so the package is never built and the import fails to resolve.
 - Typecheck fails in an unrelated package: fix only your own files; report pre-existing failures instead of patching other packages.

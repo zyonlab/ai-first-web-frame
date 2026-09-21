@@ -754,3 +754,109 @@ describe("fetchCallsWithoutSignal", () => {
     expect(fetchCallsWithoutSignal('const s = "fetch(url)";')).toBe(0);
   });
 });
+
+describe("auditUndeclaredWorkspaceImports", () => {
+  /**
+   * The shape that got through `pnpm verify` and broke `docker compose build`:
+   * a page importing a workspace package it never declared. A whole-repo build
+   * hides it, `pnpm --filter <unit>... build` does not.
+   */
+  it("fails a unit importing a workspace package it does not declare", () => {
+    const root = tempRoot("undeclared-import");
+    write(
+      join(root, "domains/prefs/package.json"),
+      JSON.stringify({ name: "@mvp/prefs" }),
+    );
+    write(
+      join(root, "apps/page-thing/package.json"),
+      JSON.stringify({ name: "@mvp/page-thing", dependencies: {} }),
+    );
+    write(
+      join(root, "apps/page-thing/app/layout.tsx"),
+      [
+        'import { readThemePreference } from "@mvp/prefs";',
+        "export default function Layout() {",
+        "  return readThemePreference();",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    const issue = report.issues.find(
+      (item) => item.code === "undeclared-workspace-import",
+    );
+    expect(issue?.severity).toBe("fail");
+    expect(issue?.packageName).toBe("@mvp/prefs");
+    expect(issue?.file).toBe("apps/page-thing/app/layout.tsx");
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("accepts a declared dependency reached through a subpath export", () => {
+    const root = tempRoot("declared-subpath");
+    write(
+      join(root, "packages/runtime/package.json"),
+      JSON.stringify({ name: "@mvp/runtime" }),
+    );
+    write(
+      join(root, "apps/page-thing/package.json"),
+      JSON.stringify({
+        name: "@mvp/page-thing",
+        dependencies: { "@mvp/runtime": "workspace:*" },
+      }),
+    );
+    write(
+      join(root, "apps/page-thing/app/layout.tsx"),
+      [
+        'import { RumBeacon } from "@mvp/runtime/rum";',
+        "export default function Layout() {",
+        "  return <RumBeacon />;",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    expect(
+      report.issues.some((item) => item.code === "undeclared-workspace-import"),
+    ).toBe(false);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("ignores test files, which are not part of the unit's image", () => {
+    const root = tempRoot("undeclared-in-test");
+    write(
+      join(root, "packages/runtime/package.json"),
+      JSON.stringify({ name: "@mvp/runtime" }),
+    );
+    write(
+      join(root, "fragments/thing/package.json"),
+      JSON.stringify({ name: "@mvp/fragment-thing", dependencies: {} }),
+    );
+    write(
+      join(root, "fragments/thing/tests/proxy.test.ts"),
+      'import { resolveFragmentProxy } from "@mvp/runtime";\n',
+    );
+    const report = runDependencyAudit({
+      ci: true,
+      warnOnly: false,
+      force: false,
+      root,
+      positional: [],
+    });
+    expect(
+      report.issues.some((item) => item.code === "undeclared-workspace-import"),
+    ).toBe(false);
+    rmSync(root, { recursive: true, force: true });
+  });
+});
