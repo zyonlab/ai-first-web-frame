@@ -8,6 +8,7 @@ import {
   createTraceSampler,
   type HttpMetrics,
   type MetricsRegistry,
+  type WebVitalName,
 } from "@mvp/observability";
 
 /** Content-Type expected by Prometheus scrapers for the text exposition format. */
@@ -89,4 +90,14 @@ function parseSampleRate(raw: string | undefined): number {
   if (raw === undefined || raw === "") return 1;
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : 1;
+}
+
+/** The four vitals `recordWebVital` accepts; anything else is a client bug. */
+const WEB_VITAL_NAMES: readonly WebVitalName[] = ["LCP", "INP", "CLS", "TTFB"];
+
+export function isWebVitalName(value: unknown): value is WebVitalName {
+  return (
+    typeof value === "string" &&
+    (WEB_VITAL_NAMES as readonly string[]).includes(value)
+  );
 }

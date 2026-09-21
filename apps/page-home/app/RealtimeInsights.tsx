@@ -2,11 +2,6 @@
 
 import { createDataClient, defineDataSource } from "@mvp/data";
 import { createInteractionBus } from "@mvp/interaction";
-import {
-  createRumReporter,
-  observeLongTasks,
-  observeWebVitals,
-} from "@mvp/observability/rum";
 import { createRequestContext } from "@mvp/request-context";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import {
@@ -26,12 +21,6 @@ import {
 } from "../src/realtimeInsights";
 
 const SUBSCRIPTION_SOURCE_ID = "home-recommendation-heat";
-/**
- * Long tasks below this are ordinary work; above it they are the blocks a user
- * perceives as jank. 200ms matches the INP "needs improvement" boundary.
- */
-const LONG_TASK_REPORT_MS = 200;
-
 const POLL_INTERVAL_MS = 2000;
 
 /**
@@ -121,25 +110,6 @@ export function RealtimeInsights({
     );
     return unsubscribe;
   }, [dataClient, category]);
-
-  // RUM: real web vitals plus long tasks, tagged with the server's trace id.
-  //
-  // This used to report `{ name: "INP", value: performance.now() }` at mount —
-  // elapsed time since navigation, which is not Interaction to Next Paint and
-  // never observed an interaction at all.
-  useEffect(() => {
-    const report = createRumReporter({ endpoint: "/api/rum" });
-    const stopVitals = observeWebVitals(report);
-    const stopTasks = observeLongTasks((task) => {
-      if (task.durationMs >= LONG_TASK_REPORT_MS) {
-        report({ name: "INP", value: task.durationMs, source: "observer" });
-      }
-    });
-    return () => {
-      stopVitals();
-      stopTasks();
-    };
-  }, []);
 
   function onSelect(next: RecommendationCategory) {
     void bus.publish(

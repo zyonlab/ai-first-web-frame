@@ -726,3 +726,64 @@ describe("shell-gateway observability", () => {
     expect(observed?.aborted).toBe(true);
   });
 });
+
+describe("POST /_shell/rum", () => {
+  /**
+   * Ingestion moved here from a page app so every page reports to one origin
+   * and the samples aggregate; landing them in the shell registry also makes
+   * them scrapeable, since `/metrics` already serves it.
+   */
+  it("records a vital and exposes it through /metrics", async () => {
+    const app = buildServer();
+    const post = await app.inject({
+      method: "POST",
+      url: "/_shell/rum",
+      payload: { name: "LCP", value: 1800, route: "/trade/BTC" },
+    });
+    expect(post.statusCode).toBe(200);
+    expect(post.json()).toMatchObject({ status: "recorded", name: "LCP" });
+
+    const metrics = await app.inject({ method: "GET", url: "/metrics" });
+    expect(metrics.body).toContain("web_vitals_lcp");
+    expect(metrics.body).toContain('route="/trade/BTC"');
+    await app.close();
+  });
+
+  it("echoes the trace id so the sample stays joinable to its server spans", async () => {
+    const app = buildServer();
+    const traceparent =
+      "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+    const response = await app.inject({
+      method: "POST",
+      url: "/_shell/rum",
+      payload: { name: "INP", value: 240, route: "/", traceparent },
+    });
+    expect(response.json()).toMatchObject({ traceparent });
+    await app.close();
+  });
+
+  it("rejects an unknown metric name", async () => {
+    const app = buildServer();
+    const response = await app.inject({
+      method: "POST",
+      url: "/_shell/rum",
+      payload: { name: "BOGUS", value: 1 },
+    });
+    expect(response.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("rejects a non-finite value rather than poisoning the histogram", async () => {
+    // JSON has no Infinity, but a client can send a string that coerces oddly
+    // or a NaN-producing computation; a histogram that ingests one is ruined
+    // for every later reader.
+    const app = buildServer();
+    const response = await app.inject({
+      method: "POST",
+      url: "/_shell/rum",
+      payload: { name: "CLS", value: Number.MAX_VALUE * 2 },
+    });
+    expect(response.statusCode).toBe(400);
+    await app.close();
+  });
+});

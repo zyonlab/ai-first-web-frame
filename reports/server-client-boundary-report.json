@@ -3,7 +3,6 @@
   "status": "warn",
   "checkedFiles": [
     "apps/page-home/app/RealtimeInsights.tsx",
-    "apps/page-home/app/api/rum/route.ts",
     "apps/page-home/app/health/route.ts",
     "apps/page-home/app/layout.tsx",
     "apps/page-home/app/page.tsx",

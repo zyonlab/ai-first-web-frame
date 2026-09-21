@@ -6,7 +6,7 @@
 
 <div class="facts">
   <div class="fact"><b>17</b><span>条已验证缺陷</span></div>
-  <div class="fact"><b>4</b><span>已修复</span></div>
+  <div class="fact"><b>5</b><span>已修复</span></div>
   <div class="fact"><b>3</b><span>会影响选型决策</span></div>
 </div>
 
@@ -174,12 +174,13 @@
 
 <hr />
 
-<h2 id="f17">F17 · 真实用户监控只覆盖 7 个页面中的 1 个 —— OPS，中</h2>
-<p><code>@mvp/observability/rum</code> 现在能正确测量 LCP、CLS、INP、TTFB 和 long task，并给每个样本打上服务端 trace id，让客户端指标能和同一次页面加载的服务端 span 对上。但<strong>只有 <code>page-home</code> 装了它</strong>。<code>page-trade</code> —— 那个九槽位的实时终端、卡顿和交互延迟真正重要的页面 —— 一个指标都不上报。</p>
-<p>上报端点也是按应用各自一份（<code>apps/page-home/app/api/rum/route.ts</code>），注册表存在进程内存里，所以样本既扛不过重启，也不跨页面聚合。</p>
-<div class="note">
-<p>这是<em>替换掉了一个更糟的问题</em>，不是制造了一个新问题：之前的样本是岛屿挂载时的 <code>{ name: "INP", value: performance.now() }</code> —— 那既不是 INP，也从未观测过任何一次交互。一个页面报真实数字，好过七个页面报一个确信的错数字 —— 但这不叫覆盖。</p>
+<h2 id="f17">F17 · <s>真实用户监控只覆盖 7 个页面中的 1 个</s> —— 已修复</h2>
+<p>测量本身是对的，接线不对：observer 装在某一个页面的业务岛屿里，于是 7 个页面里有 6 个什么都不报 —— 包括 <code>page-trade</code>，那个九槽位的实时终端，卡顿和交互延迟真正值得测的页面。上报端点是按应用各一份、注册表存在进程内存里，样本既扛不过重启，也不跨页面聚合。</p>
+<div class="note good">
+<p><b>两半都搬到了共享的位置。</b><code>&lt;RumBeacon /&gt;</code>（<code>@mvp/runtime/rum</code>）在每个应用的 <code>layout.tsx</code> 里只占一行，因此覆盖该应用的<em>所有路由</em>，而不是某一个组件。上报端点搬到网关的 <code>POST /_shell/rum</code> —— 每个页面本来就在跟它说话的单一公共源站 —— 并落进 <code>/metrics</code> 已经在暴露的那个注册表，所以样本既聚合了，也可被抓取。</p>
 </div>
+<p>在那个此前一个指标都不报的页面上实测：打开 <code>/trade/BTC</code> 再切到后台，产生两条打向 <code>/_shell/rum</code> 的 beacon（LCP 600ms、CLS 0.034），两条都带着与该次加载的服务端 span 相同的 <code>traceparent</code>。随后 <code>/metrics</code> 里同时出现了 <code>/trade/BTC</code>、<code>/markets</code>、<code>/portfolio</code>、<code>/vaults</code>、<code>/referrals</code> 的 <code>web_vitals_*</code> 序列。</p>
+<p>保留在这一页上，是因为这个教训可以推广：<b>需要按页面手工接线的遥测，最后一定接在最不需要它的那个页面上。</b>真正的修复不是把测量做得更准，而是把接线挪到一个页面「忘不掉」的位置。</p>
 
 <hr />
 
