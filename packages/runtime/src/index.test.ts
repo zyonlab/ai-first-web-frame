@@ -8,6 +8,7 @@ import { createRequestTrace } from "@mvp/observability";
 import { describe, expect, it, vi } from "vitest";
 import {
   applySlotRequestOverrides,
+  buildServerTiming,
   clearFragmentCache,
   collectSlotDiagnostics,
   createFallbackResponse,
@@ -24,14 +25,17 @@ import {
   failedRequiredSlotNames,
   fetchFragment,
   fetchFragmentSlots,
+  formatServerTiming,
   invalidateFragmentCacheByTag,
   isFallbackResponse,
   mergeAssets,
   PAGE_HEALTH_ATTR,
   PAGE_HEALTH_FAILED_ATTR,
+  PAGE_TIMING_ATTR,
   pruneFragmentCache,
   type RuntimeTrace,
   readPageHealthFromHtml,
+  readServerTimingFromHtml,
   resolveFragment,
   resolveFragmentStream,
   resolveRoute,
@@ -1618,5 +1622,92 @@ describe("page health signalling (Tailor's primary semantic)", () => {
       health: "degraded",
       failedSlots: [],
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Server-Timing — the channel that puts server durations into the browser's
+// own timeline. The grammar is unforgiving: one stray `;` or `,` in a name
+// silently truncates every entry after it, so the escaping is the real test.
+// ---------------------------------------------------------------------------
+
+describe("formatServerTiming", () => {
+  it("emits name, quoted desc and rounded dur", () => {
+    expect(
+      formatServerTiming([
+        { name: "book", durationMs: 142.37, description: "network" },
+      ]),
+    ).toBe('book;desc="network";dur=142.4');
+  });
+
+  it("sanitises a name that would break the grammar", () => {
+    // A slot name is authored data. Without this, `a;b` would read as an entry
+    // named `a` with a bogus parameter, and everything after it would be lost.
+    expect(formatServerTiming([{ name: "a;b,c", durationMs: 1 }])).toBe(
+      "a_b_c;dur=1",
+    );
+  });
+
+  it("strips quotes from a description rather than emitting them raw", () => {
+    expect(
+      formatServerTiming([{ name: "x", description: 'he said "hi"' }]),
+    ).toBe('x;desc="he said hi"');
+  });
+
+  it("keeps an entry that has no duration", () => {
+    expect(formatServerTiming([{ name: "x" }])).toBe("x");
+  });
+
+  it("joins entries with a comma", () => {
+    expect(
+      formatServerTiming([
+        { name: "a", durationMs: 1 },
+        { name: "b", durationMs: 2 },
+      ]),
+    ).toBe("a;dur=1, b;dur=2");
+  });
+});
+
+describe("buildServerTiming", () => {
+  it("carries the source as desc, so a 2ms slot is readable as a cache hit", () => {
+    const slots = {
+      book: {
+        slot: { name: "book", fragment: "order-book" },
+        strategy: "dynamic-ssr",
+        source: "cache",
+        status: "ok",
+        response: {} as never,
+        durationMs: 2,
+      },
+      orderForm: {
+        slot: { name: "orderForm", fragment: "order-form" },
+        strategy: "dynamic-ssr",
+        source: "network",
+        status: "ok",
+        response: {} as never,
+        durationMs: 88.4,
+      },
+    } as unknown as Record<string, FragmentSlotResult>;
+    expect(buildServerTiming(slots)).toBe(
+      'book;desc="cache";dur=2, orderForm;desc="network";dur=88.4',
+    );
+  });
+});
+
+describe("readServerTimingFromHtml", () => {
+  it("reads the marker back out of composed markup", () => {
+    const html = `<main>x</main><div hidden ${PAGE_TIMING_ATTR}="book;dur=1"></div>`;
+    expect(readServerTimingFromHtml(html)).toBe("book;dur=1");
+  });
+
+  it("undoes the entity escaping React applies to the attribute", () => {
+    // React serialises `desc="network"` as `desc=&quot;network&quot;`; handing
+    // that to the header verbatim would emit literal entities.
+    const html = `<div hidden ${PAGE_TIMING_ATTR}="book;desc=&quot;cache&quot;;dur=2"></div>`;
+    expect(readServerTimingFromHtml(html)).toBe('book;desc="cache";dur=2');
+  });
+
+  it("returns null for a page that does not participate", () => {
+    expect(readServerTimingFromHtml("<main>no marker</main>")).toBeNull();
   });
 });

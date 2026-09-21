@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./rum": {
+      "types": "./dist/rum.d.ts",
+      "import": "./dist/rum.js"
     }
   },
   "files": [
@@ -26,7 +30,7 @@
   "scripts": {
     "test": "pnpm -w exec vitest run packages/observability/src",
     "test:watch": "pnpm -w exec vitest packages/observability/src",
-    "build": "tsdown src/index.ts --format esm --dts",
+    "build": "tsdown src/index.ts src/rum.ts --format esm --dts",
     "typecheck": "pnpm exec tsgo -p tsconfig.json --noEmit"
   },
   "devDependencies": {

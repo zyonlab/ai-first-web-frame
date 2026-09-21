@@ -8,7 +8,9 @@ import { fragmentRegistry } from "@mvp/registry";
 import { matchRoute, routeRegistry } from "@mvp/routes";
 import {
   FRAGMENT_PROXY_PREFIX,
+  formatServerTiming,
   readPageHealthFromHtml,
+  readServerTimingFromHtml,
   resolveFragmentProxy,
 } from "@mvp/runtime";
 import {
@@ -361,12 +363,15 @@ export function buildServer(options: BuildServerOptions = {}) {
       requestId: ctx.requestId,
       now,
     });
+    const requestStartedAtMs = now();
     const requestSpan = trace.startSpan("shell.compose", "request", {
       attributes: { method: request.method },
     });
 
+    // Both headers: `traceparent` is what DevTools, collectors and APMs read;
+    // `x-trace-id` is kept for callers that predate it.
+    reply.header("traceparent", ctx.traceparent);
     reply.header("x-trace-id", ctx.traceId);
-    reply.header("server-timing", "shell;dur=1");
 
     const pathname = new URL(request.url, "http://shell.local").pathname;
     const routeSpan = trace.startSpan("shell.route.match", "custom", {
@@ -387,6 +392,7 @@ export function buildServer(options: BuildServerOptions = {}) {
       return createNotFoundFallback(pathname);
     }
 
+    const upstreamStartedAtMs = now();
     const upstreamSpan = trace.startSpan("shell.upstream.fetch", "network", {
       parentId: requestSpan,
       attributes: { page: route.page, serviceUrl: route.serviceUrl },
@@ -419,6 +425,39 @@ export function buildServer(options: BuildServerOptions = {}) {
       // fail, and the response status is corrected to say so; pages that do not
       // stamp the marker are unaffected.
       const pageHealth = readPageHealthFromHtml(body);
+
+      // `Server-Timing` is the only standard channel that puts server-side
+      // durations into the browser's own timeline, where Chrome shows them per
+      // request and exposes them on `PerformanceServerTiming`. Two sources are
+      // merged: what the shell itself did (route match, upstream fetch), and
+      // the per-slot entries the page stamped into its markup — the page cannot
+      // set a header, so it hands them up the same way it hands up health.
+      const shellTiming = formatServerTiming([
+        {
+          // Published here so the BROWSER can read the server's trace id from
+          // `PerformanceServerTiming` — no extra markup, no extra request. It
+          // is what makes a client-side LCP sample and a server-side span tree
+          // carry the same id instead of being two stories about one page load.
+          name: "traceparent",
+          description: ctx.traceparent,
+        },
+        {
+          name: "shell",
+          durationMs: now() - requestStartedAtMs,
+          description: "gateway total",
+        },
+        {
+          name: "upstream",
+          durationMs: now() - upstreamStartedAtMs,
+          description: "page app",
+        },
+      ]);
+      const pageTiming = readServerTimingFromHtml(body);
+      reply.header(
+        "server-timing",
+        pageTiming ? `${shellTiming}, ${pageTiming}` : shellTiming,
+      );
+
       const requiredFailed =
         requiredFailureStatus > 0 && pageHealth?.health === "unhealthy";
       if (requiredFailed) {

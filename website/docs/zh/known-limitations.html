@@ -5,8 +5,8 @@
 <p>按「先痛哪个」排序。每条都标明它伤到谁：<b>AX</b> 在仓库里干活的 AI agent，<b>DX</b> 人类开发者，<b>OPS</b> 运行它的人，<b>DOCS</b> 一条与事实不符的表述。</p>
 
 <div class="facts">
-  <div class="fact"><b>15</b><span>条已验证缺陷</span></div>
-  <div class="fact"><b>2</b><span>已修复</span></div>
+  <div class="fact"><b>17</b><span>条已验证缺陷</span></div>
+  <div class="fact"><b>4</b><span>已修复</span></div>
   <div class="fact"><b>3</b><span>会影响选型决策</span></div>
 </div>
 
@@ -118,7 +118,8 @@
 <p>「性能预算是硬闸门：超出 component/fragment/page 预算会让 <code>pnpm verify</code> 失败」这句无限定的表述，<strong>只对 11 个字段中的 2 个成立</strong>。</p>
 <p>对工具公平一点：<code>audit:bundle</code> 对自己的范围是坦白的 —— 报告带 <code>unmeasured</code> 数组逐条说明跳过原因，还有一条 <code>notes</code> 声明运行时指标不在闸门内。缺口在 <strong>schema 与闸门之间</strong>，以及<strong>闸门与那句总结性表述之间</strong>。</p>
 <div class="note bad">
-<p><b>最尖锐的一例：</b>14 个片段每一个都声明了 <code>maxFragmentLatencyMs</code> 和 <code>maxRenderMs</code> —— 一个片段最具运维意义的两个数字 —— 而<strong>没有任何东西读它们</strong>。同样地，每个页面都声明 <code>maxINPMs: 200</code>，而运行时闸门实现了 LCP、CLS、TTFB 三项检查，<strong>唯独没有 INP</strong>。</p>
+<p><b>最尖锐的一例：</b>14 个片段每一个都声明了 <code>maxFragmentLatencyMs</code> 和 <code>maxRenderMs</code> —— 一个片段最具运维意义的两个数字 —— 而<strong>没有任何东西读它们</strong>。</p>
+<p><code>maxINPMs</code> 往前挪了一步但没到位：INP 现在在浏览器里是<em>真的被测量</em>了（见 <a href="#f16">F16</a>），所以数字存在了 —— 但运行时闸门仍然只有 LCP、CLS、TTFB 三项检查，没有 INP 检查，所以这条声明的上限仍然不是上限。<strong>「测了但没闸门」和「根本没测」是两个问题</strong>，前者小一些。</p>
 </div>
 
 <hr />
@@ -163,6 +164,25 @@
 
 <hr />
 
+<h2 id="f16">F16 · <s>trace id 是一个硬编码常量</s> —— 已修复</h2>
+<p>网关里的 <code>createTraceId()</code> 返回字面量 <code>"trace_0000000000000000"</code>。于是<strong>全系统每一个请求共享同一个 trace id</strong>：互不相干的页面加载产生的 span 塌进同一条 trace，此前导出的每一份 OTLP 载荷都是一坨无法区分的东西，而那套看起来精心搭建的按片段 <code>x-trace-id</code> 传播，每次传的都是同一个值。</p>
+<div class="note bad">
+<p><b>更值得注意的是它为什么能活这么久。</b>「永远能关联」和「真的能关联」长得一模一样。没有失败的测试、没有报错、没有任何报告 —— 每个 span 上都有一个 trace id，只不过是错的那个。<strong>闸门抓不住的那一类 bug，正是「错误答案格式完全合法」的那一类。</strong></p>
+</div>
+<p>已换成真正的 W3C Trace Context（<code>@mvp/observability/traceContext</code>）：有 <code>traceparent</code> 就延续、没有就新建，网关 → 页面 → 片段全链传播，并在响应上回显。畸形的头会开新 trace 而不是被部分采纳。20 个测试覆盖了规范自带的示例向量、全零拒绝和 500 个 id 的唯一性。</p>
+<p>保留在这一页上，是因为这个形状会复发：<b>任何「生成」而非「观测」得来的标识符，都可能是一个常量，而不会有任何东西抱怨。</b>同样的问题值得对 <code>requestId</code>、缓存键和幂等键各问一遍。</p>
+
+<hr />
+
+<h2 id="f17">F17 · 真实用户监控只覆盖 7 个页面中的 1 个 —— OPS，中</h2>
+<p><code>@mvp/observability/rum</code> 现在能正确测量 LCP、CLS、INP、TTFB 和 long task，并给每个样本打上服务端 trace id，让客户端指标能和同一次页面加载的服务端 span 对上。但<strong>只有 <code>page-home</code> 装了它</strong>。<code>page-trade</code> —— 那个九槽位的实时终端、卡顿和交互延迟真正重要的页面 —— 一个指标都不上报。</p>
+<p>上报端点也是按应用各自一份（<code>apps/page-home/app/api/rum/route.ts</code>），注册表存在进程内存里，所以样本既扛不过重启，也不跨页面聚合。</p>
+<div class="note">
+<p>这是<em>替换掉了一个更糟的问题</em>，不是制造了一个新问题：之前的样本是岛屿挂载时的 <code>{ name: "INP", value: performance.now() }</code> —— 那既不是 INP，也从未观测过任何一次交互。一个页面报真实数字，好过七个页面报一个确信的错数字 —— 但这不叫覆盖。</p>
+</div>
+
+<hr />
+
 <h2 id="看起来像缺陷但不是">看起来像缺陷，但不是</h2>
 <p>值得单列，因为下面每一条都会被当成 bug 报上来：</p>
 <div class="note good">
@@ -179,4 +199,4 @@
 <h2 id="怎么用这一页">怎么用这一页</h2>
 <p><b>如果你在做选型：</b>会改变决策的是 <a href="#f1">F1</a>、<a href="#f11">F11</a> 和 <a href="#f14">F14</a> —— 一个给出错误建议的工具、一条比实现更宽的表述、一个在主边界上的可观测性空洞。三条都不是设计死胡同，每条大约各一天工作量。</p>
 <p><b>如果你是在这里干活的 agent：</b>照任何优化器建议行动之前先读 <a href="#f1">F1</a>；断定某个 flag 不存在之前先读 <a href="#f4">F4</a>。</p>
-<p><a href="#f3">F3</a> 和 <a href="#f12">F12</a> 标记为已修复但<strong>保留</strong>，因为让它们发生的<em>机制</em>还在：passthrough 环境变量失效时没有告警，也没有测试比对文档写的文件数与脚手架实际产出。</p>
+<p><a href="#f3">F3</a>、<a href="#f12">F12</a> 和 <a href="#f16">F16</a> 标记为已修复但<strong>保留</strong>，因为让它们发生的<em>机制</em>还在：passthrough 环境变量失效时没有告警、没有测试比对文档写的文件数与脚手架实际产出、也没有任何东西检查一个「生成」出来的标识符是否真的在变。</p>

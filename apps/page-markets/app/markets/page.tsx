@@ -1,4 +1,8 @@
-import { FragmentSlotStream, PageHealthMetaStream } from "@mvp/runtime/react";
+import {
+  FragmentSlotStream,
+  PageHealthMetaStream,
+  PageTimingMetaStream,
+} from "@mvp/runtime/react";
 import { isDiagnosticsEnabled } from "@mvp/runtime/seo";
 import { headers } from "next/headers";
 import { Suspense } from "react";
@@ -145,6 +149,7 @@ export default async function MarketsPage() {
       */}
       <Suspense fallback={null}>
         <PageHealthMetaStream execution={stream.execution} />
+        <PageTimingMetaStream execution={stream.execution} />
       </Suspense>
       {/*
         Internal diagnostics (scheduler health, per-slot strategy/source, the

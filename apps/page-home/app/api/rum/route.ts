@@ -39,6 +39,8 @@ export async function POST(request: Request): Promise<Response> {
     name?: unknown;
     value?: unknown;
     route?: unknown;
+    source?: unknown;
+    traceparent?: unknown;
   };
   if (!isWebVitalName(record.name) || typeof record.value !== "number") {
     return Response.json(
@@ -55,7 +57,20 @@ export async function POST(request: Request): Promise<Response> {
     route: typeof record.route === "string" ? record.route : "/",
   });
 
-  return Response.json({ status: "recorded", name: record.name });
+  // The trace id travels with the sample so a client-side vital can be joined
+  // to the server spans of the same page load. `recordWebVital` aggregates and
+  // deliberately drops per-sample detail, so it is echoed rather than silently
+  // discarded — an ingestion endpoint that accepts a field and forgets it is
+  // indistinguishable from one that never received it.
+  const traceparent =
+    typeof record.traceparent === "string" ? record.traceparent : undefined;
+
+  return Response.json({
+    status: "recorded",
+    name: record.name,
+    source: typeof record.source === "string" ? record.source : "unknown",
+    ...(traceparent ? { traceparent } : {}),
+  });
 }
 
 /** Exposes the accumulated RUM metrics as Prometheus text for scraping. */

@@ -73,6 +73,17 @@ export type FragmentSlotResult = {
   status: FragmentSlotStatus;
   response: FragmentRenderResponse;
   cacheKey?: string;
+  /**
+   * Wall-clock time this slot took, from the moment the scheduler reached it to
+   * the moment its response was in hand — including a cache lookup that hit, a
+   * timeout that expired, or a fallback substitution.
+   *
+   * It exists so the composed page can publish per-slot timing to the browser
+   * as `Server-Timing` (see `buildServerTiming`). Without it the only honest
+   * answer to "which fragment made this page slow" lived in a trace export
+   * nobody reads during a page load.
+   */
+  durationMs?: number;
 };
 
 export type DataDependencyDefinition = {
@@ -219,6 +230,99 @@ export const PAGE_HEALTH_ATTR = "data-mvp-page-health";
 
 /** Attribute carrying the failed required slot names, for diagnosis. */
 export const PAGE_HEALTH_FAILED_ATTR = "data-failed-slots";
+
+/**
+ * Attribute carrying a ready-made `Server-Timing` value for the gateway to
+ * forward.
+ *
+ * Same trick, and for the same reason, as {@link PAGE_HEALTH_ATTR}: a Next.js
+ * App Router `page.tsx` cannot set a response header, but the gateway already
+ * reads the upstream body as text. So the page stamps what it knows into the
+ * markup and the gateway promotes it to a real header.
+ *
+ * Why bother: `Server-Timing` is the one standard channel that puts server-side
+ * durations into a browser's own timeline. Chrome shows each entry in the
+ * network panel and exposes it on `PerformanceServerTiming`, so "which fragment
+ * made this page slow" becomes answerable from a devtools trace rather than
+ * from a trace export nobody opens during a page load.
+ */
+export const PAGE_TIMING_ATTR = "data-mvp-server-timing";
+
+/** One `Server-Timing` entry. `dur` is milliseconds; `desc` is optional. */
+export type ServerTimingEntry = {
+  name: string;
+  durationMs?: number;
+  description?: string;
+};
+
+/**
+ * Formats entries into a `Server-Timing` header value.
+ *
+ * The name is sanitised to the token characters the grammar allows, because a
+ * slot name is authored data and a stray `;` or `,` would silently truncate the
+ * header for every entry after it. `desc` is quoted for the same reason.
+ * Entries with no duration are still emitted — a marker with no timing is more
+ * useful than a dropped one.
+ */
+export function formatServerTiming(entries: ServerTimingEntry[]): string {
+  return entries
+    .map((entry) => {
+      const name = entry.name.replace(/[^A-Za-z0-9!#$%&'*+\-.^_`|~]/g, "_");
+      const parts = [name];
+      if (entry.description !== undefined) {
+        parts.push(`desc="${entry.description.replace(/["\\]/g, "")}"`);
+      }
+      if (entry.durationMs !== undefined) {
+        parts.push(`dur=${Math.round(entry.durationMs * 10) / 10}`);
+      }
+      return parts.join(";");
+    })
+    .join(", ");
+}
+
+/**
+ * Builds the per-slot `Server-Timing` value for a composed page.
+ *
+ * `desc` carries where the bytes came from (`cache`, `network`, `fallback`),
+ * which is the second question a reader asks after "how long" — a 2 ms slot is
+ * a cache hit, not a fast fragment, and the two call for opposite actions.
+ */
+export function buildServerTiming(
+  slots: Record<string, FragmentSlotResult>,
+): string {
+  return formatServerTiming(
+    Object.entries(slots).map(([name, result]) => ({
+      name,
+      durationMs: result.durationMs,
+      description: result.source,
+    })),
+  );
+}
+
+/**
+ * Reads the timing marker back out of a composed page's HTML. Returns null when
+ * the page does not participate, which the gateway must treat as "no opinion"
+ * rather than as zero timings.
+ */
+export function readServerTimingFromHtml(html: string): string | null {
+  const tag = new RegExp(
+    `<[a-z]+[^>]*\\s${PAGE_TIMING_ATTR}=["'][^"']*["'][^>]*>`,
+    "i",
+  ).exec(html);
+  if (!tag) return null;
+  const value = new RegExp(`${PAGE_TIMING_ATTR}=["']([^"']*)["']`, "i").exec(
+    tag[0],
+  )?.[1];
+  return value ? decodeHtmlAttribute(value) : null;
+}
+
+/** Undoes the entity escaping React applies when it serialises an attribute. */
+function decodeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, "&");
+}
 
 /**
  * Reads the health marker back out of a composed page's HTML. Returns null
@@ -1131,6 +1235,12 @@ export async function fetchFragmentSlot({
   parentSpanId?: string;
 }): Promise<FragmentSlotResult> {
   const strategy = slot.strategy ?? DEFAULT_RENDER_STRATEGY;
+  const startedAtMs = now();
+  /** Single exit point, so every path is timed and none can forget to be. */
+  const finish = (result: FragmentSlotResult): FragmentSlotResult => ({
+    ...result,
+    durationMs: Math.max(0, now() - startedAtMs),
+  });
   const slotSpanId = trace?.startSpan(`slot:${slot.name}`, "fragment", {
     parentId: parentSpanId,
     attributes: {
@@ -1171,7 +1281,7 @@ export async function fetchFragmentSlot({
         },
       };
       trace?.endSpan(slotSpanId ?? "", { status: "static" });
-      return result;
+      return finish(result);
     }
 
     const fragment = resolveFragment(
@@ -1195,7 +1305,7 @@ export async function fetchFragmentSlot({
         status: "fallback",
         attributes: { reason: "not registered" },
       });
-      return result;
+      return finish(result);
     }
 
     const request: FragmentRenderRequest = { ctx, props: slot.props ?? {} };
@@ -1225,7 +1335,7 @@ export async function fetchFragmentSlot({
           status: "cache",
           attributes: { cacheKey },
         });
-        return result;
+        return finish(result);
       }
     }
 
@@ -1269,7 +1379,7 @@ export async function fetchFragmentSlot({
       status: result.source === "fallback" ? "fallback" : "ok",
       attributes: { source: result.source, cacheKey },
     });
-    return result;
+    return finish(result);
   } catch (error) {
     trace?.endSpan(slotSpanId ?? "", {
       status: "error",
