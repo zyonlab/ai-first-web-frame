@@ -10,6 +10,7 @@
       "tags": ["markets", "ticker"],
       "vary": ["tenant", "locale", "props"]
     },
-    "required": true
+    "required": true,
+    "reserveHeightPx": 109
   }
 ]

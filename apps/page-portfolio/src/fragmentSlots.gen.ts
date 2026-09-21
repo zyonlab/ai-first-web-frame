@@ -22,6 +22,7 @@ export const fragmentSlots: FragmentSlotDefinition[] = [
       vary: ["tenant", "props"],
     },
     required: true,
+    reserveHeightPx: 164,
   },
   {
     name: "pnlChart",
@@ -35,5 +36,6 @@ export const fragmentSlots: FragmentSlotDefinition[] = [
       vary: ["tenant", "locale", "props"],
     },
     required: false,
+    reserveHeightPx: 463,
   },
 ];

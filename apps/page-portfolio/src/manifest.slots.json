@@ -10,7 +10,8 @@
       "tags": ["portfolio", "account"],
       "vary": ["tenant", "props"]
     },
-    "required": true
+    "required": true,
+    "reserveHeightPx": 164
   },
   {
     "name": "pnlChart",
@@ -23,6 +24,7 @@
       "tags": ["portfolio", "pnl"],
       "vary": ["tenant", "locale", "props"]
     },
-    "required": false
+    "required": false,
+    "reserveHeightPx": 463
   }
 ]

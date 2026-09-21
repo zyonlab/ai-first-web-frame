@@ -1,4 +1,4 @@
-import { FragmentSlotStream } from "@mvp/runtime/react";
+import { FragmentSlotStream, reserveFallbacks } from "@mvp/runtime/react";
 import { createPageMetadata, isDiagnosticsEnabled } from "@mvp/runtime/seo";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -9,6 +9,7 @@ import {
   type ProductFragmentAggregate,
   streamProductFragmentSlots,
 } from "../../../src/fragmentSlots";
+import { fragmentSlots } from "../../../src/fragmentSlots.gen";
 import { createProductJsonLd } from "../../../src/render";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +33,20 @@ const RECOMMENDATIONS_FALLBACK = (
     Related products are loading.
   </section>
 );
+
+/**
+ * The same three fallbacks, each holding the height its slot declares in
+ * `manifest.slots.json` (`reserveHeightPx`). A streamed slot shows a one-line
+ * placeholder until its HTML arrives; without a reservation the swap grows the
+ * box and moves everything below it. Used for both the `<Suspense>` fallback and
+ * `<FragmentSlotStream>`'s resolved-but-empty fallback, so the space is held on
+ * every path a slot can take.
+ */
+const FALLBACKS = reserveFallbacks(fragmentSlots, {
+  staticProof: STATIC_PROOF_FALLBACK,
+  promotion: PROMOTION_FALLBACK,
+  recommendations: RECOMMENDATIONS_FALLBACK,
+});
 
 export async function generateMetadata({
   params,
@@ -198,22 +213,22 @@ export default async function ProductPage({
           <ProductDiagnostics aggregate={stream.aggregate} />
         </Suspense>
       )}
-      <Suspense fallback={STATIC_PROOF_FALLBACK}>
+      <Suspense fallback={FALLBACKS.staticProof}>
         <FragmentSlotStream
           slotPromise={stream.slotPromises.staticProof}
-          fallback={STATIC_PROOF_FALLBACK}
+          fallback={FALLBACKS.staticProof}
         />
       </Suspense>
-      <Suspense fallback={PROMOTION_FALLBACK}>
+      <Suspense fallback={FALLBACKS.promotion}>
         <FragmentSlotStream
           slotPromise={stream.slotPromises.promotion}
-          fallback={PROMOTION_FALLBACK}
+          fallback={FALLBACKS.promotion}
         />
       </Suspense>
-      <Suspense fallback={RECOMMENDATIONS_FALLBACK}>
+      <Suspense fallback={FALLBACKS.recommendations}>
         <FragmentSlotStream
           slotPromise={stream.slotPromises.recommendations}
-          fallback={RECOMMENDATIONS_FALLBACK}
+          fallback={FALLBACKS.recommendations}
         />
       </Suspense>
     </main>

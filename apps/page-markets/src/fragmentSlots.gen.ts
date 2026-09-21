@@ -22,5 +22,6 @@ export const fragmentSlots: FragmentSlotDefinition[] = [
       vary: ["tenant", "locale", "props"],
     },
     required: true,
+    reserveHeightPx: 109,
   },
 ];
